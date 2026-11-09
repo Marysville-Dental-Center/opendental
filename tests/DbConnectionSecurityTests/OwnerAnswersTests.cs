@@ -35,15 +35,19 @@ namespace DbConnectionSecurityTests {
 			ClientCertificateTestStore.AssertCleanedUp();
 		}
 
-		private static void Plan(string recorded,string current,string newThumbprint,bool isImported,bool wasInStore,out string toRecord,out string toRemove) {
-			DbSettingsRunner.PlanImportedCertificate(recorded,current,newThumbprint,isImported,wasInStore,out toRecord,out toRemove);
+		///<summary>isStoreKeyImported: the store's entry of the new certificate uses the key the tool's import stored (ClientCertificateStore.ImportPfx).
+		///</summary>
+		private static void Plan(string recorded,string current,string newThumbprint,bool isImported,bool isStoreKeyImported,out string toRecord,
+			out string toRemove)
+		{
+			DbSettingsRunner.PlanImportedCertificate(recorded,current,newThumbprint,isImported,isStoreKeyImported,out toRecord,out toRemove);
 		}
 
 		#region The certificate the tool replaces (answer b)
 		[TestMethod]
 		public void Plan_RemovesOnlyTheRecordedCertificate_WhenTheSettingsStopUsingIt() {
-			//The tool imported A; a new .pfx (B, not in the store before) replaces it: A goes, B is recorded.
-			Plan(THUMB_A,THUMB_A,THUMB_B,true,false,out string toRecord,out string toRemove);
+			//The tool imported A; a new .pfx (B, not in the store before, so added with the import's key) replaces it: A goes, B is recorded.
+			Plan(THUMB_A,THUMB_A,THUMB_B,true,true,out string toRecord,out string toRemove);
 			Assert.AreEqual(THUMB_B,toRecord);
 			Assert.AreEqual(THUMB_A,toRemove);
 			//The password replaces it: A goes, nothing is recorded.
@@ -60,30 +64,56 @@ namespace DbConnectionSecurityTests {
 		public void Plan_NeverRemovesACertificateTheToolDidNotImport() {
 			//Nothing recorded (a certificate named by thumbprint, or put there by hand): nothing is removed, whatever replaces it.
 			foreach(string newThumbprint in new[] { THUMB_B,"" }) {
-				Plan("",THUMB_A,newThumbprint,true,false,out string toRecord,out string toRemove);
+				Plan("",THUMB_A,newThumbprint,true,true,out string toRecord,out string toRemove);
 				Assert.AreEqual("",toRemove,newThumbprint);
 			}
-			//A .pfx whose certificate the store already had: the tool did not import it, so it is not recorded.
-			Plan("",THUMB_A,THUMB_B,true,true,out string toRecordB,out string toRemoveB);
+			//A .pfx whose certificate the store already had with a usable key: the entry keeps that key, which the tool did not make, so it is
+			//not recorded.
+			Plan("",THUMB_A,THUMB_B,true,false,out string toRecordB,out string toRemoveB);
 			Assert.AreEqual("",toRecordB);
 			Assert.AreEqual("",toRemoveB);
 			//A record of a certificate the settings no longer used (they were changed another way): it is not the one being replaced.
-			Plan(THUMB_C,THUMB_A,THUMB_B,true,false,out string toRecordC,out string toRemoveC);
+			Plan(THUMB_C,THUMB_A,THUMB_B,true,true,out string toRecordC,out string toRemoveC);
 			Assert.AreEqual(THUMB_B,toRecordC);
 			Assert.AreEqual("",toRemoveC);
 		}
 
+		///<summary>DCFU3, decision 6: a .pfx whose certificate the store had without a usable key, put there another way (never recorded): its
+		///entry took the key the tool's import stored, so the tool records it, and a later save that stops using it removes it with that key.
+		///ClientCertificateImportTests.Apply_AnImportOverAnEntryWithoutAUsableKey_IsRecorded_AndALaterSaveRemovesItWithTheKeyTheToolMade does the
+		///same through DbSettingsRunner.Apply and the test store.</summary>
+		[TestMethod]
+		public void Plan_RecordsACertificateWhoseEntryTookTheImportsKey_EvenOneTheToolDidNotPutThere() {
+			Plan("",THUMB_A,THUMB_B,true,true,out string toRecord,out string toRemove);
+			Assert.AreEqual(THUMB_B,toRecord,"The entry has the key the tool made: recorded.");
+			Assert.AreEqual("",toRemove,"A was not the tool's.");
+			//The same certificate, already in the settings (named by thumbprint before), its .pfx imported over its keyless entry.
+			Plan("",THUMB_B,THUMB_B,true,true,out toRecord,out toRemove);
+			Assert.AreEqual(THUMB_B,toRecord);
+			Assert.AreEqual("",toRemove);
+			//A later save with the password: B goes, with the key the tool made.
+			Plan(THUMB_B,THUMB_B,"",false,false,out toRecord,out toRemove);
+			Assert.AreEqual("",toRecord);
+			Assert.AreEqual(THUMB_B,toRemove);
+			//Named by thumbprint (no import): never recorded, whatever its key.
+			Plan("",THUMB_A,THUMB_B,false,true,out toRecord,out toRemove);
+			Assert.AreEqual("",toRecord);
+		}
+
 		[TestMethod]
 		public void Plan_KeepingOrReimportingTheToolsCertificate_KeepsItAndItsRecord() {
-			//The same settings saved again, or its .pfx imported again (the store has it, from the tool): nothing goes, the record stays.
+			//The same settings saved again, or its .pfx imported again (the store has it from the tool, with a usable key that stays, or with
+			//none, and takes the import's): nothing goes, the record stays.
 			Plan(THUMB_A,THUMB_A,THUMB_A,false,false,out string toRecord,out string toRemove);
 			Assert.AreEqual(THUMB_A,toRecord);
 			Assert.AreEqual("",toRemove);
-			Plan(THUMB_A,THUMB_A,THUMB_A,true,true,out toRecord,out toRemove);
-			Assert.AreEqual(THUMB_A,toRecord);
-			Assert.AreEqual("",toRemove);
+			foreach(bool isStoreKeyImported in new[] { false,true }) {
+				Plan(THUMB_A,THUMB_A,THUMB_A,true,isStoreKeyImported,out toRecord,out toRemove);
+				Assert.AreEqual(THUMB_A,toRecord);
+				Assert.AreEqual("",toRemove);
+			}
 			//Thumbprints are compared as the store does: spaces and case do not matter.
-			Plan(THUMB_A.ToLowerInvariant(),"aa aa"+THUMB_A.Substring(4),THUMB_B,true,false,out toRecord,out toRemove);
+			Plan(THUMB_A.ToLowerInvariant(),"aa aa"+THUMB_A.Substring(4),THUMB_B,true,true,out toRecord,out toRemove);
 			Assert.AreEqual(THUMB_A,toRemove);
 		}
 

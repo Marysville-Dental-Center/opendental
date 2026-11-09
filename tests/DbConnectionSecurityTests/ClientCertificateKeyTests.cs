@@ -6,6 +6,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -19,7 +20,127 @@ namespace DbConnectionSecurityTests {
 		[TestCleanup]
 		public void CleanUp() {
 			ClientCertificateStore.ActionBeforeKeyDeleteForTests=null;
+			ClientCertificateStore.ActionAfterKeysStoredForTests=null;
+			ClientCertificateStore.ActionBeforePrivateKeyOpenForTests=null;
+			ClientCertificateStore.ActionBeforeKeyProvInfoReadForTests=null;
+			ClientCertificateStore.ActionInsteadOfCapiKeyDeleteForTests=null;
 			ClientCertificateTestStore.AssertCleanedUp();
+		}
+
+		///<summary>DCFU3, decision 3: the import and RemoveImported compare key containers by the certificates' key provider information, and
+		///never open the private key of another certificate of the store to do it (a key on a TPM or a smart card could ask for its PIN, or
+		///fail): a seam sees every key the tool opens. The store holds a certificate with a key of each kind besides the tool's. The CA's key of
+		///an imported .pfx is still deleted, and RemoveImported still deletes the client certificate's key. (2) A certificate of the store whose key
+		///provider information cannot be read (a seam) uses an unknown key, which may be any of them: the import keeps the CA's key and
+		///RemoveImported keeps the client certificate's key, and each warning says so, and that the key is deleted by hand only once no
+		///certificate of the store uses it. The other certificates still sign. For each kind of key.</summary>
+		[TestMethod]
+		public void DeleteKeys_OpenNoKeyOfAnotherCertificateOfTheStore_AndKeepEveryKeyWhenOnesKeyIsUnknown() {
+			const string PROPERTY_UNREADABLE="The test's key provider information cannot be read.";
+			string folder=TestHelpers.NewTempFolder();
+			try {
+				foreach(TestKeyKind testKeyKind in _arrayKinds) {
+					foreach(bool isUnknown in new[] { false,true }) {
+						string label=testKeyKind+(isUnknown ? ", a key of the store unknown" : "");
+						using(ClientCertificateTestStore clientCertificateTestStore=new ClientCertificateTestStore()) {
+							List<TestKey> listOthers=_arrayKinds.Select(x => clientCertificateTestStore.AddCertificate(x)).ToList();
+							List<string> listThumbprintsOthers=listOthers.Select(x => x.Thumbprint).ToList();
+							TestKey testKeyUnknown=listOthers[0];
+							List<string> listOpened=new List<string>();
+							ClientCertificateStore.ActionBeforePrivateKeyOpenForTests=x509Certificate2 => {
+								listOpened.Add(x509Certificate2.Thumbprint);
+							};
+							if(isUnknown) {
+								ClientCertificateStore.ActionBeforeKeyProvInfoReadForTests=x509Certificate2 => {
+									if(x509Certificate2.Thumbprint==testKeyUnknown.Thumbprint) {
+										throw new CryptographicException(PROPERTY_UNREADABLE);
+									}
+								};
+							}
+							string pathPfx=clientCertificateTestStore.WritePfxWithCa(folder,testKeyKind,out string thumbprintClient,out string thumbprintCa);
+							Dictionary<string,TestKey> dictKeys=null;
+							ClientCertificateStore.ActionAfterKeysStoredForTests=x509Certificate2Collection => {
+								dictKeys=clientCertificateTestStore.TrackKeys(x509Certificate2Collection);
+							};
+							string thumbprint=ClientCertificateStore.ImportPfx(pathPfx,clientCertificateTestStore.Password,StoreLocation.CurrentUser,
+								clientCertificateTestStore.Name,out string warning);
+							ClientCertificateStore.ActionAfterKeysStoredForTests=null;
+							Assert.AreEqual(thumbprintClient,thumbprint,label);
+							Assert.IsNotNull(dictKeys,label);
+							TestKey testKeyCa=dictKeys[thumbprintCa];
+							TestKey testKeyClient=dictKeys[thumbprintClient];
+							string keptBecause=" It was kept, because the private key of the certificate "+testKeyUnknown.Subject+" ("+testKeyUnknown.Thumbprint
+								+"), which stays, could not be identified ("+PROPERTY_UNREADABLE+"), and it may be this one.";
+							if(isUnknown) {
+								Assert.AreEqual("The client certificate was imported, but a private key of another certificate of the file, which the tool stored "
+									+"and does not use, could not be deleted ("+testKeyCa.Subject+", "+thumbprintCa+"):"+keptBecause+" The key is left on this "
+									+"computer in "+testKeyCa.FilePath+": delete that file as an administrator only once no certificate of the store uses it.",
+									warning,label);
+								Assert.IsTrue(testKeyCa.Exists(),label+": the CA's key is kept, as the warning says (the store's clean-up deletes it).");
+							}
+							else {
+								Assert.AreEqual("",warning,label);
+								Assert.IsFalse(testKeyCa.Exists(),label+": the CA's key is deleted again.");
+								Assert.IsFalse(File.Exists(testKeyCa.FilePath),label+": its file is gone.");
+							}
+							Assert.IsTrue(testKeyClient.Exists(),label+": the client certificate's key stays.");
+							string warningRemove=ClientCertificateStore.RemoveImported(thumbprintClient,StoreLocation.CurrentUser,clientCertificateTestStore.Name);
+							if(isUnknown) {
+								Assert.AreEqual("The client certificate that this tool imported before was removed from the computer's certificate store "
+									+"(CurrentUser\\"+clientCertificateTestStore.Name+"), but its private key could not be deleted ("+testKeyClient.Subject+", "
+									+thumbprintClient+"):"+keptBecause+" The key is left on this computer in "+testKeyClient.FilePath+": delete that file as an "
+									+"administrator only once no certificate of the store uses it.",warningRemove,label);
+								Assert.IsTrue(testKeyClient.Exists(),label+": the client certificate's key is kept, as the warning says.");
+							}
+							else {
+								Assert.AreEqual("",warningRemove,label);
+								Assert.IsFalse(testKeyClient.Exists(),label+": RemoveImported deletes the client certificate's key.");
+								Assert.IsFalse(File.Exists(testKeyClient.FilePath),label+": its file is gone.");
+							}
+							ClientCertificateStore.ActionBeforePrivateKeyOpenForTests=null;
+							ClientCertificateStore.ActionBeforeKeyProvInfoReadForTests=null;
+							Assert.IsTrue(listOpened.Count>0,label+": the test's premise, the seam sees the keys the tool opens (those it deletes).");
+							CollectionAssert.AreEquivalent(listThumbprintsOthers,clientCertificateTestStore.GetThumbprints(),label+": the others stay.");
+							foreach(TestKey testKeyOther in listOthers) {
+								Assert.IsFalse(listOpened.Contains(testKeyOther.Thumbprint),label+": the key of "+testKeyOther.Thumbprint+" of the store is "
+									+"never opened. Opened: "+string.Join(", ",listOpened));
+								Assert.IsTrue(testKeyOther.Exists(),label+": and stays.");
+								Assert.IsTrue(clientCertificateTestStore.CanSign(testKeyOther.Thumbprint),label+": and that certificate signs.");
+							}
+						}
+					}
+				}
+			}
+			finally {
+				TestHelpers.DeleteFolder(folder);
+			}
+		}
+
+		///<summary>DCFU3, decision 4: the CAPI delete (PersistKeyInCsp=false and Clear) does not say when Windows did not delete the container,
+		///so TryDeletePrivateKey checks afterwards that it no longer opens and that its file is gone. A seam stands in for a delete that fails
+		///without a word (it deletes nothing): RemoveImported's warning says that the key is still there (its container opens, its file is
+		///there) and names its file; the certificate is out of the store, and the key and its file are still there (the store's clean-up deletes
+		///them).</summary>
+		[TestMethod]
+		public void RemoveImported_ACapiKeyThatIsStillThereAfterItsDelete_IsReported() {
+			using(ClientCertificateTestStore clientCertificateTestStore=new ClientCertificateTestStore()) {
+				TestKey testKey=clientCertificateTestStore.AddCertificate(TestKeyKind.CapiRsa);
+				Assert.IsTrue(testKey.IsCapi,"The test's premise: a CAPI key.");
+				int countDeletes=0;
+				ClientCertificateStore.ActionInsteadOfCapiKeyDeleteForTests=rsaCryptoServiceProvider => {
+					countDeletes++;//Windows' CRYPT_DELETEKEYSET failing without a word: the container stays.
+				};
+				string warning=ClientCertificateStore.RemoveImported(testKey.Thumbprint,StoreLocation.CurrentUser,clientCertificateTestStore.Name);
+				ClientCertificateStore.ActionInsteadOfCapiKeyDeleteForTests=null;
+				Assert.AreEqual(1,countDeletes,"The CAPI delete was tried once.");
+				Assert.AreEqual("The client certificate that this tool imported before was removed from the computer's certificate store (CurrentUser\\"
+					+clientCertificateTestStore.Name+"), but its private key could not be deleted ("+testKey.Subject+", "+testKey.Thumbprint+"): Windows "
+					+"reported no error, but the key is still there: its key container still opens, and its file is still there. The key is left on this "
+					+"computer in "+testKey.FilePath+": delete that file as an administrator.",warning);
+				Assert.AreEqual(0,clientCertificateTestStore.GetThumbprints().Count,"The certificate is out of the store.");
+				Assert.IsTrue(testKey.Exists(),"The key is still there, as the warning says.");
+				Assert.IsTrue(File.Exists(testKey.FilePath),"In the file the warning names.");
+			}//The store's clean-up deletes the key.
 		}
 
 		///<summary>For a CAPI key, a CNG RSA key and a CNG ECDSA key: RemoveImported takes the certificate out of the store and deletes its key (it

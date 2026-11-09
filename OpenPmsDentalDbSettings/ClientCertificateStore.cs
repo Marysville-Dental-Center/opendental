@@ -503,13 +503,13 @@ namespace OpenPmsDentalDbSettings {
 		internal static KeyProvInfo ReadKeyProvInfo(X509Certificate2 x509Certificate2) {
 			KeyProvInfo keyProvInfo=new KeyProvInfo();
 			try {
-				ActionBeforeKeyProvInfoReadForTests?.Invoke(x509Certificate2);
 				IntPtr intPtrCertContext=x509Certificate2.Handle;
 				if(intPtrCertContext==IntPtr.Zero) {
 					keyProvInfo.IsNamed=true;
 					keyProvInfo.Problem="The certificate was already released.";
 					return keyProvInfo;
 				}
+				ActionBeforeKeyProvInfoReadForTests?.Invoke(x509Certificate2);
 				uint byteCount=0;
 				if(!CertGetCertificateContextProperty(intPtrCertContext,CERT_KEY_PROV_INFO_PROP_ID,IntPtr.Zero,ref byteCount)) {
 					int error=Marshal.GetLastWin32Error();

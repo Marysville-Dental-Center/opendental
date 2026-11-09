@@ -23,6 +23,13 @@ namespace DbConnectionSecurityTests {
 		CngEcdsa,
 	}
 
+	///<summary>What a certificate of a test .pfx is (ClientCertificateTestStore.WritePfxOf): a client certificate (clientAuth, not a CA) or a
+	///CA certificate (Basic Constraints CA=true), each with its key in the file.</summary>
+	public enum TestPfxCertificate {
+		Client,
+		Ca,
+	}
+
 	///<summary>A store of the current user with a name of its own, used for as long as the instance lives. Dispose deletes every key it
 	///recorded (the keys of the certificates it added, and those TrackKeys was given) that is still there, then the store. Dispose never
 	///throws, so that it never hides a test's own failure: what it could not delete is kept for AssertCleanedUp, which the tests call after
@@ -156,44 +163,109 @@ namespace DbConnectionSecurityTests {
 		}
 
 		///<summary>Writes into the folder a .pfx with a client certificate and the CA certificate that issued it, each with a throwaway key of this
-		///kind (the CA's key in the file, as some providers' files have it), the client certificate first. The keys are made as AddCertificate
-		///makes one (a scratch CAPI container, deleted again, or an ephemeral CNG key), so the file names their provider; nothing is stored
-		///until the file is imported. Returns the path.</summary>
+		///kind (the CA's key in the file, as some providers' files have it), the client certificate first (WritePfxOf). Returns the path.
+		///</summary>
 		public string WritePfxWithCa(string folder,TestKeyKind testKeyKind,out string thumbprintClient,out string thumbprintCa) {
+			string path=WritePfxOf(folder,testKeyKind,out List<string> listThumbprints,out List<string> listSubjects,TestPfxCertificate.Client,
+				TestPfxCertificate.Ca);
+			thumbprintClient=listThumbprints[0];
+			thumbprintCa=listThumbprints[1];
+			return path;
+		}
+
+		///<summary>Writes into the folder a .pfx (a file name of its own) with these certificates, in this order, each with a throwaway key of
+		///this kind made as AddCertificate makes one (a scratch CAPI container, deleted again, or an ephemeral CNG key), so the file names their
+		///provider; nothing is stored until the file is imported. A CA certificate is self-signed, with Basic Constraints CA=true; a client
+		///certificate has the client authentication EKU, and is issued by the file's first CA certificate, or self-signed when the file has none.
+		///Returns the path; the thumbprints and subjects in the file's order.</summary>
+		public string WritePfxOf(string folder,TestKeyKind testKeyKind,out List<string> listThumbprints,out List<string> listSubjects,
+			params TestPfxCertificate[] arrayCertificates)
+		{
 			string id=Guid.NewGuid().ToString("N");
-			string path=Path.Combine(folder,"client-with-ca-"+testKeyKind+".pfx");
-			AsymmetricAlgorithm asymmetricAlgorithmCa=null;
-			AsymmetricAlgorithm asymmetricAlgorithmClient=null;
+			string path=Path.Combine(folder,"pfx-"+testKeyKind+"-"+string.Join("-",arrayCertificates)+"-"+id.Substring(0,8)+".pfx");
+			List<AsymmetricAlgorithm> listScratchKeys=new List<AsymmetricAlgorithm>();
+			X509Certificate2[] arrayMade=new X509Certificate2[arrayCertificates.Length];
 			try {
-				asymmetricAlgorithmCa=NewScratchKey(testKeyKind);
-				asymmetricAlgorithmClient=NewScratchKey(testKeyKind);
-				CertificateRequest certificateRequestCa=NewRequest("CN=synthetic-dbsec-ca-"+id,asymmetricAlgorithmCa,isCa:true);
-				CertificateRequest certificateRequestClient=NewRequest("CN=synthetic-dbsec-client-"+id,asymmetricAlgorithmClient,isCa:false);
-				X509SignatureGenerator x509SignatureGeneratorCa=(asymmetricAlgorithmCa is RSA)
-					? X509SignatureGenerator.CreateForRSA((RSA)asymmetricAlgorithmCa,RSASignaturePadding.Pkcs1)
-					: X509SignatureGenerator.CreateForECDsa((ECDsa)asymmetricAlgorithmCa);
-				byte[] arraySerial=Guid.NewGuid().ToByteArray().Take(8).ToArray();
-				arraySerial[0]&=0x7F;//A positive serial number.
-				using(X509Certificate2 x509Certificate2Ca=CreateSelfSigned(certificateRequestCa,DateTimeOffset.Now.AddDays(60)))
-				using(X509Certificate2 x509Certificate2ClientPublic=certificateRequestClient.Create(x509Certificate2Ca.SubjectName,x509SignatureGeneratorCa,
-					DateTimeOffset.Now.AddDays(-1),DateTimeOffset.Now.AddDays(30),arraySerial))
-				using(X509Certificate2 x509Certificate2Client=(asymmetricAlgorithmClient is RSA)
-					? x509Certificate2ClientPublic.CopyWithPrivateKey((RSA)asymmetricAlgorithmClient)
-					: x509Certificate2ClientPublic.CopyWithPrivateKey((ECDsa)asymmetricAlgorithmClient))
-				{
-					X509Certificate2Collection x509Certificate2Collection=new X509Certificate2Collection();
-					x509Certificate2Collection.Add(x509Certificate2Client);
-					x509Certificate2Collection.Add(x509Certificate2Ca);
-					File.WriteAllBytes(path,x509Certificate2Collection.Export(X509ContentType.Pfx,_password));
-					thumbprintClient=x509Certificate2Client.Thumbprint;
-					thumbprintCa=x509Certificate2Ca.Thumbprint;
+				//The first CA certificate first, so that the client certificates can be issued by it.
+				int indexCa=Array.IndexOf(arrayCertificates,TestPfxCertificate.Ca);
+				AsymmetricAlgorithm asymmetricAlgorithmCa=null;
+				if(indexCa>=0) {
+					asymmetricAlgorithmCa=NewScratchKey(testKeyKind);
+					listScratchKeys.Add(asymmetricAlgorithmCa);
+					arrayMade[indexCa]=CreateSelfSigned(NewRequest("CN=synthetic-dbsec-ca-"+id+"-"+indexCa,asymmetricAlgorithmCa,isCa:true),
+						DateTimeOffset.Now.AddDays(60));
 				}
+				for(int i=0;i<arrayCertificates.Length;i++) {
+					if(arrayMade[i]!=null) {
+						continue;
+					}
+					bool isCa=arrayCertificates[i]==TestPfxCertificate.Ca;
+					AsymmetricAlgorithm asymmetricAlgorithm=NewScratchKey(testKeyKind);
+					listScratchKeys.Add(asymmetricAlgorithm);
+					CertificateRequest certificateRequest=NewRequest((isCa ? "CN=synthetic-dbsec-ca-" : "CN=synthetic-dbsec-client-")+id+"-"+i,
+						asymmetricAlgorithm,isCa);
+					if(isCa || asymmetricAlgorithmCa==null) {
+						arrayMade[i]=CreateSelfSigned(certificateRequest,DateTimeOffset.Now.AddDays(30));
+						continue;
+					}
+					X509SignatureGenerator x509SignatureGeneratorCa=(asymmetricAlgorithmCa is RSA)
+						? X509SignatureGenerator.CreateForRSA((RSA)asymmetricAlgorithmCa,RSASignaturePadding.Pkcs1)
+						: X509SignatureGenerator.CreateForECDsa((ECDsa)asymmetricAlgorithmCa);
+					byte[] arraySerial=Guid.NewGuid().ToByteArray().Take(8).ToArray();
+					arraySerial[0]&=0x7F;//A positive serial number.
+					using(X509Certificate2 x509Certificate2Public=certificateRequest.Create(arrayMade[indexCa].SubjectName,x509SignatureGeneratorCa,
+						DateTimeOffset.Now.AddDays(-1),DateTimeOffset.Now.AddDays(30),arraySerial))
+					{
+						arrayMade[i]=(asymmetricAlgorithm is RSA)
+							? x509Certificate2Public.CopyWithPrivateKey((RSA)asymmetricAlgorithm)
+							: x509Certificate2Public.CopyWithPrivateKey((ECDsa)asymmetricAlgorithm);
+					}
+				}
+				X509Certificate2Collection x509Certificate2Collection=new X509Certificate2Collection();
+				for(int i=0;i<arrayMade.Length;i++) {
+					x509Certificate2Collection.Add(arrayMade[i]);
+				}
+				File.WriteAllBytes(path,x509Certificate2Collection.Export(X509ContentType.Pfx,_password));
+				listThumbprints=arrayMade.Select(x => x.Thumbprint).ToList();
+				listSubjects=arrayMade.Select(x => x.Subject).ToList();
 			}
 			finally {
-				DeleteScratchKey(asymmetricAlgorithmCa);
-				DeleteScratchKey(asymmetricAlgorithmClient);
+				foreach(X509Certificate2 x509Certificate2 in arrayMade) {
+					x509Certificate2?.Dispose();
+				}
+				foreach(AsymmetricAlgorithm asymmetricAlgorithm in listScratchKeys) {
+					DeleteScratchKey(asymmetricAlgorithm);
+				}
 			}
 			return path;
+		}
+
+		///<summary>Makes the store's entry for the certificate name its key container in the machine key set instead of the user's (the
+		///CRYPT_MACHINE_KEYSET flag of its key provider information, TestKeyProvInfo), as an entry whose key is in another key set than the
+		///import's (the test store's import uses the user's): nothing is made, opened or deleted in the machine key set, and the user key the
+		///entry named stays recorded for the clean-up. Checked by reading the entry again. Returns its key provider information now.</summary>
+		public TestKeyProvInfo NameMachineKeySetForEntry(string thumbprint) {
+			using(X509Store x509Store=new X509Store(Name,StoreLocation.CurrentUser)) {
+				x509Store.Open(OpenFlags.ReadWrite|OpenFlags.OpenExistingOnly);
+				X509Certificate2Collection x509Certificate2Collection=x509Store.Certificates.Find(X509FindType.FindByThumbprint,thumbprint,false);
+				try {
+					Assert.AreEqual(1,x509Certificate2Collection.Count,"The test's premise: the store has the certificate.");
+					TestKeyProvInfo testKeyProvInfo=TestKeyProvInfo.Read(x509Certificate2Collection[0]);
+					Assert.IsTrue(testKeyProvInfo.IsNamed && !testKeyProvInfo.IsMachine,"The test's premise: the entry names a key of the user's key set.");
+					testKeyProvInfo.Flags|=TestKeyProvInfo.CRYPT_MACHINE_KEYSET;
+					testKeyProvInfo.Write(x509Certificate2Collection[0]);
+				}
+				finally {
+					foreach(X509Certificate2 x509Certificate2 in x509Certificate2Collection) {
+						x509Certificate2.Reset();
+					}
+				}
+			}
+			using(X509Certificate2 x509Certificate2=Find(thumbprint)) {
+				TestKeyProvInfo testKeyProvInfoNow=TestKeyProvInfo.Read(x509Certificate2);
+				Assert.IsTrue(testKeyProvInfoNow.IsMachine,"The test's premise: the store keeps the entry's key provider information as the test set it.");
+				return testKeyProvInfoNow;
+			}
 		}
 
 		///<summary>The store's certificate with this thumbprint, or null. The caller disposes it.</summary>
@@ -391,13 +463,14 @@ namespace DbConnectionSecurityTests {
 		}
 
 		///<summary>Records the certificate's key in listKeys first, then finds where it is (Locate): a throw while the key is inspected cannot leak
-		///it, since the clean-up then deletes it through the certificate.</summary>
+		///it, since the clean-up then deletes it through the certificate. A copy of the certificate that could not be made is reported by the
+		///clean-up (DeleteThroughCertificate), never taken for a key that is not there. Called for certificates with a key only.</summary>
 		public static TestKey Track(X509Certificate2 x509Certificate2,List<TestKey> listKeys) {
 			TestKey testKey=new TestKey();
 			listKeys.Add(testKey);
-			testKey._x509Certificate2=new X509Certificate2(x509Certificate2);
 			testKey.Thumbprint=x509Certificate2.Thumbprint;
 			testKey.Subject=x509Certificate2.Subject;
+			testKey._x509Certificate2=new X509Certificate2(x509Certificate2);
 			testKey.Locate();
 			return testKey;
 		}
@@ -503,9 +576,15 @@ namespace DbConnectionSecurityTests {
 		}
 
 		///<summary>For a key Locate did not find: deletes it through the certificate (a CAPI container through X509Certificate2.PrivateKey, a CNG
-		///key through its Key). "" when it was deleted or there was none to delete, else why not.</summary>
+		///key through its Key). "" when it was deleted or there was none to delete, else why not. Without the copy of the certificate (Track
+		///could not make it) the key cannot be found, which is a problem, never "nothing to delete": Track is called only for a certificate with
+		///a key, which the import has just stored.</summary>
 		private string DeleteThroughCertificate() {
-			if(_x509Certificate2==null || !_x509Certificate2.HasPrivateKey) {
+			if(_x509Certificate2==null) {
+				return "The test key of "+Subject+" ("+Thumbprint+") was never located, and the copy of its certificate could not be made, so the "
+					+"clean-up cannot find it to delete it. Look for it by hand under "+GetCryptoFolder(false)+".";
+			}
+			if(!_x509Certificate2.HasPrivateKey) {
 				return "";
 			}
 			RSACryptoServiceProvider rsaCryptoServiceProviderCapi=null;
@@ -561,6 +640,109 @@ namespace DbConnectionSecurityTests {
 		public static string GetCurrentUserSid() {
 			using(WindowsIdentity windowsIdentity=WindowsIdentity.GetCurrent()) {
 				return windowsIdentity.User.Value;
+			}
+		}
+	}
+
+	///<summary>A certificate's key provider information (CERT_KEY_PROV_INFO_PROP_ID), read and written by the tests themselves, apart from the
+	///code under test: the key container, provider and key set the certificate names, read without opening the key. Write sets it on a
+	///certificate of the test store (the store keeps it), with no provider parameters.</summary>
+	public sealed class TestKeyProvInfo {
+		[DllImport("crypt32.dll",SetLastError=true)]
+		[return: MarshalAs(UnmanagedType.Bool)]
+		private static extern bool CertGetCertificateContextProperty(IntPtr pCertContext,uint dwPropId,IntPtr pvData,ref uint pcbData);
+		[DllImport("crypt32.dll",SetLastError=true)]
+		[return: MarshalAs(UnmanagedType.Bool)]
+		private static extern bool CertSetCertificateContextProperty(IntPtr pCertContext,uint dwPropId,uint dwFlags,IntPtr pvData);
+		private const uint CERT_KEY_PROV_INFO_PROP_ID=2;
+		///<summary>CRYPT_MACHINE_KEYSET (CAPI), NCRYPT_MACHINE_KEY_FLAG (CNG): the same bit of dwFlags.</summary>
+		public const uint CRYPT_MACHINE_KEYSET=0x20;
+
+		[StructLayout(LayoutKind.Sequential)]
+		private struct CRYPT_KEY_PROV_INFO {
+			public IntPtr pwszContainerName;
+			public IntPtr pwszProvName;
+			public uint dwProvType;
+			public uint dwFlags;
+			public uint cProvParam;
+			public IntPtr rgProvParam;
+			public uint dwKeySpec;
+		}
+
+		///<summary>False when the certificate has no key provider information (no key).</summary>
+		public bool IsNamed;
+		public string ContainerName;
+		public string ProviderName;
+		public uint ProviderType;
+		public uint Flags;
+		public uint KeySpec;
+
+		public bool IsMachine {
+			get {
+				return (Flags & CRYPT_MACHINE_KEYSET)!=0;
+			}
+		}
+
+		///<summary>The certificate's key provider information. Throws when it cannot be read for another reason than its absence.</summary>
+		public static TestKeyProvInfo Read(X509Certificate2 x509Certificate2) {
+			if(x509Certificate2.Handle==IntPtr.Zero) {
+				throw new InvalidOperationException("The certificate was already released.");
+			}
+			TestKeyProvInfo testKeyProvInfo=new TestKeyProvInfo();
+			uint byteCount=0;
+			if(!CertGetCertificateContextProperty(x509Certificate2.Handle,CERT_KEY_PROV_INFO_PROP_ID,IntPtr.Zero,ref byteCount)) {
+				int error=Marshal.GetLastWin32Error();
+				if(error==unchecked((int)0x80092004)) {//CRYPT_E_NOT_FOUND
+					return testKeyProvInfo;
+				}
+				throw new System.ComponentModel.Win32Exception(error);
+			}
+			IntPtr intPtrData=Marshal.AllocHGlobal((int)byteCount);
+			try {
+				if(!CertGetCertificateContextProperty(x509Certificate2.Handle,CERT_KEY_PROV_INFO_PROP_ID,intPtrData,ref byteCount)) {
+					throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+				}
+				CRYPT_KEY_PROV_INFO cryptKeyProvInfo=(CRYPT_KEY_PROV_INFO)Marshal.PtrToStructure(intPtrData,typeof(CRYPT_KEY_PROV_INFO));
+				testKeyProvInfo.IsNamed=true;
+				testKeyProvInfo.ContainerName=Marshal.PtrToStringUni(cryptKeyProvInfo.pwszContainerName);
+				testKeyProvInfo.ProviderName=Marshal.PtrToStringUni(cryptKeyProvInfo.pwszProvName);
+				testKeyProvInfo.ProviderType=cryptKeyProvInfo.dwProvType;
+				testKeyProvInfo.Flags=cryptKeyProvInfo.dwFlags;
+				testKeyProvInfo.KeySpec=cryptKeyProvInfo.dwKeySpec;
+				return testKeyProvInfo;
+			}
+			finally {
+				Marshal.FreeHGlobal(intPtrData);
+				GC.KeepAlive(x509Certificate2);
+			}
+		}
+
+		///<summary>Sets this key provider information on the certificate (a certificate of the test store, opened for writing, which keeps it).
+		///</summary>
+		public void Write(X509Certificate2 x509Certificate2) {
+			IntPtr intPtrContainer=Marshal.StringToHGlobalUni(ContainerName);
+			IntPtr intPtrProvider=Marshal.StringToHGlobalUni(ProviderName);
+			IntPtr intPtrData=IntPtr.Zero;
+			try {
+				CRYPT_KEY_PROV_INFO cryptKeyProvInfo=new CRYPT_KEY_PROV_INFO();
+				cryptKeyProvInfo.pwszContainerName=intPtrContainer;
+				cryptKeyProvInfo.pwszProvName=intPtrProvider;
+				cryptKeyProvInfo.dwProvType=ProviderType;
+				cryptKeyProvInfo.dwFlags=Flags;
+				cryptKeyProvInfo.dwKeySpec=KeySpec;
+				intPtrData=Marshal.AllocHGlobal(Marshal.SizeOf(typeof(CRYPT_KEY_PROV_INFO)));
+				Marshal.StructureToPtr(cryptKeyProvInfo,intPtrData,false);
+				if(!CertSetCertificateContextProperty(x509Certificate2.Handle,CERT_KEY_PROV_INFO_PROP_ID,0,intPtrData)) {
+					throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+				}
+			}
+			finally {
+				if(intPtrData!=IntPtr.Zero) {
+					Marshal.FreeHGlobal(intPtrData);
+				}
+				Marshal.FreeHGlobal(intPtrContainer);
+				Marshal.FreeHGlobal(intPtrProvider);
+				GC.KeepAlive(x509Certificate2);
 			}
 		}
 	}
