@@ -79,6 +79,14 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="**\*.cs" Exclude="bin\**;obj\**" />
+    <!-- The reader of project files (classic and SDK-style) shared by the tests that check them (S1-T of docs/specs/net10-plan.md). -->
+    <Compile Include="..\ProjectFileTests\ProjectFile.cs">
+      <Link>ProjectFile.cs</Link>
+    </Compile>
+    <!-- The rule for tests that check a built file: inconclusive when it is not built, a failure with OPMS_REQUIRE_BUILD_OUTPUT=1. -->
+    <Compile Include="..\ProjectFileTests\BuildOutput.cs">
+      <Link>BuildOutput.cs</Link>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <!-- The native loader of the WebView2 SDK (x86), which OpenPmsDental.exe also keeps next to itself. -->

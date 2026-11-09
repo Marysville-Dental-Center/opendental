@@ -1,0 +1,17 @@
+Scene: crown-on-missing-tooth
+Group: paint
+Description: Dark TP crowns on missing teeth 3 and 30: the root is hidden and the crown shows only with an implant (none here).
+Size: 410x307
+Colours: module (Chart Graphic Colors 10-13)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 410x307 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 5931
+Pixels SHA-256: a1da211b76c9e9b0f91c6eca74d91366613cc3e61706ebd93646f383941254c7
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

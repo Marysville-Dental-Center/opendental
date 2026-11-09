@@ -1,0 +1,18 @@
+Scene: shiftm-minus
+Group: states
+Description: Shifted 2 mm distally on teeth 4, 7, 10, 13, 20, 23, 26 and 29 (all four quadrants, mirrored teeth included).
+Size: 410x307
+Colours: module (Chart Graphic Colors 10-13)
+Requested mode: OpenGL
+Started mode: OpenGL
+Device or pixel format: OpenGL pixel format 1 (32-bit colour, 0-bit alpha, 24-bit depth, 0-bit stencil, single buffered, accelerated)
+OpenGL: NVIDIA Corporation; NVIDIA RTX A1000/PCIe/SSE2; 4.6.0 NVIDIA 596.71
+Bitmap: 410x307 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 1500
+Pixels SHA-256: c35d04353de1be7f77912ff18a9de0755be031cae5cc0493d01c7476c15bb961
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

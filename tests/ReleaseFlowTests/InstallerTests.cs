@@ -323,13 +323,19 @@ namespace ReleaseFlowTests {
 		public void Direct2dWrapper_EachConfigurationBuildsIntoItsOwnFolder() {
 			//With one bin\ for Debug and Release, an incremental Release build after a Debug build copied the Debug DLL (debug C runtime) into
 			//OpenPmsDental\bin\Release. Build-Release.ps1 compares the staged DLL with Direct2dWrapper\bin\Release.
-			string vcxproj=TestPaths.ReadSource("Direct2dWrapper","Direct2dWrapper.vcxproj");
-			MatchCollection matchCollection=Regex.Matches(vcxproj,
-				@"<PropertyGroup Condition=""'\$\(Configuration\)\|\$\(Platform\)'=='(\w+)\|(\w+)'"">(?:(?!</PropertyGroup>).)*?<OutDir>([^<]+)</OutDir>",
-				RegexOptions.Singleline);
-			//The folder each configuration resolves to: its OutDir with $(Configuration) and $(Platform) expanded.
-			Dictionary<string,string> dictOutDirs=matchCollection.Cast<Match>().ToDictionary(x => x.Groups[1].Value+"|"+x.Groups[2].Value,
-				x => x.Groups[3].Value.Replace("$(Configuration)",x.Groups[1].Value).Replace("$(Platform)",x.Groups[2].Value));
+			//Read as XML without the MSBuild namespace, so the layout of the file (one line or several, the 2003 namespace or none) does not matter.
+			System.Xml.Linq.XDocument xDocument=System.Xml.Linq.XDocument.Parse(TestPaths.ReadSource("Direct2dWrapper","Direct2dWrapper.vcxproj"));
+			//The folder each configuration resolves to: the OutDir of its property group, with $(Configuration) and $(Platform) expanded.
+			Dictionary<string,string> dictOutDirs=new Dictionary<string,string>();
+			foreach(System.Xml.Linq.XElement xElementGroup in xDocument.Root.Elements().Where(x => x.Name.LocalName=="PropertyGroup")) {
+				Match match=Regex.Match((string)xElementGroup.Attribute("Condition")??"",@"^\s*'\$\(Configuration\)\|\$\(Platform\)'\s*==\s*'(\w+)\|(\w+)'\s*$");
+				System.Xml.Linq.XElement xElementOutDir=xElementGroup.Elements().FirstOrDefault(x => x.Name.LocalName=="OutDir");
+				if(!match.Success || xElementOutDir==null) {
+					continue;
+				}
+				dictOutDirs.Add(match.Groups[1].Value+"|"+match.Groups[2].Value,
+					xElementOutDir.Value.Trim().Replace("$(Configuration)",match.Groups[1].Value).Replace("$(Platform)",match.Groups[2].Value));
+			}
 			CollectionAssert.AreEquivalent(new[] { "Debug|Win32","Debug|x64","Release|Win32","Release|x64" },dictOutDirs.Keys.ToArray());
 			Assert.AreEqual(4,dictOutDirs.Values.Distinct(StringComparer.OrdinalIgnoreCase).Count(),"One output folder per configuration.");
 			Assert.AreEqual(@"$(ProjectDir)bin\Release\",dictOutDirs["Release|Win32"]);

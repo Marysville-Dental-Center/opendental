@@ -8,12 +8,18 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
+using ProjectFileTests;
 
 namespace P262BillingTests {
 	[TestClass]
 	public class WiringSourceTests {
 		private static string Read(params string[] arrayPathParts) {
 			return File.ReadAllText(TestDb.FindRepoFile(Path.Combine(arrayPathParts)));
+		}
+
+		///<summary>The program's project file, evaluated, so a check holds for the classic project file and the SDK-style one alike.</summary>
+		private static ProjectFile ProgramProject() {
+			return ProjectFile.Load(TestDb.FindRepoFile(Path.Combine("OpenPmsDental","OpenPmsDental.csproj")));
 		}
 
 		///<summary>The text of a method, from its signature to the closing brace at two tabs.</summary>
@@ -50,7 +56,7 @@ namespace P262BillingTests {
 			StringAssert.Contains(partial,"listMenuItems[formStatementChoices.IndexSelected-1].PerformClick();");
 			StringAssert.Contains(partial,"toolBarButStatement_Click();");
 			StringAssert.Contains(partial,"this.BeginInvoke(toolBarClick);");
-			StringAssert.Contains(Read("OpenPmsDental","OpenPmsDental.csproj"),@"Main Modules\ControlAccount.StatementOptions.cs");
+			ProgramProject().AssertCompiles(@"Main Modules\ControlAccount.StatementOptions.cs");
 		}
 
 		[TestMethod]
@@ -90,9 +96,9 @@ namespace P262BillingTests {
 			string designer=Read("OpenPmsDental","Forms","FormStatementChoices.Designer.cs");
 			StringAssert.Contains(designer,"this.Text = \"Statement Options\";");
 			StringAssert.Contains(designer,"this.gridMain.CellDoubleClick += new OpenPmsDental.UI.ODGridClickEventHandler(this.gridMain_CellDoubleClick);");
-			string project=Read("OpenPmsDental","OpenPmsDental.csproj");
-			StringAssert.Contains(project,@"<Compile Include=""Forms\FormStatementChoices.cs"">");
-			StringAssert.Contains(project,@"<EmbeddedResource Include=""Forms\FormStatementChoices.resx"">");
+			ProjectFile project=ProgramProject();
+			project.AssertCompiles(@"Forms\FormStatementChoices.cs",@"Forms\FormStatementChoices.Designer.cs");
+			project.AssertEmbeds(@"Forms\FormStatementChoices.resx");
 		}
 		#endregion Statement Options window (item 8)
 
@@ -167,9 +173,9 @@ namespace P262BillingTests {
 			string billing=GetMethodBody(Read("OpenPmsDental","Forms","FormBilling.cs"),"private void butDefaults_Click(");
 			StringAssert.Contains(billing,"using FormEbillSetup formEbillSetup=new FormEbillSetup();");
 			Assert.IsFalse(billing.Contains("FormBillingDefaults"));
-			string project=Read("OpenPmsDental","OpenPmsDental.csproj");
-			StringAssert.Contains(project,@"<Compile Include=""Forms\FormEbillSetup.cs"">");
-			StringAssert.Contains(project,@"<EmbeddedResource Include=""Forms\FormEbillSetup.resx"">");
+			ProjectFile project=ProgramProject();
+			project.AssertCompiles(@"Forms\FormEbillSetup.cs");
+			project.AssertEmbeds(@"Forms\FormEbillSetup.resx");
 		}
 		#endregion Electronic Billing window (item 17)
 

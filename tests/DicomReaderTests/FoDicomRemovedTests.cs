@@ -29,9 +29,10 @@ namespace DicomReaderTests {
 		}
 
 		private static IEnumerable<string> GetFiles(string root,params string[] arrayExtensions) {
+			//The skipped folders are matched below the root only: a worktree itself lives under .claude, and matching its whole path skipped every file.
 			return Directory.EnumerateFiles(root,"*",SearchOption.AllDirectories)
 				.Where(x => arrayExtensions.Any(y => x.EndsWith(y,StringComparison.OrdinalIgnoreCase)))
-				.Where(x => !Regex.IsMatch(x,@"\\(bin|obj|packages|\.git|\.vs|\.claude)\\",RegexOptions.IgnoreCase));//.claude holds other worktrees
+				.Where(x => !Regex.IsMatch(x.Substring(root.TrimEnd('\\').Length),@"\\(bin|obj|packages|\.git|\.vs|\.claude)\\",RegexOptions.IgnoreCase));//.claude holds other worktrees
 		}
 
 		[TestMethod]
@@ -51,8 +52,11 @@ namespace DicomReaderTests {
 				}
 				foreach(XElement xElement in xDocument.Descendants()) {
 					string value=xElement.Name.LocalName=="HintPath" ? xElement.Value : ((string)xElement.Attribute("Include") ?? (string)xElement.Attribute("name") ?? "");
-					if(Regex.IsMatch(value,@"(^|[\\/""])(Dicom\.(Core|Native)|fo-dicom)",RegexOptions.IgnoreCase)) {
-						listViolations.Add(path.Substring(root.Length)+": <"+xElement.Name.LocalName+"> "+value);
+					//And the attribute form of the metadata, which an SDK-style project file may use (HintPath="...").
+					foreach(string valueCur in new[] { value,(string)xElement.Attribute("HintPath")??"",(string)xElement.Attribute("Update")??"" }) {
+						if(Regex.IsMatch(valueCur,@"(^|[\\/""])(Dicom\.(Core|Native)|fo-dicom)",RegexOptions.IgnoreCase)) {
+							listViolations.Add(path.Substring(root.Length)+": <"+xElement.Name.LocalName+"> "+valueCur);
+						}
 					}
 				}
 			}

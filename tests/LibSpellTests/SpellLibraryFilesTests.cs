@@ -15,6 +15,7 @@ using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using ProjectFileTests;
 using WeCantSpell.Hunspell;
 
 namespace LibSpellTests {
@@ -116,12 +117,17 @@ namespace LibSpellTests {
 				"Besides the library folder, only the generated attributes.");
 			Assert.IsFalse(File.ReadAllLines(fileInfo.FullName).Any(x => x.StartsWith("EmbeddedResource|")),"No resources, as upstream.");
 			//The project file: no NuGet, no MinVer, not strong-named; the support assemblies from Required dlls; in the solution and the filter.
+			//Its text and its evaluated properties and items, so the checks hold for the classic project file and the SDK-style one of the .NET 10
+			//move alike (an SDK-style wrapper is fine; a NuGet package, MinVer or a signature is not).
 			string project=RepoPaths.ReadText("third-party","build","WeCantSpell.Hunspell","WeCantSpell.Hunspell.csproj");
-			foreach(string forbidden in new[] { "<PackageReference","MinVer\"","<SignAssembly>","Sdk=\"Microsoft.NET.Sdk" }) {
+			foreach(string forbidden in new[] { "<PackageReference","MinVer\"","<SignAssembly>" }) {
 				Assert.IsFalse(project.Contains(forbidden),"WeCantSpell.Hunspell.csproj: "+forbidden);
 			}
-			StringAssert.Contains(project,"<SourceBuildCommit>"+COMMIT+"</SourceBuildCommit>");
-			StringAssert.Contains(project,"<SourceBuildInformationalVersion>"+INFORMATIONAL_VERSION+"</SourceBuildInformationalVersion>");
+			ProjectFile projectFile=ProjectFile.Load(RepoPaths.Combine("third-party","build","WeCantSpell.Hunspell","WeCantSpell.Hunspell.csproj"));
+			Assert.AreEqual(0,projectFile.GetItems("PackageReference").Count+projectFile.GetItems("PackageDownload").Count,"WeCantSpell.Hunspell.csproj asks NuGet for a package.");
+			Assert.AreNotEqual("true",projectFile.GetProperty("SignAssembly").ToLowerInvariant(),"WeCantSpell.Hunspell.csproj is not signed.");
+			Assert.AreEqual(COMMIT,projectFile.GetProperty("SourceBuildCommit"));
+			Assert.AreEqual(INFORMATIONAL_VERSION,projectFile.GetProperty("SourceBuildInformationalVersion"));
 			StringAssert.Contains(RepoPaths.ReadText("OpenDental.sln"),@"""WeCantSpell.Hunspell"", ""third-party\build\WeCantSpell.Hunspell\WeCantSpell.Hunspell.csproj""");
 			StringAssert.Contains(RepoPaths.ReadText("OpenDental.Local.slnf"),@"""third-party\\build\\WeCantSpell.Hunspell\\WeCantSpell.Hunspell.csproj""");
 		}
@@ -169,6 +175,10 @@ namespace LibSpellTests {
 					}
 					if(local=="HintPath") {
 						listValues.Add(xElement.Value);
+					}
+					//The attribute form of the metadata, which an SDK-style project file may use.
+					if(xElement.Attribute("HintPath")!=null) {
+						listValues.Add((string)xElement.Attribute("HintPath"));
 					}
 					foreach(string value in listValues) {
 						string fileName=Path.GetFileName(value.Split(',')[0].Trim().Replace('/','\\'));

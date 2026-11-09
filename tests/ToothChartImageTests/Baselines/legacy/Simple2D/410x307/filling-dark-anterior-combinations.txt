@@ -1,0 +1,17 @@
+Scene: filling-dark-anterior-combinations
+Group: paint
+Description: Dark C fillings on several surfaces: 6 MI, 7 DI, 8 MIF, 9 DFL, 10 FV, 11 MDFIL, 22 ML, 23 MDI, 24 FIL, 25 MF, 26 DLV, 27 MDF.
+Size: 410x307
+Colours: module (Chart Graphic Colors 10-13)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 410x307 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 6280
+Pixels SHA-256: ffdc827e1423c0cc9eeac266866fe34b6b34ba06a3d639c8d4482d96c79a0c63
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

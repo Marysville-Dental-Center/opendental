@@ -1,0 +1,17 @@
+Scene: select-primary-letter
+Group: interaction
+Description: Mixed dentition with the primary letters C, D and K selected (the primary band) and permanent tooth 3 selected.
+Size: 500x370
+Colours: printout (Chart Graphic Colors 14 and 15)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 500x370 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 14567
+Pixels SHA-256: da274ebf8f8d9a33448cf89fdeb74febcb45f7fd1c28415813b4b2efd240554f
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

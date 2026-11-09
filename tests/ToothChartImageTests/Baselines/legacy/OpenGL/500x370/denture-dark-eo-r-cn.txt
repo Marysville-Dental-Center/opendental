@@ -1,0 +1,18 @@
+Scene: denture-dark-eo-r-cn
+Group: paint
+Description: Dark dentures in the statuses the other dark denture scenes leave out: an upper complete denture (surface U) in EO with teeth 1-16 missing, and lower partial dentures over the ranges 18, 19, 20 in R and 29, 30, 31 in Cn (missing).
+Size: 500x370
+Colours: printout (Chart Graphic Colors 14 and 15)
+Requested mode: OpenGL
+Started mode: OpenGL
+Device or pixel format: OpenGL pixel format 1 (32-bit colour, 0-bit alpha, 24-bit depth, 0-bit stencil, single buffered, accelerated)
+OpenGL: NVIDIA Corporation; NVIDIA RTX A1000/PCIe/SSE2; 4.6.0 NVIDIA 596.71
+Bitmap: 500x370 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 3292
+Pixels SHA-256: 69be3f63a4f7964a049a6982f69a646103444edf1f72390293efcecf68350ccd
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

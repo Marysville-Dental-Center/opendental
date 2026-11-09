@@ -42,7 +42,8 @@ namespace ImagingDeviceManager.Tests {
 				XDocument xDocument=LoadProject(path);
 				foreach(XElement xElement in xDocument.Descendants().Where(x => _arrayItemNames.Contains(x.Name.LocalName))) {
 					//An item's file is in its Include (or Update) attribute; a HintPath's in its text. A Reference's Include is an assembly name.
-					List<string> listValues=xElement.Attributes().Where(x => x.Name.LocalName=="Include" || x.Name.LocalName=="Update")
+					//An SDK-style project file may give the HintPath as an attribute of the Reference.
+					List<string> listValues=xElement.Attributes().Where(x => x.Name.LocalName=="Include" || x.Name.LocalName=="Update" || x.Name.LocalName=="HintPath")
 						.Select(x => x.Value).ToList();
 					if(xElement.Name.LocalName=="HintPath") {
 						listValues.Add(xElement.Value);

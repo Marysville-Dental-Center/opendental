@@ -1,0 +1,17 @@
+Scene: select-missing-and-hidden
+Group: interaction
+Description: Missing tooth 3 selected (its number still shows) and hidden tooth 14 selected (no number to highlight).
+Size: 500x370
+Colours: printout (Chart Graphic Colors 14 and 15)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 500x370 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 14550
+Pixels SHA-256: 9391987a6c3ef7dffa23691e9cea1773b691282c9cb121ae71c12895594307d1
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

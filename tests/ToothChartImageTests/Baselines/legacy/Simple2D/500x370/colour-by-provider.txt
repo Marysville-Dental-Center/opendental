@@ -1,0 +1,17 @@
+Scene: colour-by-provider
+Group: colours
+Description: Colour by provider: another provider's completed work drawn in the EO colours (the user preference ToothChartUsesDiffColorByProv): C crowns on 3 and 19 and C fillings MO on 4 and 20 next to the same work shown as EO on 14, 30, 13 and 29.
+Size: 500x370
+Colours: printout (Chart Graphic Colors 14 and 15)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 500x370 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 14984
+Pixels SHA-256: 57d47f0085c163a2fd73be21e19f59bea72d1e53acdaafdc9a27d8e1fa0338cd
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

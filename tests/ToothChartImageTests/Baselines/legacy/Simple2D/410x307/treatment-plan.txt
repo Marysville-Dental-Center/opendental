@@ -1,0 +1,17 @@
+Scene: treatment-plan
+Group: paint
+Description: A treatment plan, all TP: X on 1, 16, 17 and 32; fillings MO 3, DO 4, MOD 13, O 14, MO 19, OL 30; RCT, build-up and crown on 18; implant and crown on missing 29; bridge 6-7-8 with 7 missing; sealants 2 and 15.
+Size: 410x307
+Colours: module (Chart Graphic Colors 10-13)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 410x307 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 7035
+Pixels SHA-256: 3444d4c893b68866012d17ca19c77b7dbde3dfdb4f3383a17dc7cdf29b1220a2
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

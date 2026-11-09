@@ -1,0 +1,17 @@
+Scene: size-sheet-wide
+Group: sizes
+Description: The restored-adult work, also drawn at 640x320 (a wide sheet field) with the printout colours.
+Size: 500x370
+Colours: printout (Chart Graphic Colors 14 and 15)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 500x370 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 14950
+Pixels SHA-256: e98780f5d10c257c42dc08b013bb5e0575b0a2642b0f6d1d5fa0d325362758b0
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

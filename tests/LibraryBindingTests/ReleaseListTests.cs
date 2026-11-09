@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using ProjectFileTests;
 
 namespace LibraryBindingTests {
 	[TestClass]
@@ -28,7 +29,7 @@ namespace LibraryBindingTests {
 
 		private static void SkipUnlessBuilt() {
 			if(!File.Exists(Path.Combine(ProgramFolder,"OpenPmsDental.exe"))) {
-				Assert.Inconclusive(@"OpenPmsDental\bin\Debug is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
+				BuildOutput.NotBuilt(@"OpenPmsDental\bin\Debug is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
 			}
 		}
 

@@ -9,6 +9,7 @@ using System.Reflection;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
 using OpenPmsDentalBusiness.ForkMigrations;
+using ProjectFileTests;
 
 namespace P262ToolsTests {
 	[TestClass]
@@ -119,16 +120,13 @@ namespace P262ToolsTests {
 
 		[TestMethod]
 		public void NewFiles_AreInTheProjects() {
-			string openDental=Read("OpenPmsDental","OpenPmsDental.csproj");
-			StringAssert.Contains(openDental,"<Compile Include=\"Forms\\FormDatabaseMaintConvPayDates.cs\">");
-			StringAssert.Contains(openDental,"<Compile Include=\"Forms\\FormDatabaseMaintConvPayDates.Designer.cs\">");
-			StringAssert.Contains(openDental,"<Compile Include=\"Forms\\FormDatabaseMaintenance.Tools262.cs\">");
-			string business=Read("OpenPmsDentalBusiness","OpenPmsDentalBusiness.csproj");
-			StringAssert.Contains(business,"<Compile Include=\"Data Interface\\DatabaseMaintenances.ConversionPayments.cs\" />");
-			StringAssert.Contains(business,"<Compile Include=\"Data Interface\\DatabaseMaintenances.IncomeTransfers.cs\" />");
-			StringAssert.Contains(business,"<Compile Include=\"Data Interface\\DatabaseMaintenances.InsVerifyRedundant.cs\" />");
-			StringAssert.Contains(business,"<Compile Include=\"Data Interface\\Fees.CopyToCode.cs\" />");
-			StringAssert.Contains(business,"<Compile Include=\"Misc\\LatencyMeasure.cs\" />");
+			//The evaluated items, so the check holds for the classic project files and the SDK-style ones of the .NET 10 move alike.
+			ProjectFile openDental=ProjectFile.Load(ToolsDb.FindRepoFile(Path.Combine("OpenPmsDental","OpenPmsDental.csproj")));
+			openDental.AssertCompiles(@"Forms\FormDatabaseMaintConvPayDates.cs",@"Forms\FormDatabaseMaintConvPayDates.Designer.cs",
+				@"Forms\FormDatabaseMaintenance.Tools262.cs");
+			ProjectFile business=ProjectFile.Load(ToolsDb.FindRepoFile(Path.Combine("OpenPmsDentalBusiness","OpenPmsDentalBusiness.csproj")));
+			business.AssertCompiles(@"Data Interface\DatabaseMaintenances.ConversionPayments.cs",@"Data Interface\DatabaseMaintenances.IncomeTransfers.cs",
+				@"Data Interface\DatabaseMaintenances.InsVerifyRedundant.cs",@"Data Interface\Fees.CopyToCode.cs",@"Misc\LatencyMeasure.cs");
 		}
 	}
 }

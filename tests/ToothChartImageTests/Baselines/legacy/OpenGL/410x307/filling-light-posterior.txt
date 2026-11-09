@@ -1,0 +1,18 @@
+Scene: filling-light-posterior
+Group: paint
+Description: Light EC fillings: 2 MO, 3 MOD, 4 DO, 5 O, 12 MODB, 13 OL, 14 MODBL, 15 B, 18 MO, 19 DOB, 20 V, 21 MOD, 28 O, 29 MODBL, 30 OL, 31 MO.
+Size: 410x307
+Colours: module (Chart Graphic Colors 10-13)
+Requested mode: OpenGL
+Started mode: OpenGL
+Device or pixel format: OpenGL pixel format 1 (32-bit colour, 0-bit alpha, 24-bit depth, 0-bit stencil, single buffered, accelerated)
+OpenGL: NVIDIA Corporation; NVIDIA RTX A1000/PCIe/SSE2; 4.6.0 NVIDIA 596.71
+Bitmap: 410x307 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 2324
+Pixels SHA-256: 7e0677f7f0515f9b8d9e0b3c30a4f96a995b14a728a0016902a97f86698d3a19
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

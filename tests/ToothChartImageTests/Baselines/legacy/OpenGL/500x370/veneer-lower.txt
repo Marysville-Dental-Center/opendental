@@ -1,0 +1,18 @@
+Scene: veneer-lower
+Group: paint
+Description: Veneers on the lower anteriors 22-27, TP.
+Size: 500x370
+Colours: printout (Chart Graphic Colors 14 and 15)
+Requested mode: OpenGL
+Started mode: OpenGL
+Device or pixel format: OpenGL pixel format 1 (32-bit colour, 0-bit alpha, 24-bit depth, 0-bit stencil, single buffered, accelerated)
+OpenGL: NVIDIA Corporation; NVIDIA RTX A1000/PCIe/SSE2; 4.6.0 NVIDIA 596.71
+Bitmap: 500x370 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 2128
+Pixels SHA-256: 6de01ffed7cda0f2ed4e5ed77c1bd23e1a9c229e47ae15ccb6fff960ea858609
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

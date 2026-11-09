@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using ProjectFileTests;
 
 namespace BTIMETests {
 	[TestClass]
@@ -64,7 +65,8 @@ namespace BTIMETests {
 			StringAssert.Contains(codeReportsTo,"EmployeeReportsTo.GetSupervisors(_listEmployees)");
 			StringAssert.Contains(codeReportsTo,"EmployeeReportsTo.GetValidSelection(EmployeeReportsTo.GetRemembered(userNum),listSupervisors)");
 			StringAssert.Contains(codeReportsTo,"EmployeeReportsTo.Remember(");
-			StringAssert.Contains(ReadRepoFile("OpenPmsDental","OpenPmsDental.csproj"),"<Compile Include=\"Main Modules\\ControlManage.ReportsTo.cs\">");
+			//The evaluated items, so the check holds for the classic project file and the SDK-style one of the .NET 10 move alike.
+			ProjectFile.Load(Path.Combine(GetRepoRoot(),"OpenPmsDental","OpenPmsDental.csproj")).AssertCompiles(@"Main Modules\ControlManage.ReportsTo.cs");
 		}
 	}
 }

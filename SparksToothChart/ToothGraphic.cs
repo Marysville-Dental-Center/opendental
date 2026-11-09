@@ -8,15 +8,12 @@ using System.Resources;
 using System.Text;
 using System.Text.RegularExpressions;
 using OpenPmsDentalBusiness;
-using SharpDX.Direct3D9;
 
 namespace SparksToothChart {
 	///<summary>A tooth graphic holds all the data for one tooth to be drawn.</summary>
 	public class ToothGraphic {
 		private string toothID;
 		public List<VertexNormal> VertexNormals;
-		///<summary>Corresponds to VertexNormal list, but DirectX required the verticies to be cached for rendering triangles.</summary>
-		public VertexBuffer vb=null;
 		///<summary>Collection of type ToothGroup.</summary>
 		public List<ToothGroup> Groups;
 		private bool visible;
@@ -69,21 +66,13 @@ namespace SparksToothChart {
 		///<summary>If a mobility is set, the is the color.</summary>
 		public Color colorMobility;
 
-		///<summary>Shallow copy.  If the toothgraphic is being copied for use on a different DirectX device,
-		///then pass in the toothgraphic for the other device in order to maintain the model data on the destination device.
-		///If toothGraphicOtherDevice is not null, then return value will include shallow copies of vb and Groups from toothGraphicOtherDevice.</summary>
-		public ToothGraphic Copy(ToothGraphic toothGraphicOtherDevice=null) {
+		///<summary>Shallow copy. The model holds no graphics device objects: each DirectX chart keeps its own buffers for the models, keyed by tooth
+		///and group (ToothChartDirectX), so a copy can be drawn by any chart.</summary>
+		public ToothGraphic Copy() {
 			//We do not need a deep copy of VertexNormals, because the list is meant for read-only purposes.
-			//We do not need a deep copy of vb, because the vertex buffer is meant for read-only purposes.
 			//We do not need a deep copy of Groups, because the list is meant for read-only purposes.
 			//We do not need a deep copy of DefaultOrthoXpos, because the array is meant for read-only purposes.
-			ToothGraphic toothGraphicCopy=(ToothGraphic)this.MemberwiseClone();
-			if(toothGraphicOtherDevice!=null) {
-				//Some DirectX objects exist on one specific device and cannot be used on any other device without causing an exception.
-				toothGraphicCopy.vb=toothGraphicOtherDevice.vb;//The vb is a VertexBuffer which exists on one specific device.
-				toothGraphicCopy.Groups=toothGraphicOtherDevice.Groups;//The ToothGroup.facesDirectX is an IndexBuffer which exists on one specific device.
-			}
-			return toothGraphicCopy;
+			return (ToothGraphic)this.MemberwiseClone();
 		}
 
 		///<summary>Used in Clone()</summary>
@@ -146,33 +135,6 @@ namespace SparksToothChart {
 		#endregion properties
 
 		#region Public Methods
-
-		///<summary>Converts the VertexNormals list into a vertex buffer so the verticies can be used to render DirectX triangles.</summary>
-		public void PrepareForDirectX(Device deviceRef){
-			CleanupDirectX();
-			ToothChartVertexPosNormX[] arrayVerts=new ToothChartVertexPosNormX[VertexNormals.Count];
-			for(int i=0;i<VertexNormals.Count;i++) {
-				VertexNormal v=VertexNormals[i];
-				arrayVerts[i]=new ToothChartVertexPosNormX(v.Vertex.X,v.Vertex.Y,v.Vertex.Z,v.Normal.X,v.Normal.Y,v.Normal.Z);
-			}
-			vb=new VertexBuffer(deviceRef,arrayVerts.Length*ToothChartVertexPosNormX.StrideSize,Usage.WriteOnly,ToothChartVertexPosNormX.Format,Pool.Managed);
-			SharpDX.DataStream ds=vb.Lock(0,0,LockFlags.None);
-			ds.WriteRange(arrayVerts);
-			vb.Unlock();
-			for(int g=0;g<Groups.Count;g++) {
-				Groups[g].PrepareForDirectX(deviceRef);
-			}
-		}
-
-		public void CleanupDirectX(){
-			if(vb!=null) {
-				vb.Dispose();
-				vb=null;
-			}
-			for(int g=0;g<Groups.Count;g++){
-				Groups[g].CleanupDirectX();
-			}
-		}
 
 		///<summary>Resets this tooth graphic to original location, visiblity, and no restorations.  If primary tooth, then Visible=false.  </summary>
 		public void Reset() {
