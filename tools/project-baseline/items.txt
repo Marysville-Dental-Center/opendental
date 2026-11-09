@@ -294,8 +294,11 @@ EFormTests|Compile|TestDb.cs|
 EhrTests|Compile|EhrSwitchTests.cs|
 EhrTests|Compile|NoEhrDllTests.cs|
 EhrTests|Compile|NtpReplyTests.cs|
+EhrTests|Compile|PermissionTests.cs|
 EhrTests|Compile|Properties\AssemblyInfo.cs|
+EhrTests|Compile|ProvKeyRuleTests.cs|
 EhrTests|Compile|Support\NtpPacket.cs|
+EhrTests|Compile|Support\ScratchDb.cs|
 EhrTests|Compile|Support\TestSupport.cs|
 EhrTests|Compile|TimeSyncTests.cs|
 FeeTests|Compile|FeeDbTests.cs|
@@ -757,7 +760,6 @@ MiddleTierMockTests|Compile|ScratchDb.cs|
 MiddleTierMockTests|Compile|ScratchDbCopy.cs|
 MiddleTierMockTests|Compile|UserodsTests.cs|
 MiddleTierMockTests|Compile|XmlConverterTests.cs|
-MiddleTierMockTests|None|packages.config|
 MigraDoc.DocumentObjectModel|Compile|LoggerMessages.cs|
 MigraDoc.DocumentObjectModel|Compile|third-party\PDFsharp\src\foundation\src\MigraDoc\src\MigraDoc.DocumentObjectModel\Capabilities.cs|Link=Capabilities.cs
 MigraDoc.DocumentObjectModel|Compile|third-party\PDFsharp\src\foundation\src\MigraDoc\src\MigraDoc.DocumentObjectModel\DocumentObjectModel.Fields\BookmarkField.cs|Link=DocumentObjectModel.Fields\BookmarkField.cs
@@ -3244,6 +3246,9 @@ OpenPmsDentalBusiness|None|Web References\com.dentalxchange.webservices\Response
 OpenPmsDentalBusiness|None|Web References\com.dentalxchange.webservices\wsdl.wsdl|
 OpenPmsDentalBusiness|None|app.config|
 OpenPmsDentalBusiness|None|packages.lock.json|
+OpenPmsDentalBusiness|Resource|Resources\deleteX10.gif|
+OpenPmsDentalBusiness|Resource|Resources\eSig.gif|
+OpenPmsDentalBusiness|Resource|Resources\topazPen10.gif|
 OpenPmsDentalDbSettings|Compile|..\SharedAssemblyInfo.cs|Link=Properties\SharedAssemblyInfo.cs
 OpenPmsDentalDbSettings|Compile|ClientCertificateStore.cs|
 OpenPmsDentalDbSettings|Compile|DbSettingsArgs.cs|
@@ -6521,6 +6526,14 @@ OpenPmsDental|None|Web References\CallFireService\Reference.map|Generator=MSDisc
 OpenPmsDental|None|Web References\CallFireService\SMSService.wsdl|
 OpenPmsDental|None|app.config|
 OpenPmsDental|None|packages.lock.json|
+OpenPmsDental|Resource|Resources\Account32.gif|
+OpenPmsDental|Resource|Resources\SharpDX.txt|
+OpenPmsDental|Resource|Resources\bola_launch.png|
+OpenPmsDental|Resource|Resources\deleteX10.gif|
+OpenPmsDental|Resource|Resources\eSig.gif|
+OpenPmsDental|Resource|Resources\editPencil.gif|
+OpenPmsDental|Resource|Resources\topazPen10.gif|
+OpenPmsDental|Resource|Resources\webChatIcon.png|
 P262ApptTests|Compile|ApptDb.cs|
 P262ApptTests|Compile|BlockoutSearchDbTests.cs|
 P262ApptTests|Compile|PlanEstimatesDbTests.cs|
@@ -7133,8 +7146,11 @@ PdfSharp.System|Compile|third-party\build\PDFsharp\GlobalUsings.cs|Link=SourceBu
 ProjectFileTests|Compile|BrokenFixtureTests.cs|
 ProjectFileTests|Compile|BuildOutput.cs|
 ProjectFileTests|Compile|BuildOutputTests.cs|
+ProjectFileTests|Compile|ComputedDefaultsTests.cs|
+ProjectFileTests|Compile|EscapingTests.cs|
 ProjectFileTests|Compile|FixtureFolder.cs|
 ProjectFileTests|Compile|FolderWildcardTests.cs|
+ProjectFileTests|Compile|ImportsTests.cs|
 ProjectFileTests|Compile|ProjectBaselineTests.cs|
 ProjectFileTests|Compile|ProjectFile.cs|
 ProjectFileTests|Compile|ProjectFormatTests.cs|
@@ -7816,15 +7832,24 @@ TaskCategoryTests|Compile|Properties\AssemblyInfo.cs|
 TaskCategoryTests|Compile|TaskCategoryDbTests.cs|
 TaskCategoryTests|Compile|TaskCategoryLogicTests.cs|
 TaskCategoryTests|Compile|TaskCategoryUiSourceTests.cs|
+ToothChartImageTests|Compile|CallLogTests.cs|
+ToothChartImageTests|Compile|CallerSourceTests.cs|
 ToothChartImageTests|Compile|LegacyRecorder.cs|
 ToothChartImageTests|Compile|ModelTests.cs|
+ToothChartImageTests|Compile|MovedLabelTests.cs|
 ToothChartImageTests|Compile|Properties\AssemblyInfo.cs|
 ToothChartImageTests|Compile|SceneTests.cs|
 ToothChartImageTests|Compile|Scenes\ChartScenes.cs|
 ToothChartImageTests|Compile|SupportTests.cs|
+ToothChartImageTests|Compile|Support\CallLog.cs|
+ToothChartImageTests|Compile|Support\CallLogFixtures.cs|
 ToothChartImageTests|Compile|Support\ChartImageCompare.cs|
+ToothChartImageTests|Compile|Support\ChartTestDb.cs|
+ToothChartImageTests|Compile|Support\PainterCallers.cs|
 ToothChartImageTests|Compile|Support\PngWriter.cs|
+ToothChartImageTests|Compile|Support\RecordingPaintTarget.cs|
 ToothChartImageTests|Compile|Support\SecondProcess.cs|
+ToothChartImageTests|Compile|Support\SourceText.cs|
 ToothChartImageTests|Compile|Support\StaRunner.cs|
 ToothChartImageTests|Compile|Support\TestPaths.cs|
 ToothChartImageTests|Compile|Support\WpfCharts.cs|
@@ -7993,7 +8018,7 @@ UnitTestsCore|None|packages.lock.json|
 UnitTests|Compile|CoreTypesT.cs|
 UnitTests|Compile|DatabaseTools.cs|
 UnitTests|Compile|FormUnitTests.Designer.cs|DependentUpon=FormUnitTests.cs
-UnitTests|Compile|FormUnitTests.cs|SubType=Form
+UnitTests|Compile|FormUnitTests.cs|
 UnitTests|Compile|HL7Tests.cs|
 UnitTests|Compile|IntegrationTests\FeeSchedToolsTests.cs|
 UnitTests|Compile|IntegrationTests\InsVerifiesIntegrationTests.cs|
@@ -8008,51 +8033,51 @@ UnitTests|Compile|Properties\AssemblyInfo.cs|
 UnitTests|Compile|Properties\Resources.Designer.cs|AutoGen=True;DependentUpon=Resources.resx;DesignTime=True
 UnitTests|Compile|Properties\Settings.Designer.cs|AutoGen=True;DependentUpon=Settings.settings;DesignTimeSharedInput=True
 UnitTests|Compile|UI Testing\Form2dDrawingTests.Designer.cs|DependentUpon=Form2dDrawingTests.cs
-UnitTests|Compile|UI Testing\Form2dDrawingTests.cs|SubType=Form
+UnitTests|Compile|UI Testing\Form2dDrawingTests.cs|
 UnitTests|Compile|UI Testing\Form4kTests.Designer.cs|DependentUpon=Form4kTests.cs
-UnitTests|Compile|UI Testing\Form4kTests.cs|SubType=Form
+UnitTests|Compile|UI Testing\Form4kTests.cs|
 UnitTests|Compile|UI Testing\FormApptLayoutTests.Designer.cs|DependentUpon=FormApptLayoutTests.cs
-UnitTests|Compile|UI Testing\FormApptLayoutTests.cs|SubType=Form
+UnitTests|Compile|UI Testing\FormApptLayoutTests.cs|
 UnitTests|Compile|UI Testing\FormApptProvSliderTest.Designer.cs|DependentUpon=FormApptProvSliderTest.cs
-UnitTests|Compile|UI Testing\FormApptProvSliderTest.cs|SubType=Form
+UnitTests|Compile|UI Testing\FormApptProvSliderTest.cs|
 UnitTests|Compile|UI Testing\FormButtonTest.Designer.cs|DependentUpon=FormButtonTest.cs
-UnitTests|Compile|UI Testing\FormButtonTest.cs|SubType=Form
+UnitTests|Compile|UI Testing\FormButtonTest.cs|
 UnitTests|Compile|UI Testing\FormCheckBoxTests.Designer.cs|DependentUpon=FormCheckBoxTests.cs
-UnitTests|Compile|UI Testing\FormCheckBoxTests.cs|SubType=Form
+UnitTests|Compile|UI Testing\FormCheckBoxTests.cs|
 UnitTests|Compile|UI Testing\FormComboTests.Designer.cs|DependentUpon=FormComboTests.cs
-UnitTests|Compile|UI Testing\FormComboTests.cs|SubType=Form
+UnitTests|Compile|UI Testing\FormComboTests.cs|
 UnitTests|Compile|UI Testing\FormDatePickerTests.Designer.cs|DependentUpon=FormDatePickerTests.cs
-UnitTests|Compile|UI Testing\FormDatePickerTests.cs|SubType=Form
+UnitTests|Compile|UI Testing\FormDatePickerTests.cs|
 UnitTests|Compile|UI Testing\FormGraphicsTests.Designer.cs|DependentUpon=FormGraphicsTests.cs
-UnitTests|Compile|UI Testing\FormGraphicsTests.cs|SubType=Form
+UnitTests|Compile|UI Testing\FormGraphicsTests.cs|
 UnitTests|Compile|UI Testing\FormGridTest.Designer.cs|DependentUpon=FormGridTest.cs
-UnitTests|Compile|UI Testing\FormGridTest.cs|SubType=Form
+UnitTests|Compile|UI Testing\FormGridTest.cs|
 UnitTests|Compile|UI Testing\FormGroupBoxTests.Designer.cs|DependentUpon=FormGroupBoxTests.cs
-UnitTests|Compile|UI Testing\FormGroupBoxTests.cs|SubType=Form
+UnitTests|Compile|UI Testing\FormGroupBoxTests.cs|
 UnitTests|Compile|UI Testing\FormImageSelectorTests.Designer.cs|DependentUpon=FormImageSelectorTests.cs
-UnitTests|Compile|UI Testing\FormImageSelectorTests.cs|SubType=Form
+UnitTests|Compile|UI Testing\FormImageSelectorTests.cs|
 UnitTests|Compile|UI Testing\FormInputBoxTests.Designer.cs|DependentUpon=FormInputBoxTests.cs
-UnitTests|Compile|UI Testing\FormInputBoxTests.cs|SubType=Form
+UnitTests|Compile|UI Testing\FormInputBoxTests.cs|
 UnitTests|Compile|UI Testing\FormLayoutManagerTests.Designer.cs|DependentUpon=FormLayoutManagerTests.cs
-UnitTests|Compile|UI Testing\FormLayoutManagerTests.cs|SubType=Form
+UnitTests|Compile|UI Testing\FormLayoutManagerTests.cs|
 UnitTests|Compile|UI Testing\FormMonthCalendarTests.Designer.cs|DependentUpon=FormMonthCalendarTests.cs
-UnitTests|Compile|UI Testing\FormMonthCalendarTests.cs|SubType=Form
+UnitTests|Compile|UI Testing\FormMonthCalendarTests.cs|
 UnitTests|Compile|UI Testing\FormProgressTests.Designer.cs|DependentUpon=FormProgressTests.cs
-UnitTests|Compile|UI Testing\FormProgressTests.cs|SubType=Form
+UnitTests|Compile|UI Testing\FormProgressTests.cs|
 UnitTests|Compile|UI Testing\FormSandboxJordan.Designer.cs|DependentUpon=FormSandboxJordan.cs
-UnitTests|Compile|UI Testing\FormSandboxJordan.cs|SubType=Form
+UnitTests|Compile|UI Testing\FormSandboxJordan.cs|
 UnitTests|Compile|UI Testing\FormSplitContainerTests.Designer.cs|DependentUpon=FormSplitContainerTests.cs
-UnitTests|Compile|UI Testing\FormSplitContainerTests.cs|SubType=Form
+UnitTests|Compile|UI Testing\FormSplitContainerTests.cs|
 UnitTests|Compile|UI Testing\FormTabControlTests.Designer.cs|DependentUpon=FormTabControlTests.cs
-UnitTests|Compile|UI Testing\FormTabControlTests.cs|SubType=Form
+UnitTests|Compile|UI Testing\FormTabControlTests.cs|
 UnitTests|Compile|UI Testing\FormTestAllControls.Designer.cs|DependentUpon=FormTestAllControls.cs
-UnitTests|Compile|UI Testing\FormTestAllControls.cs|SubType=Form
+UnitTests|Compile|UI Testing\FormTestAllControls.cs|
 UnitTests|Compile|UI Testing\FormTextBoxTests.Designer.cs|DependentUpon=FormTextBoxTests.cs
-UnitTests|Compile|UI Testing\FormTextBoxTests.cs|SubType=Form
+UnitTests|Compile|UI Testing\FormTextBoxTests.cs|
 UnitTests|Compile|UI Testing\FormToothChartTests.Designer.cs|DependentUpon=FormToothChartTests.cs
-UnitTests|Compile|UI Testing\FormToothChartTests.cs|SubType=Form
+UnitTests|Compile|UI Testing\FormToothChartTests.cs|
 UnitTests|Compile|UI Testing\FormWpfConverter.Designer.cs|DependentUpon=FormWpfConverter.cs
-UnitTests|Compile|UI Testing\FormWpfConverter.cs|SubType=Form
+UnitTests|Compile|UI Testing\FormWpfConverter.cs|
 UnitTests|Compile|UnitTests\AccountEntryTests.cs|
 UnitTests|Compile|UnitTests\AccountModulesTests.cs|
 UnitTests|Compile|UnitTests\AdjustmentsTests.cs|
@@ -8159,8 +8184,8 @@ UnitTests|Content|Resources\JustinSmithERA.txt|
 UnitTests|Content|Resources\JustinSmithERA_NoAutoProcessCARCs.txt|
 UnitTests|Content|Resources\canadianprocedurecodes.txt|
 UnitTests|Content|Resources\x834Test.txt|
-UnitTests|EmbeddedResource|FormUnitTests.resx|DependentUpon=FormUnitTests.cs;SubType=Designer
-UnitTests|EmbeddedResource|Properties\Resources.resx|Generator=ResXFileCodeGenerator;LastGenOutput=Resources.Designer.cs;SubType=Designer
+UnitTests|EmbeddedResource|FormUnitTests.resx|DependentUpon=FormUnitTests.cs
+UnitTests|EmbeddedResource|Properties\Resources.resx|Generator=ResXFileCodeGenerator;LastGenOutput=Resources.Designer.cs
 UnitTests|EmbeddedResource|UI Testing\Form2dDrawingTests.resx|DependentUpon=Form2dDrawingTests.cs
 UnitTests|EmbeddedResource|UI Testing\Form4kTests.resx|DependentUpon=Form4kTests.cs
 UnitTests|EmbeddedResource|UI Testing\FormApptLayoutTests.resx|DependentUpon=FormApptLayoutTests.cs
@@ -8194,7 +8219,6 @@ UnitTests|None|Resources\x835MassHealth.txt|
 UnitTests|None|Resources\x835PayerControlNumber.txt|
 UnitTests|None|app.config|
 UnitTests|None|app.manifest|
-UnitTests|None|packages.config|
 UpdateFileCopier|Compile|..\CodeBase\Progress\IODProgress.cs|Link=IODProgress.cs
 UpdateFileCopier|Compile|..\CodeBase\Utilities\DateTimeOD.cs|Link=DateTimeOD.cs
 UpdateFileCopier|Compile|..\CodeBase\Utilities\DateTime_.cs|Link=DateTime_.cs
@@ -9052,6 +9076,13 @@ WpfControlsOD|Page|UI\Controls\WebView2.xaml|Generator=MSBuild:Compile;SubType=D
 WpfControlsOD|Page|UI\DatabaseIntegrity\WarningIntegrity.xaml|Generator=MSBuild:Compile;SubType=Designer;XamlRuntime=Wpf
 WpfControlsOD|Page|UI\Dialogs\FrmColorDialog.xaml|Generator=MSBuild:Compile;SubType=Designer;XamlRuntime=Wpf
 WpfControlsOD|Page|UI\Progress\FrmProgressAuto.xaml|Generator=MSBuild:Compile;SubType=Designer;XamlRuntime=Wpf
+WpfControlsOD|Resource|Resources\Bullets_24x24.png|
+WpfControlsOD|Resource|Resources\ExternalLink.png|
+WpfControlsOD|Resource|Resources\PracticeBooster.png|
+WpfControlsOD|Resource|Resources\down.gif|
+WpfControlsOD|Resource|Resources\editPencil.gif|
+WpfControlsOD|Resource|Resources\printSmall.gif|
+WpfControlsOD|Resource|Resources\up.gif|
 xCentralManager|Compile|..\SharedAssemblyInfo.cs|Link=Properties\SharedAssemblyInfo.cs
 xCentralManager|Compile|Db\CentralConfigHelper.cs|
 xCentralManager|Compile|Db\CentralConnectionHelper.cs|
