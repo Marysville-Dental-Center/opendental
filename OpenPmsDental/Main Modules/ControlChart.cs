@@ -24,10 +24,6 @@ using SparksToothChart;
 using OpenPmsDental.Bridges;
 using System.Drawing.Imaging;
 //using System.Threading;//no threading in UI
-using SharpDX;
-#if EHRTEST
-using EHR;
-#endif
 #endregion using
 
 namespace OpenPmsDental {
@@ -928,11 +924,11 @@ namespace OpenPmsDental {
 			try {
 				ImageStore.Import(bitmapChart,defNum,ImageType.Photo,Pd.Patient,doPrintHeading:true);
 			}
-			catch(SharpDXException sharpDXException) {
+			catch(Exception ex) when(ToothChartWrapper.IsGraphicsDeviceException(ex)) {
 				using MsgBoxCopyPaste errorMsg=new MsgBoxCopyPaste(Lan.g(this,"Failed to capture tooth chart image from graphics card. \r\n"
 					+"Please contact support to help with graphics troubleshooting:\r\n")
-					+sharpDXException.Message+"\r\n"
-					+sharpDXException.StackTrace
+					+ex.Message+"\r\n"
+					+ex.StackTrace
 				);
 				errorMsg.ShowDialog();
 				return;
@@ -3519,6 +3515,21 @@ namespace OpenPmsDental {
 			FillMovementsAndHidden();
 		}
 
+		///<summary>A free-text label was dragged to a new place (CursorTool.MoveText; the WPF chart raises it from TC-5): the label gets the new
+		///point, clamped and rounded by the relay, and is saved; then the chart is refilled.</summary>
+		private void toothChartRelay_TextMoved(object sender,ToothChartTextMovedEventArgs e) {
+			if(IsPatientNull()) {
+				return;
+			}
+			ToothInitial toothInitial=Pd.ListToothInitials.Find(x => x.ToothInitialNum==e.ToothInitialNum && x.InitialType==ToothInitialType.Text);
+			if(toothInitial==null) {
+				return;
+			}
+			ToothChartRelay.MoveTextLabel(toothInitial,e.Location);
+			ToothInitials.Update(toothInitial);
+			FillToothChart(retainSelection:true);
+		}
+
 		private void trackToothProcDates_ValueChanged(object sender,EventArgs e) {
 			textToothProcDate.Text=_listDateTimesProcedures[trackToothProcDates.Value].ToShortDateString();
 			FillToothChart(true,_listDateTimesProcedures[trackToothProcDates.Value]);
@@ -4447,16 +4458,8 @@ namespace OpenPmsDental {
 					LayoutManager.Add(tabOrtho,tabControlProc);
 				}
 			}
-			//ComputerPref computerPref=ComputerPrefs.GetForLocalComputer();
-			toothChartWrapper.UseHardware=ComputerPrefs.LocalComputer.GraphicsUseHardware;
-			toothChartWrapper.PreferredPixelFormatNumber=ComputerPrefs.LocalComputer.PreferredPixelFormatNum;
-			toothChartWrapper.DeviceFormat=new ToothChartDirectX.DirectXDeviceFormat(ComputerPrefs.LocalComputer.DirectXFormat);
-			//Must be last preference set here, because this causes the pixel format to be recreated.
-			//When DirectX cannot start (no d3dx9_43.dll from the legacy DirectX runtime), the wrapper falls back to OpenGL, then Simple 2D.
-			toothChartWrapper.DrawMode=ComputerPrefs.LocalComputer.GraphicsSimple;
-			//The preferred pixel format number changes to the selected pixel format number after a context is chosen.
-			ComputerPrefs.LocalComputer.PreferredPixelFormatNum=toothChartWrapper.PreferredPixelFormatNumber;
-			ComputerPrefs.Update(ComputerPrefs.LocalComputer);
+			//The computer's chart settings: this restarts the chart's engine and saves the pixel format it chose.
+			ToothChartRelay.ApplyComputerSettings(toothChartWrapper,ToothChartSettingsUse.StoredMode);
 			if(_isModuleSelected) {
 				FillToothChart(retainSelection:true);
 			}
@@ -4525,10 +4528,10 @@ namespace OpenPmsDental {
 			//preference and GraphicsUseDirectX11 computer setting were removed on 2026-11-01; the preference and column stay in the database, unread.
 			_toothChartRelay= new ToothChartRelay();
 			_toothChartRelay.SetToothChartWrapper(toothChartWrapper);
+			_toothChartRelay.TextMoved+=toothChartRelay_TextMoved;
 			toothChartWrapper.Visible=true;
-			//ComputerPref localComputerPrefs=ComputerPrefs.GetForLocalComputer();
-			this.toothChartWrapper.DeviceFormat=new ToothChartDirectX.DirectXDeviceFormat(ComputerPrefs.LocalComputer.DirectXFormat);
-			this.toothChartWrapper.DrawMode=ComputerPrefs.LocalComputer.GraphicsSimple;//triggers ResetControls. Falls back to OpenGL, then Simple 2D.
+			//Triggers ResetControls. Falls back to OpenGL, then Simple 2D.
+			ToothChartRelay.ApplyComputerSettings(toothChartWrapper,ToothChartSettingsUse.StartupMode);
 			_procStatNew=ProcStat.TP;
 			if(GetIsTPChartingAvailable()) {
 				FillListPriorities();//Mimics old ChartLayoutHelper logic
@@ -5999,202 +6002,18 @@ namespace OpenPmsDental {
 		}		
 		
 		private void DrawProcGraphics(bool isPrinting=false) {
-			//this requires: ProcStatus, ProcCode, ToothNum, HideGraphics, Surf, and ToothRange.  All need to be raw database values.
-			string[] stringArrayTeeth;
-			List<long> listProvNums=_toothChartRelay.GetPertinentProvNumsForToothColorPref(Security.CurUser,Pd.Patient,Pd.ListAppointments);
-			for(int i=0;i<_listDataRowsProcsForGraphical.Count;i++) {
-				if(_listDataRowsProcsForGraphical[i]["HideGraphics"].ToString()=="1") {
-					continue;
-				}
-				ProcedureCode procedureCode=ProcedureCodes.GetProcCode(_listDataRowsProcsForGraphical[i]["ProcCode"].ToString());
-				if(procedureCode.PaintType==ToothPaintingType.None || procedureCode.TreatArea==TreatmentArea.Mouth) {
-					continue;
-				}
-				if(procedureCode.PaintType==ToothPaintingType.Extraction && (
-					PIn.Long(_listDataRowsProcsForGraphical[i]["ProcStatus"].ToString())==(int)ProcStat.C
-					|| PIn.Long(_listDataRowsProcsForGraphical[i]["ProcStatus"].ToString())==(int)ProcStat.EC
-					|| PIn.Long(_listDataRowsProcsForGraphical[i]["ProcStatus"].ToString())==(int)ProcStat.EO
-					)) {
-					continue;//prevents the red X. Missing teeth already handled.
-				}
-				ProcStat procStat=(ProcStat)PIn.Long(_listDataRowsProcsForGraphical[i]["ProcStatus"].ToString());
-				long provNumForProc=PIn.Long(_listDataRowsProcsForGraphical[i]["ProvNum"].ToString());
-				bool applyColorPref=_toothChartRelay.DoesToothColorPrefApply(listProvNums,provNumForProc) && !isPrinting;
-				_toothChartRelay.GetToothColors(procedureCode,procStat,applyColorPref,out Color colorDark,out Color colorLight);
-				switch(procedureCode.PaintType) {
-					case ToothPaintingType.BridgeDark:
-						if(ToothInitials.ToothIsMissingOrHidden(_listToothInitialsCopy,_listDataRowsProcsForGraphical[i]["ToothNum"].ToString())){
-							_toothChartRelay.SetPontic(_listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),colorDark);
-						}
-						else{
-							_toothChartRelay.SetCrown(_listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),colorDark);
-						}
-						break;
-					case ToothPaintingType.BridgeLight:
-						if(ToothInitials.ToothIsMissingOrHidden(_listToothInitialsCopy,_listDataRowsProcsForGraphical[i]["ToothNum"].ToString())) {
-							_toothChartRelay.SetPontic(_listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),colorLight);
-						}
-						else {
-							_toothChartRelay.SetCrown(_listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),colorLight);
-						}
-						break;
-					case ToothPaintingType.CrownDark:
-						_toothChartRelay.SetCrown(_listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),colorDark);
-						break;
-					case ToothPaintingType.CrownLight:
-						_toothChartRelay.SetCrown(_listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),colorLight);
-						break;
-					case ToothPaintingType.DentureDark:
-						if(_listDataRowsProcsForGraphical[i]["Surf"].ToString()=="U") {
-							stringArrayTeeth=new string[14];
-							for(int t=0;t<14;t++) {
-								stringArrayTeeth[t]=(t+2).ToString();
-							}
-						}
-						else if(_listDataRowsProcsForGraphical[i]["Surf"].ToString()=="L") {
-							stringArrayTeeth=new string[14];
-							for(int t=0;t<14;t++) {
-								stringArrayTeeth[t]=(t+18).ToString();
-							}
-						}
-						else {
-							stringArrayTeeth=_listDataRowsProcsForGraphical[i]["ToothRange"].ToString().Split(new char[] {','});
-						}
-						for(int t=0;t<stringArrayTeeth.Length;t++) {
-							if(ToothInitials.ToothIsMissingOrHidden(_listToothInitialsCopy,stringArrayTeeth[t])) {
-								_toothChartRelay.SetPontic(stringArrayTeeth[t],colorDark);
-								continue;
-							}
-							_toothChartRelay.SetCrown(stringArrayTeeth[t],colorDark);
-						}
-						break;
-					case ToothPaintingType.DentureLight:
-						if(_listDataRowsProcsForGraphical[i]["Surf"].ToString()=="U") {
-							stringArrayTeeth=new string[14];
-							for(int t=0;t<14;t++) {
-								stringArrayTeeth[t]=(t+2).ToString();
-							}
-						}
-						else if(_listDataRowsProcsForGraphical[i]["Surf"].ToString()=="L") {
-							stringArrayTeeth=new string[14];
-							for(int t=0;t<14;t++) {
-								stringArrayTeeth[t]=(t+18).ToString();
-							}
-						}
-						else {
-							stringArrayTeeth=_listDataRowsProcsForGraphical[i]["ToothRange"].ToString().Split(new char[] { ',' });
-						}
-						for(int t=0;t<stringArrayTeeth.Length;t++) {
-							if(ToothInitials.ToothIsMissingOrHidden(_listToothInitialsCopy,stringArrayTeeth[t])) {
-								_toothChartRelay.SetPontic(stringArrayTeeth[t],colorLight);
-								continue;
-							}
-							_toothChartRelay.SetCrown(stringArrayTeeth[t],colorLight);
-						}
-						break;
-					case ToothPaintingType.Extraction:
-						_toothChartRelay.SetBigX(_listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),colorDark);
-						break;
-					case ToothPaintingType.FillingDark:
-						_toothChartRelay.SetSurfaceColors(_listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),_listDataRowsProcsForGraphical[i]["Surf"].ToString(),colorDark);
-						break;
-					case ToothPaintingType.FillingLight:
-						_toothChartRelay.SetSurfaceColors(_listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),_listDataRowsProcsForGraphical[i]["Surf"].ToString(),colorLight);
-						break;
-					case ToothPaintingType.Implant:
-						_toothChartRelay.SetImplant(_listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),colorDark);
-						break;
-					case ToothPaintingType.PostBU:
-						_toothChartRelay.SetBU(_listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),colorDark);
-						break;
-					case ToothPaintingType.RCT:
-						_toothChartRelay.SetRCT(_listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),colorDark);
-						break;
-					case ToothPaintingType.RetainedRoot:
-						_toothChartRelay.SetRetainedRoot(_listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),colorDark);
-						break;
-					case ToothPaintingType.Sealant:
-						_toothChartRelay.SetSealant(_listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),colorDark);
-						break;
-					case ToothPaintingType.SpaceMaintainer:
-						if(procedureCode.TreatArea==TreatmentArea.Tooth && _listDataRowsProcsForGraphical[i]["ToothNum"].ToString()!=""){
-							_toothChartRelay.SetSpaceMaintainer(_listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),colorDark);
-							break;
-						}
-						if(procedureCode.TreatArea==TreatmentArea.ToothRange && _listDataRowsProcsForGraphical[i]["ToothRange"].ToString()!="") {
-							stringArrayTeeth=_listDataRowsProcsForGraphical[i]["ToothRange"].ToString().Split(',');
-							for(int t=0;t<stringArrayTeeth.Length;t++) {
-								_toothChartRelay.SetSpaceMaintainer(stringArrayTeeth[t],colorDark);
-							}
-							break;
-						}
-						if(procedureCode.AreaAlsoToothRange==true && _listDataRowsProcsForGraphical[i]["ToothRange"].ToString()!="") {
-							stringArrayTeeth=_listDataRowsProcsForGraphical[i]["ToothRange"].ToString().Split(',');
-							for(int t=0;t<stringArrayTeeth.Length;t++) {
-								_toothChartRelay.SetSpaceMaintainer(stringArrayTeeth[t],colorDark);
-							}
-							break;
-						}
-						if(procedureCode.TreatArea==TreatmentArea.Quad){
-							stringArrayTeeth=new string[0];
-							if(_listDataRowsProcsForGraphical[i]["Surf"].ToString()=="UR") {
-								stringArrayTeeth=new string[] {"4","5","6","7","8"};
-							}
-							if(_listDataRowsProcsForGraphical[i]["Surf"].ToString()=="UL") {
-								stringArrayTeeth=new string[] {"9","10","11","12","13"};
-							}
-							if(_listDataRowsProcsForGraphical[i]["Surf"].ToString()=="LL") {
-								stringArrayTeeth=new string[] {"20","21","22","23","24"};
-							}
-							if(_listDataRowsProcsForGraphical[i]["Surf"].ToString()=="LR") {
-								stringArrayTeeth=new string[] {"25","26","27","28","29"};
-							}							
-							for(int t=0;t<stringArrayTeeth.Length;t++) {//could still be length 0
-								_toothChartRelay.SetSpaceMaintainer(stringArrayTeeth[t],colorDark);
-							}
-						}
-						break;
-					case ToothPaintingType.Text:
-						_toothChartRelay.SetText(_listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),colorDark,procedureCode.PaintText);
-						break;
-					case ToothPaintingType.Veneer:
-						_toothChartRelay.SetVeneer(_listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),colorLight);
-						break;
-				}
-			}
+			ToothChartPainter.PaintProcedures(_toothChartRelay,ToothChartPaintProc.FromDataRows(_listDataRowsProcsForGraphical),_listToothInitialsCopy,
+				ToothChartPaintOptions.ForChartModule(Pd.Patient,Pd.ListAppointments,isPrinting));
 		}
 
 		private void DrawOrthoHardware(){
 			if(!checkOrthoGraphics.Checked){
 				return;
 			}
-			List<OrthoHardwareSpec> listOrthoHardwareSpecs=OrthoHardwareSpecs.GetDeepCopy();
-			List<OrthoHardwares.OrthoWire> listOrthoWires=new List<OrthoHardwares.OrthoWire>();//also used for elastics
 			FillOrthoDateIfNeeded();
-			List<OrthoHardware> listOrthoHardwares=Pd.ListOrthoHardwares.FindAll(x=>x.DateExam==comboOrthoDate.GetSelected<DateTime>() && (!x.IsHidden || checkShowHidden.Checked));
-			for(int i=0;i<listOrthoHardwares.Count;i++){
-				OrthoHardwareSpec orthoHardwareSpec=listOrthoHardwareSpecs.Find(x=>x.OrthoHardwareSpecNum==listOrthoHardwares[i].OrthoHardwareSpecNum);
-				if(listOrthoHardwares[i].OrthoHardwareType==EnumOrthoHardwareType.Bracket){
-					_toothChartRelay.SetBracket(listOrthoHardwares[i].ToothRange,orthoHardwareSpec.ItemColor);
-				}
-				if(listOrthoHardwares[i].OrthoHardwareType==EnumOrthoHardwareType.Wire){
-					listOrthoWires.AddRange(OrthoHardwares.GetWires(listOrthoHardwares[i].ToothRange,orthoHardwareSpec.ItemColor));
-				}
-				if(listOrthoHardwares[i].OrthoHardwareType==EnumOrthoHardwareType.Elastic){
-					listOrthoWires.AddRange(OrthoHardwares.GetElastics(listOrthoHardwares[i].ToothRange,orthoHardwareSpec.ItemColor));
-				}
-			}
-			for(int i=0;i<listOrthoWires.Count;i++){
-				if(listOrthoWires[i].OrthoWireType==OrthoHardwares.EnumOrthoWireType.BetweenBrackets){
-					_toothChartRelay.AddOrthoWireBetweenBrackets(listOrthoWires[i].ToothIDstart,listOrthoWires[i].ToothIDend,listOrthoWires[i].ColorDraw);
-				}
-				if(listOrthoWires[i].OrthoWireType==OrthoHardwares.EnumOrthoWireType.InBracket){
-					_toothChartRelay.AddOrthoWireInBracket(listOrthoWires[i].ToothIDstart,listOrthoWires[i].ColorDraw);
-				}
-				if(listOrthoWires[i].OrthoWireType==OrthoHardwares.EnumOrthoWireType.Elastic){
-					_toothChartRelay.AddOrthoElastic(listOrthoWires[i].ToothIDstart,listOrthoWires[i].ToothIDend,listOrthoWires[i].ColorDraw);
-				}
-			}
+			List<OrthoHardware> listOrthoHardwares=ToothChartPainter.GetChartModuleOrthoHardwares(Pd.ListOrthoHardwares,comboOrthoDate.GetSelected<DateTime>(),
+				checkShowHidden.Checked);
+			ToothChartPainter.PaintOrthoHardware(_toothChartRelay,listOrthoHardwares);
 		}
 
 		private void EasyHideClinicalData() {
@@ -6565,109 +6384,23 @@ namespace OpenPmsDental {
 			}
 			//primary teeth need to be set before resetting selected teeth, because some of them might be primary.
 			//primary teeth also need to be set before initial list so that we can set a primary tooth missing.
-			for(int i=0;i<Pd.ListToothInitials.Count;i++) {
-				if(Pd.ListToothInitials[i].InitialType==ToothInitialType.Primary) {
-					_toothChartRelay.SetPrimary(Pd.ListToothInitials[i].ToothNum);
-				}
-			}
+			ToothChartPainter.PaintPrimaryTeeth(_toothChartRelay,Pd.ListToothInitials);
 			if(checkShowTeeth.Checked || retainSelection) {
 				for(int i=0;i<listTeethSelected.Count;i++) {
 					_toothChartRelay.SetSelected(listTeethSelected[i],true);
 				}
 			}
 			DataTable table=Pd.TableProgNotes.Copy();
+			List<long> listProcNumsTreatPlans=null;
 			if(checkTreatPlans.Checked) {
 				//filter list of DataRows to only include completed work and work for the selected treatment plans
-				List<long> listProcNumsAll=gridTreatPlans.SelectedIndices.SelectMany(x => _listTreatPlans[x].ListProcTPs).Select(x => x.ProcNumOrig).ToList();
-				_listDataRowsProcsForGraphical=new List<DataRow>();
-				_listDataRowsProcsSkipped=new List<DataRow>();
-				for(int i=0;i<table.Rows.Count;i++) {
-					//If proc status is anything except TP and TPi
-					if(new[] { ProcStat.C,ProcStat.Cn,ProcStat.EC,ProcStat.EO,ProcStat.R }.Contains((ProcStat)PIn.Long(table.Rows[i]["ProcStatus"].ToString()))
-						|| listProcNumsAll.Contains(PIn.Long(table.Rows[i]["ProcNum"].ToString())))
-					{
-						if(!ShouldRowShowGraphical(table.Rows[i],dateLimit)) {
-							continue;
-						}
-						_listDataRowsProcsForGraphical.Add(table.Rows[i]);
-					}
-				}
+				listProcNumsTreatPlans=gridTreatPlans.SelectedIndices.SelectMany(x => _listTreatPlans[x].ListProcTPs).Select(x => x.ProcNumOrig).ToList();
 			}
-			else {
-				//put list back to the original list of DataRows
-				_listDataRowsProcsSkipped=new List<DataRow>();
-				List<string> listProcNumStrsOrig=_listDataRowsProcsOrig.Select(x => x["ProcNum"].ToString()).ToList();
-				_listDataRowsProcsForGraphical=table.Select().Where(x => listProcNumStrsOrig.Contains(x["ProcNum"].ToString()) && ShouldRowShowGraphical(x,dateLimit)).ToList();
-			}
-			_listToothInitialsCopy=Pd.ListToothInitials.Select(x => x.Copy()).ToList();
-			for(int i=0;i<_listDataRowsProcsSkipped.Count();i++) {
-				ProcStat procStat=(ProcStat)PIn.Long(_listDataRowsProcsSkipped[i]["ProcStatus"].ToString());
-				if(!procStat.In(ProcStat.C,ProcStat.EO,ProcStat.EC)) {
-					continue;
-				}
-				ProcedureCode procedureCode=ProcedureCodes.GetProcCode(_listDataRowsProcsSkipped[i]["ProcCode"].ToString());
-				if(procedureCode.PaintType!=ToothPaintingType.Extraction) {
-					continue;
-				}
-				_listToothInitialsCopy.RemoveAll(x => x.InitialType==ToothInitialType.Missing && x.ToothNum==_listDataRowsProcsSkipped[i]["ToothNum"].ToString());
-			}
-			//Also remove any extractions for TP procs that were set to TP by the ShouldRowShowGraphical
-			for(int i=0;i<_listDataRowsProcsForGraphical.Count();i++) {
-				DateTime dateTP;
-				DateTime dateComplete;
-				ProcStat procStat=(ProcStat)PIn.Int(_listDataRowsProcsForGraphical[i]["ProcStatus"].ToString());
-				if(!procStat.In(ProcStat.TP)) {
-					continue;
-				}
-				if(!DateTime.TryParse(_listDataRowsProcsForGraphical[i]["DateTP"].ToString(),out dateTP)) {
-					continue;
-				}
-				if(!DateTime.TryParse(_listDataRowsProcsForGraphical[i]["DateEntryC"].ToString(),out dateComplete)) {
-					continue;
-				}
-				ProcedureCode procedureCode=ProcedureCodes.GetProcCode(_listDataRowsProcsForGraphical[i]["ProcCode"].ToString());
-				if(procedureCode.PaintType==ToothPaintingType.Extraction 
-						&& dateLimit<dateComplete && dateLimit>=dateTP) 
-				{//Procedure is C and the slider date is after or equal to the TP date, but before the completion date
-					_listToothInitialsCopy.RemoveAll(x => x.InitialType==ToothInitialType.Missing && x.ToothNum==_listDataRowsProcsForGraphical[i]["ToothNum"].ToString());//Pretend the row is TP for the tooth chart
-				}
-			}
-			for(int i=0;i<_listToothInitialsCopy.Count;i++) {
-				switch(_listToothInitialsCopy[i].InitialType) {
-					case ToothInitialType.Missing:
-						_toothChartRelay.SetMissing(_listToothInitialsCopy[i].ToothNum);
-						break;
-					case ToothInitialType.Hidden:
-						_toothChartRelay.SetHidden(_listToothInitialsCopy[i].ToothNum);
-						break;
-					//case ToothInitialType.Primary:
-					//	break;
-					case ToothInitialType.Rotate:
-						_toothChartRelay.MoveTooth(_listToothInitialsCopy[i].ToothNum,_listToothInitialsCopy[i].Movement,0,0,0,0,0);
-						break;
-					case ToothInitialType.TipM:
-						_toothChartRelay.MoveTooth(_listToothInitialsCopy[i].ToothNum,0,_listToothInitialsCopy[i].Movement,0,0,0,0);
-						break;
-					case ToothInitialType.TipB:
-						_toothChartRelay.MoveTooth(_listToothInitialsCopy[i].ToothNum,0,0,_listToothInitialsCopy[i].Movement,0,0,0);
-						break;
-					case ToothInitialType.ShiftM:
-						_toothChartRelay.MoveTooth(_listToothInitialsCopy[i].ToothNum,0,0,0,_listToothInitialsCopy[i].Movement,0,0);
-						break;
-					case ToothInitialType.ShiftO:
-						_toothChartRelay.MoveTooth(_listToothInitialsCopy[i].ToothNum,0,0,0,0,_listToothInitialsCopy[i].Movement,0);
-						break;
-					case ToothInitialType.ShiftB:
-						_toothChartRelay.MoveTooth(_listToothInitialsCopy[i].ToothNum,0,0,0,0,0,_listToothInitialsCopy[i].Movement);
-						break;
-					case ToothInitialType.Drawing:
-						_toothChartRelay.AddDrawingSegment(_listToothInitialsCopy[i].Copy());
-						break;
-					case ToothInitialType.Text:
-						_toothChartRelay.AddText(_listToothInitialsCopy[i].GetTextString(),_listToothInitialsCopy[i].GetTextPoint(),_listToothInitialsCopy[i].ColorDraw,_listToothInitialsCopy[i].ToothInitialNum);
-						break;
-				}
-			}
+			_listDataRowsProcsForGraphical=ToothChartPainter.GetChartModuleRows(table,listProcNumsTreatPlans,_listDataRowsProcsOrig,dateLimit,
+				out _listDataRowsProcsSkipped);
+			_listToothInitialsCopy=ToothChartPainter.GetChartModuleToothInitials(Pd.ListToothInitials,_listDataRowsProcsSkipped,_listDataRowsProcsForGraphical,
+				dateLimit);
+			ToothChartPainter.PaintToothInitials(_toothChartRelay,_listToothInitialsCopy);
 			DrawProcGraphics();
 			DrawOrthoHardware();
 			_toothChartRelay.EndUpdate();
@@ -6676,7 +6409,9 @@ namespace OpenPmsDental {
 			//called via FillProgNotes() when ModuleSelected() is invoked, therefore, this event will fire when ModuleSelected() is called.  By only 
 			//firing this event here, we avoid duplicate events.
 			PatientDashboardDataEventArgs patientDashboardDataEventArgs=new PatientDashboardDataEventArgs();
-			if(dateLimit==DateTime.Today) {
+			//The chart's image is made only when a Patient Dashboard is shown to take it (DashToothChart.SetData is its only reader); a dashboard
+			//that opens later makes its own (DashToothChart.RefreshData).
+			if(dateLimit==DateTime.Today && FormOpenDental.IsDashboardVisible) {
 				try {
 					patientDashboardDataEventArgs.ImageToothChart=_toothChartRelay.GetBitmap();
 				}
@@ -7703,35 +7438,6 @@ namespace OpenPmsDental {
 			// Put check for showing films in here
 			return true;
 		}		
-
-		///<summary>Returns true if rowCur represents a valid procedure that should be shown on the tooth chart based on the current track bar date. Returns false if rowCur does not have a valid DateTP, DateEntryC, and ProcDate set. Will also return false if rowCur should not be drawn on the tooth chart (based on the track bar's currently selected date / status of rowCur). If the row needs to be skipped, it gets added to _listProcsSkipped so make sure to manage it correctly before calling this method.</summary>
-		private bool ShouldRowShowGraphical(DataRow dataRow,DateTime dateLimit) {
-			DateTime dateTP;
-			DateTime dateComplete;
-			DateTime dateScheduled;
-			ProcStat procStat=(ProcStat)PIn.Int(dataRow["ProcStatus"].ToString());
-			if(!DateTime.TryParse(dataRow["DateTP"].ToString(),out dateTP)) {
-				return false;
-			}
-			if(!DateTime.TryParse(dataRow["DateEntryC"].ToString(),out dateComplete)) {
-				return false;
-			}
-			if(!DateTime.TryParse(dataRow["aptDateTime"].ToString(),out dateScheduled)) {
-				return false;
-			}
-			if(dateLimit<dateTP) {//slider date is before the TP date
-				_listDataRowsProcsSkipped.Add(dataRow);
-				return false;//Skip the proc
-			}
-			if(!procStat.In(ProcStat.C,ProcStat.TP) && dateLimit<dateComplete) {//slider date is before the completion date and the procedure is not C or TP
-				_listDataRowsProcsSkipped.Add(dataRow);
-				return false;//Skip the proc
-			}
-			if(procStat==ProcStat.C && dateLimit<dateComplete && dateLimit>=dateTP) {//Procedure is C and the slider date is after or equal to the TP date, but before the completion date
-				dataRow["ProcStatus"]=POut.Int((int)ProcStat.TP);//Pretend the row is TP for the tooth chart
-			}
-			return true;
-		}
 
 		///<summary>Displays the menu item as enabled if all the selected rows return true for isRowRelevant. Displays the menu item as disabled if at least one but not all return true. Hides the menu item if no rows return true.</summary>
 		private void ShowMenuItemHelper(MenuItem menuItem,Func<DataRowWithIdx,bool> isRowRelevant) {

@@ -3838,22 +3838,7 @@ namespace OpenPmsDental {
 			ToothChartRelay toothChartRelay= new ToothChartRelay();
 			toothChartRelay.SetToothChartWrapper(toothChartWrapper);
 			toothChartWrapper.Size=new Size(500,370);
-			toothChartWrapper.UseHardware=ComputerPrefs.LocalComputer.GraphicsUseHardware;
-			toothChartWrapper.PreferredPixelFormatNumber=ComputerPrefs.LocalComputer.PreferredPixelFormatNum;
-			//Must be last preference set, last so that all settings are caried through in the reinitialization this line triggers.
-			if(ComputerPrefs.LocalComputer.GraphicsSimple==DrawingMode.Simple2D) {
-				toothChartWrapper.DrawMode=DrawingMode.Simple2D;
-			}
-			else if(ComputerPrefs.LocalComputer.GraphicsSimple==DrawingMode.DirectX) {
-				toothChartWrapper.DeviceFormat=new SparksToothChart.ToothChartDirectX.DirectXDeviceFormat(ComputerPrefs.LocalComputer.DirectXFormat);
-				toothChartWrapper.DrawMode=DrawingMode.DirectX;
-			}
-			else{
-				toothChartWrapper.DrawMode=DrawingMode.OpenGL;
-			}
-			//The preferred pixel format number changes to the selected pixel format number after a context is chosen.
-			ComputerPrefs.LocalComputer.PreferredPixelFormatNum=toothChartWrapper.PreferredPixelFormatNumber;
-			ComputerPrefs.Update(ComputerPrefs.LocalComputer);
+			ToothChartRelay.ApplyComputerSettings(toothChartWrapper,ToothChartSettingsUse.ModeByName);
 			toothChartRelay.SetToothNumberingNomenclature((ToothNumberingNomenclature)PrefC.GetInt(PrefName.UseInternationalToothNumbers));
 			List<Def> listDefs=Defs.GetDefsForCategory(DefCat.ChartGraphicColors);
 			toothChartRelay.ColorBackgroundMain=listDefs[14].ItemColor;

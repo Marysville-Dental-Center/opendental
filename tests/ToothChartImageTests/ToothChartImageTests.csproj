@@ -2,9 +2,13 @@
   <!-- Image tests of the graphical tooth chart (docs/specs/wpf-tooth-chart-plan.md, track TC). Package TC-0 adds the synthetic chart scenes,
        the recorder of today's DirectX, OpenGL and Simple 2D pictures (opt-in, OPMS_RECORD_LEGACY_CHART=1), the image comparer and the model
        tests; package TC-1 adds the WPF chart's mesh, scene, transform, renderer and image tests, its baselines (Baselines/wpf-net48) and the gallery.
-       No database and no program code: the scenes set their state through ToothChartRelay only. The project references WpfControlsOD
-       and the libraries below it, never the program. Every .cs file under this folder is compiled. -->
+       Package TC-2 adds the call-log tests of the chart's painting code, the only tests here with a database: synthetic patients in a scratch
+       database on the local MariaDB (Support\ChartTestDb.cs). No program code: the scenes set their state through ToothChartRelay only. The
+       project references WpfControlsOD and the libraries below it, never the program. Every .cs file under this folder is compiled. -->
   <ItemGroup>
+    <Reference Include="MySqlConnector">
+      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
+    </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <!-- The TC-1 transform test checks the WPF chart's matrices against the DirectX chart's math library. Removed with the DirectX engine in TC-9a. -->

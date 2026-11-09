@@ -131,13 +131,16 @@ namespace BINATests {
 			string wrapper=RepoFiles.Read(@"SparksToothChart\ToothChartWrapper.cs");
 			StringAssert.Contains(wrapper,"drawMode=StartFirstWorkingMode(value,IsDirectXRuntimeAvailable(),TryStartDrawMode,LogFallbackOnce);");
 			StringAssert.DoesNotMatch(wrapper,new Regex(@"MessageBox\.|MsgBox\."),"A fallback never shows a dialog.");
-			//Callers that test DirectX must treat any other mode as failure, because the chart may now fall back to OpenGL instead of 2D.
-			string graphics=RepoFiles.Read(@"OpenPmsDental\Forms\FormGraphics.cs");
-			StringAssert.Contains(graphics,"if(toothChartWrapperTest.DrawMode!=DrawingMode.DirectX) {");
-			StringAssert.Contains(graphics,"if(!ToothChartWrapper.IsDirectXRuntimeAvailable()) {");
-			//A computer with no working DirectX format is set to the next mode, OpenGL, rather than straight to Simple 2D.
-			StringAssert.Contains(RepoFiles.Read(@"OpenPmsDental\Main Modules\FormOpenDental.cs"),
+			//Callers that test DirectX must treat any other mode as failure, because the chart may now fall back to OpenGL instead of 2D. The
+			//format test and search moved from FormGraphics to the wrapper in TC-2; Setup > Graphics calls the wrapper's.
+			StringAssert.Contains(wrapper,"if(toothChartWrapperTest.DrawMode!=DrawingMode.DirectX) {");
+			StringAssert.Contains(wrapper,"if(!ToothChartWrapper.IsDirectXRuntimeAvailable()) {");
+			StringAssert.Contains(RepoFiles.Read(@"OpenPmsDental\Forms\FormGraphics.cs"),"ToothChartWrapper.TestDirectXFormat(this,_directXFormatSelected)");
+			//A computer with no working DirectX format is set to the next mode, OpenGL, rather than straight to Simple 2D. The start-up search moved
+			//from FormOpenDental to the relay in TC-2.
+			StringAssert.Contains(RepoFiles.Read(@"WpfControlsOD\UI\ToothChart\ToothChartRelay.cs"),
 				"ComputerPrefs.LocalComputer.GraphicsSimple=SparksToothChart.ToothChartWrapper.GetFallbackDrawMode(DrawingMode.DirectX);");
+			StringAssert.Contains(RepoFiles.Read(@"OpenPmsDental\Main Modules\FormOpenDental.cs"),"if(ToothChartRelay.ChooseStartupDirectXFormat(this)) {");
 		}
 
 		[TestMethod]
