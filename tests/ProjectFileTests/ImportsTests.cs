@@ -90,6 +90,44 @@ namespace ProjectFileTests {
 		}
 
 		[TestMethod]
+		public void TheRestoresPackageImports_AreRead_FromItsPackageFolder() {
+			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
+				//The form NuGet's restore writes (S2-1's packages with build files): $(NuGetPackageRoot) through $(UserProfile), the same folder
+				//literally in NuGetPackageFolders, and each package's build file behind an Exists condition.
+				string packages=fixtureFolder.Combine(@"Packages")+@"\";
+				fixtureFolder.WriteFile(@"tests\SdkStyle\obj\SdkStyle.csproj.nuget.g.props","<Project><PropertyGroup Condition=\" '$(ExcludeRestorePackageImports)' != 'true' \">"
+					+"<NuGetPackageRoot Condition=\" '$(NuGetPackageRoot)' == '' \">$(UserProfile)\\.nuget\\packages\\</NuGetPackageRoot>"
+					+"<NuGetPackageFolders Condition=\" '$(NuGetPackageFolders)' == '' \">"+packages+"</NuGetPackageFolders></PropertyGroup></Project>");
+				const string IMPORT="$(NuGetPackageRoot)fixture.package\\1.2.3\\buildTransitive\\net462\\Fixture.Package.targets";
+				const string IMPORT_MISSING="$(NuGetPackageRoot)fixture.other\\4.5.6\\buildTransitive\\net462\\Fixture.Other.targets";
+				fixtureFolder.WriteFile(@"tests\SdkStyle\obj\SdkStyle.csproj.nuget.g.targets","<Project><ImportGroup Condition=\" '$(ExcludeRestorePackageImports)' != 'true' \">"
+					+"<Import Project=\""+IMPORT+"\" Condition=\"Exists('"+IMPORT+"')\" /><Import Project=\""+IMPORT_MISSING+"\" Condition=\"Exists('"+IMPORT_MISSING+"')\" />"
+					+"</ImportGroup></Project>");
+				fixtureFolder.WriteFile(@"Packages\fixture.package\1.2.3\buildTransitive\net462\Fixture.Package.targets","<Project><PropertyGroup>"
+					+"<FixtureFromPackage>$(MSBuildThisFileDirectory)</FixtureFromPackage></PropertyGroup><ItemGroup><RedistList Include=\"$(MSBuildThisFileDirectory)List.xml\" />"
+					+"</ItemGroup><Target Name=\"FixturePackageTarget\" /></Project>");
+				ProjectFile projectFile=fixtureFolder.Load("SdkStyle");
+				string folderBuild=fixtureFolder.Combine(@"Packages\fixture.package\1.2.3\buildTransitive\net462")+@"\";
+				Assert.AreEqual(folderBuild,projectFile.GetProperty("FixtureFromPackage"));
+				Assert.AreEqual(1,projectFile.GetItems("RedistList").Count);
+				CollectionAssert.Contains(projectFile.FilesRead,folderBuild+"Fixture.Package.targets");
+				Assert.IsFalse(projectFile.FilesRead.Any(x => x.EndsWith("Fixture.Other.targets")),"A package file that is not there is not imported.");
+				if(Environment.GetEnvironmentVariable("UserProfile")!=null) {
+					AssertThrows<NotSupportedException>(() => projectFile.GetProperty("NuGetPackageRoot"),"$(UserProfile)");
+				}
+				//Another form of the import, or such an import outside the restore's files, is not read.
+				fixtureFolder.EditFile(@"tests\SdkStyle\obj\SdkStyle.csproj.nuget.g.targets","Condition=\"Exists('"+IMPORT+"')\"","");
+				AssertThrows<NotSupportedException>(() => fixtureFolder.Load("SdkStyle"),"another form");
+				fixtureFolder.DeleteFile(@"tests\SdkStyle\obj\SdkStyle.csproj.nuget.g.targets");
+				fixtureFolder.EditProject("SdkStyle",ANCHOR_SDK_ITEMS,ANCHOR_SDK_ITEMS+"</ItemGroup><Import Project=\""+IMPORT+"\" Condition=\"Exists('"+IMPORT+"')\" /><ItemGroup>");
+				if(Environment.GetEnvironmentVariable("UserProfile")!=null) {
+					//Its condition needs $(UserProfile), so whether MSBuild imports it is not known here.
+					AssertThrows<NotSupportedException>(() => fixtureFolder.Load("SdkStyle"),"does not read");
+				}
+			}
+		}
+
+		[TestMethod]
 		public void RepositoryProjects_ReadTheirRestoresProps() {
 			//Every SDK-style project of the solution filter that the build restored reads its obj\*.nuget.g.props, as MSBuild does.
 			string root=FixtureFolder.RepoRoot();
@@ -104,6 +142,121 @@ namespace ProjectFileTests {
 			Assert.AreEqual(Path.Combine(root,"CodeBase","obj","project.assets.json"),projectFile.GetProperty("ProjectAssetsFile"));
 		}
 		#endregion Project extensions
+
+		#region Central package versions
+		///<summary>A Directory.Packages.props as the repository's (S2-1): everything guarded for SDK-style projects, two central versions, and a
+		///property that shows what it sees of Directory.Build.props.</summary>
+		private const string PACKAGES_PROPS="<Project><PropertyGroup Condition=\"'$(UsingMicrosoftNETSdk)' == 'true'\">"
+			+"<ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally><FixturePackagesSee>[$(FixtureEveryProject)]</FixturePackagesSee>"
+			+"</PropertyGroup><ItemGroup Condition=\"'$(UsingMicrosoftNETSdk)' == 'true'\"><PackageVersion Include=\"Fixture.Package\" Version=\"1.2.3\" />"
+			+"<PackageVersion Include=\"Fixture.Other\" Version=\"4.5.6\" /></ItemGroup></Project>";
+		private const string ANCHOR_SDK_ITEMS="<ProjectReference Include=\"..\\Classic\\Classic.csproj\" />";
+
+		[TestMethod]
+		public void DirectoryPackagesProps_IsImported_AfterDirectoryBuildProps_AndGivesTheCentralVersions() {
+			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
+				//NuGet.props (the end of Microsoft.Common.props): found above the project, read after Directory.Build.props and before the project's
+				//own properties.
+				fixtureFolder.WriteFile("Directory.Packages.props",PACKAGES_PROPS);
+				fixtureFolder.EditProject("SdkStyle",ANCHOR_SDK_ITEMS,ANCHOR_SDK_ITEMS+"<PackageReference Include=\"Fixture.Package\" />"
+					+"<PackageReference Include=\"Fixture.Other\" VersionOverride=\"4.5.7\" />");
+				fixtureFolder.EditProject("SdkStyle","<OutputType>WinExe</OutputType>","<OutputType>WinExe</OutputType>"
+					+"<FixtureBodySees>$(ManagePackageVersionsCentrally)</FixtureBodySees>");
+				ProjectFile projectFile=fixtureFolder.Load("SdkStyle");
+				Assert.AreEqual("true",projectFile.GetProperty("ImportDirectoryPackagesProps"));
+				Assert.AreEqual("Directory.Packages.props",projectFile.GetProperty("_DirectoryPackagesPropsFile"));
+				Assert.AreEqual(fixtureFolder.Root,projectFile.GetProperty("_DirectoryPackagesPropsBasePath"));
+				Assert.AreEqual(fixtureFolder.Combine("Directory.Packages.props"),projectFile.GetProperty("DirectoryPackagesPropsPath"));
+				Assert.AreEqual("true",projectFile.GetProperty("CentralPackageVersionsFileImported"));
+				Assert.AreEqual("true",projectFile.GetProperty("ManagePackageVersionsCentrally"));
+				Assert.AreEqual("true",projectFile.GetProperty("_CentralPackageVersionsEnabled"),"NuGet.targets' switch.");
+				Assert.AreEqual("[root]",projectFile.GetProperty("FixturePackagesSee"),"After Directory.Build.props.");
+				Assert.AreEqual("true",projectFile.GetProperty("FixtureBodySees"),"Before the project's own properties.");
+				CollectionAssert.Contains(projectFile.FilesRead,fixtureFolder.Combine("Directory.Packages.props"));
+				Assert.AreEqual(2,projectFile.GetItems("PackageVersion").Count);
+				Assert.AreEqual("1.2.3",projectFile.GetPackageVersion("Fixture.Package"));
+				Assert.AreEqual("1.2.3",projectFile.GetPackageVersion("fixture.package"),"NuGet's ids ignore case.");
+				Assert.AreEqual("4.5.7",projectFile.GetPackageVersion("Fixture.Other"),"VersionOverride.");
+				Assert.IsNull(projectFile.GetPackageVersion("Fixture.NotReferenced"));
+				Assert.IsNotNull(projectFile.GetPackageReference("Fixture.Package"));
+				//A classic project imports it too, but its guarded groups give it nothing.
+				ProjectFile projectFileClassic=fixtureFolder.Load("Classic");
+				Assert.AreEqual("true",projectFileClassic.GetProperty("CentralPackageVersionsFileImported"));
+				Assert.AreEqual("",projectFileClassic.GetProperty("ManagePackageVersionsCentrally"));
+				Assert.AreEqual("",projectFileClassic.GetProperty("_CentralPackageVersionsEnabled"));
+				Assert.AreEqual(0,projectFileClassic.GetItems("PackageVersion").Count);
+				//Without central package management, a PackageReference's own Version.
+				fixtureFolder.EditFile("Directory.Packages.props","<ManagePackageVersionsCentrally>true","<ManagePackageVersionsCentrally>false");
+				fixtureFolder.EditProject("SdkStyle","<PackageReference Include=\"Fixture.Package\" />","<PackageReference Include=\"Fixture.Package\" Version=\"9.9.9\" />");
+				projectFile=fixtureFolder.Load("SdkStyle");
+				Assert.AreEqual("",projectFile.GetProperty("_CentralPackageVersionsEnabled"));
+				Assert.AreEqual("9.9.9",projectFile.GetPackageVersion("Fixture.Package"));
+			}
+		}
+
+		[TestMethod]
+		public void CentralPackageVersions_WhatTheRestoreRefuses_Throws() {
+			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
+				fixtureFolder.WriteFile("Directory.Packages.props",PACKAGES_PROPS);
+				//NU1008: a version on the PackageReference; NU1010: no PackageVersion; NU1013: VersionOverride turned off.
+				fixtureFolder.EditProject("SdkStyle",ANCHOR_SDK_ITEMS,ANCHOR_SDK_ITEMS+"<PackageReference Include=\"Fixture.Package\" Version=\"1.0.0\" />"
+					+"<PackageReference Include=\"Fixture.Missing\" /><PackageReference Include=\"Fixture.Other\" VersionOverride=\"4.5.7\" />");
+				ProjectFile projectFile=fixtureFolder.Load("SdkStyle");
+				AssertThrows<InvalidOperationException>(() => projectFile.GetPackageVersion("Fixture.Package"),"NU1008");
+				AssertThrows<InvalidOperationException>(() => projectFile.GetPackageVersion("Fixture.Missing"),"NU1010");
+				fixtureFolder.EditFile("Directory.Packages.props","<ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>",
+					"<ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally><CentralPackageVersionOverrideEnabled>false</CentralPackageVersionOverrideEnabled>");
+				AssertThrows<InvalidOperationException>(() => fixtureFolder.Load("SdkStyle").GetPackageVersion("Fixture.Other"),"NU1013");
+				//GlobalPackageReference items, which NuGet.targets turns into PackageReference and PackageVersion items, are not modelled.
+				fixtureFolder.EditFile("Directory.Packages.props","<PackageVersion Include=\"Fixture.Package\"","<GlobalPackageReference Include=\"Fixture.Global\" Version=\"1.0.0\" />"
+					+"<PackageVersion Include=\"Fixture.Package\"");
+				AssertThrows<NotSupportedException>(() => fixtureFolder.Load("SdkStyle"),"GlobalPackageReference");
+			}
+		}
+
+		[TestMethod]
+		public void DirectoryPackagesProps_TheSwitchAndThePathTheProjectNames() {
+			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
+				fixtureFolder.WriteFile("Directory.Packages.props",PACKAGES_PROPS);
+				fixtureFolder.WriteFile(@"Shared\Other.Packages.props","<Project><PropertyGroup><FixtureOtherPackages>other</FixtureOtherPackages></PropertyGroup></Project>");
+				//ImportDirectoryPackagesProps false: nothing is imported, and the path is not looked for.
+				fixtureFolder.EditFile(@"tests\Directory.Build.props","<Import Project=","<PropertyGroup><ImportDirectoryPackagesProps>false</ImportDirectoryPackagesProps>"
+					+"</PropertyGroup><Import Project=");
+				ProjectFile projectFile=fixtureFolder.Load("SdkStyle");
+				Assert.AreEqual("false",projectFile.GetProperty("ImportDirectoryPackagesProps"));
+				Assert.AreEqual("",projectFile.GetProperty("DirectoryPackagesPropsPath"));
+				Assert.AreEqual("",projectFile.GetProperty("CentralPackageVersionsFileImported"));
+				Assert.AreEqual("",projectFile.GetProperty("ManagePackageVersionsCentrally"));
+				Assert.AreEqual(0,projectFile.GetItems("PackageVersion").Count);
+				//A path the project names itself is the file imported.
+				fixtureFolder.EditFile(@"tests\Directory.Build.props","<ImportDirectoryPackagesProps>false</ImportDirectoryPackagesProps>",
+					"<DirectoryPackagesPropsPath>$(MSBuildThisFileDirectory)..\\Shared\\Other.Packages.props</DirectoryPackagesPropsPath>");
+				projectFile=fixtureFolder.Load("SdkStyle");
+				Assert.AreEqual("other",projectFile.GetProperty("FixtureOtherPackages"));
+				Assert.AreEqual("true",projectFile.GetProperty("CentralPackageVersionsFileImported"));
+				Assert.AreEqual("",projectFile.GetProperty("ManagePackageVersionsCentrally"),"Not the Directory.Packages.props above.");
+				Assert.AreEqual("",projectFile.GetProperty("_DirectoryPackagesPropsBasePath"),"Not looked for.");
+			}
+		}
+
+		[TestMethod]
+		public void RepositoryProjects_GetTheirPackageVersions_FromDirectoryPackagesProps() {
+			//The repository's own file (S2-1): every SDK-style project reads it, a classic one gets none of its versions.
+			string root=FixtureFolder.RepoRoot();
+			string pathPackagesProps=Path.Combine(root,"Directory.Packages.props");
+			ProjectFile projectFile=ProjectFile.Load(Path.Combine(root,"OpenPmsDentalBusiness","OpenPmsDentalBusiness.csproj"));
+			CollectionAssert.Contains(projectFile.FilesRead,pathPackagesProps);
+			Assert.AreEqual("true",projectFile.GetProperty("_CentralPackageVersionsEnabled"));
+			Assert.AreEqual("true",projectFile.GetProperty("CentralPackageTransitivePinningEnabled"));
+			Assert.AreEqual("4.92.0",projectFile.GetPackageVersion("Microsoft.Identity.Client"));
+			Assert.AreEqual("13.0.4",projectFile.GetPackageVersion("Newtonsoft.Json"));
+			Assert.AreEqual("compile",projectFile.GetPackageReference("Google.Apis").GetMetadata("PrivateAssets"));
+			ProjectFile projectFileServer=ProjectFile.Load(Path.Combine(root,"OpenPmsDentalServer","OpenPmsDentalServer.csproj"));
+			Assert.IsFalse(projectFileServer.IsSdkStyle);
+			Assert.AreEqual("",projectFileServer.GetProperty("ManagePackageVersionsCentrally"));
+			Assert.AreEqual(0,projectFileServer.GetItems("PackageVersion").Count);
+		}
+		#endregion Central package versions
 
 		#region The .user file
 		[TestMethod]

@@ -1,6 +1,7 @@
 // The opt-in proof that ProjectFile evaluates what MSBuild evaluates (package S1-T2 of the .NET 10 plan, docs/specs/net10-plan.md, section 3):
-// for every C# project of OpenDental.Local.slnf, the Compile, EmbeddedResource, Page, Resource, None and Content items it evaluates, with their metadata,
-// equal the items.txt that tools\Get-ProjectBaseline.ps1 recorded from MSBuild's own evaluation (-getItem), line for line. So the tests that
+// for every C# project of OpenDental.Local.slnf, the Compile, EmbeddedResource, Page, Resource, None, Content, PackageReference and PackageVersion
+// (since S2-1) items it evaluates, with their metadata, equal the items.txt that tools\Get-ProjectBaseline.ps1 recorded from MSBuild's own
+// evaluation (-getItem), line for line. So the tests that
 // read project files through ProjectFile see what the build sees, classic and SDK-style projects alike. It needs a record of the same tree,
 // taken after a full lane build and before any test run, so it runs only with OPMS_CHECK_PROJECT_BASELINE=1 (Inconclusive otherwise), against
 // the folder OPMS_PROJECT_BASELINE_DIR names, or tools\project-baseline. The stage gates run it against a record taken at the gate, and S1-3
@@ -131,6 +132,24 @@ namespace ProjectFileTests {
 		}
 
 		[TestMethod]
+		public void PackageItems_AreRecorded_WithTheCentralVersionsOfDirectoryPackagesProps() {
+			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
+				//As tools\Get-ProjectBaseline.ps1 records them since S2-1 (-getItem:PackageReference, -getItem:PackageVersion): a project's own
+				//PackageReference items, and the PackageVersion items it reads from Directory.Packages.props, which a classic project's guarded
+				//groups leave out.
+				fixtureFolder.WriteFile("Directory.Packages.props","<Project><PropertyGroup Condition=\"'$(UsingMicrosoftNETSdk)' == 'true'\">"
+					+"<ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup><ItemGroup Condition=\"'$(UsingMicrosoftNETSdk)' == 'true'\">"
+					+"<PackageVersion Include=\"Fixture.Package\" Version=\"1.2.3\" /></ItemGroup></Project>");
+				fixtureFolder.EditProject("SdkExplicitImports","<Compile Include=\"Program.cs\" />","<Compile Include=\"Program.cs\" />"
+					+"<PackageReference Include=\"Fixture.Package\" PrivateAssets=\"compile\" />");
+				List<string> listLines=BaselineRecord.GetItemLines(new[] { fixtureFolder.Load("SdkExplicitImports"),fixtureFolder.Load("Classic") },fixtureFolder.Root);
+				CollectionAssert.IsSubsetOf(new[] { "SdkExplicitImports|PackageReference|Fixture.Package|PrivateAssets=compile",
+					"SdkExplicitImports|PackageVersion|Fixture.Package|Version=1.2.3" },listLines);
+				Assert.AreEqual(0,listLines.Count(x => x.StartsWith("Classic|Package")),string.Join("; ",listLines));
+			}
+		}
+
+		[TestMethod]
 		public void AChangedItem_IsADifference() {
 			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
 				List<string> listBefore=BaselineRecord.GetItemLines(new[] { fixtureFolder.Load("SdkStyle") },fixtureFolder.Root);
@@ -144,9 +163,11 @@ namespace ProjectFileTests {
 
 	///<summary>The lines of items.txt as tools\Get-ProjectBaseline.ps1 writes them, from ProjectFile's evaluation instead of MSBuild's.</summary>
 	internal static class BaselineRecord {
-		///<summary>The item types the script records. Resource since S1-T3: a record taken before it holds no Resource lines, so it differs from
-		///this evaluation by every Resource item until it is taken again.</summary>
-		public static readonly string[] ArrayItemTypes=new[] { "Compile","EmbeddedResource","Page","Resource","None","Content" };
+		///<summary>The item types the script records. Resource since S1-T3, PackageReference and PackageVersion (the central versions of
+		///Directory.Packages.props) since S2-1: a record taken before holds no such lines, so it differs from this evaluation by every one of those
+		///items until it is taken again.</summary>
+		public static readonly string[] ArrayItemTypes=new[] { "Compile","EmbeddedResource","Page","Resource","None","Content","PackageReference",
+			"PackageVersion" };
 
 		///<summary>project|item type|include|metadata for every item of the recorded types: the project's file name without its extension, the
 		///include and every metadata value with paths relative to the repository (RecordPaths), the item's own metadata as name=value sorted by name

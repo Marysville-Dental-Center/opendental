@@ -281,9 +281,12 @@ namespace LibraryBindingTests {
 		///<summary>Ends with "Tests", the rule Directory.Build.targets uses for the shared test config.</summary>
 		public bool IsTest;
 		public bool AutoGeneratesRedirects;
-		///<summary>File names in "Required dlls" this project references (embedded interop types excluded) or copies to its output.</summary>
+		///<summary>File names in "Required dlls" this project references (embedded interop types excluded) or copies to its output: by a HintPath,
+		///or as the file of a package of its lock file (since S2-1 of the .NET 10 move, the packages whose files are the ones of "Required dlls").
+		///</summary>
 		public List<string> ListRequiredDlls=new List<string>();
-		///<summary>Primary references into "Required dlls" that are copied to the output whether the code uses them or not.</summary>
+		///<summary>Primary references into "Required dlls" that are copied to the output whether the code uses them or not, and the files of the
+		///packages of its lock file, which NuGet copies to the output of a .NET Framework project used or not.</summary>
 		public List<string> ListPrimaryReferencesCopied=new List<string>();
 		///<summary>Files of "Required dlls" that None or Content items copy to the output (and to the output of every project that references this one).</summary>
 		public List<string> ListCopyItems=new List<string>();
@@ -354,6 +357,10 @@ namespace LibraryBindingTests {
 					projectInfo.ListPrimaryReferencesCopied.Add(fileName);
 				}
 			}
+			foreach(string fileName in GetRequiredDllsOfPackages(projectInfo.Folder)) {
+				projectInfo.ListRequiredDlls.Add(fileName);
+				projectInfo.ListPrimaryReferencesCopied.Add(fileName);
+			}
 			foreach(ProjectItem projectItem in projectFile.GetItems("None").Concat(projectFile.GetItems("Content"))) {
 				string fileName=GetRequiredDllsFileName(projectItem.Include);
 				if(fileName!=null && projectItem.HasMetadata("CopyToOutputDirectory")) {
@@ -369,6 +376,25 @@ namespace LibraryBindingTests {
 			projectInfo.ConfigPath=Directory.GetFiles(projectInfo.Folder,"*.config")
 				.FirstOrDefault(x => new[] { "app.config","web.config" }.Contains(System.IO.Path.GetFileName(x).ToLowerInvariant()));
 			return projectInfo;
+		}
+
+		///<summary>The packages of the project's packages.lock.json (every package the restore gives it for .NET Framework 4.8, its own, those of the
+		///projects it references and their dependencies) whose assembly is a file of "Required dlls": the package's id plus .dll, or Renci.SshNet.dll
+		///for SSH.NET. Packages without such a file (Mono.Cecil, System.ValueTuple) are left out.</summary>
+		private static List<string> GetRequiredDllsOfPackages(string folderProject) {
+			List<string> listFiles=new List<string>();
+			string pathLock=System.IO.Path.Combine(folderProject,"packages.lock.json");
+			if(!File.Exists(pathLock)) {
+				return listFiles;
+			}
+			foreach(Match match in Regex.Matches(File.ReadAllText(pathLock),@"""([^""]+)""\s*:\s*\{\s*""type""\s*:\s*""(Direct|Transitive|CentralTransitive)""")) {
+				string packageId=match.Groups[1].Value;
+				string fileName=(packageId.Equals("SSH.NET",StringComparison.OrdinalIgnoreCase) ? "Renci.SshNet" : packageId)+".dll";
+				if(RequiredDlls.Files.ContainsKey(fileName) && !listFiles.Contains(fileName,StringComparer.OrdinalIgnoreCase)) {
+					listFiles.Add(fileName);
+				}
+			}
+			return listFiles;
 		}
 
 		///<summary>The file name when the path points into "Required dlls" (..\Required dlls\X.dll, ..\..\Required dlls\X.dll), otherwise null.</summary>
