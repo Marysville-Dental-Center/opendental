@@ -82,17 +82,18 @@ namespace ProjectFileTests {
 				//Read as x86 it would get the common targets' default instead, which the build never uses.
 				Assert.AreEqual(@"bin\x86\Debug\",ProjectFile.Load(Path.Combine(root,"WpfControlsOD","WpfControlsOD.csproj"),"Debug","x86").GetProperty("OutputPath"));
 			}
-			//CryptoTests (S1-T2's item 7, asserted on its own since S1-T3): the solution builds its Debug|x86 as Debug|Any CPU, so its AnyCPU group
-			//gives the output folder bin\Debug\, where the test runners look for CryptoTests.dll. A mapping fix to x86 must change this test.
+			//CryptoTests (S1-T2's item 7, asserted on its own since S1-T3): the solution builds its Debug|x86 as Debug|Any CPU, and the output folder
+			//is bin\Debug\, where the test runners look for CryptoTests.dll. A mapping fix to x86 must change this test.
 			StringAssert.Contains(textSln,"{E5185629-91EA-4199-9623-1FF57BBF9708}.Debug|x86.ActiveCfg = Debug|Any CPU","OpenDental.sln maps CryptoTests' Debug|x86.");
 			ProjectFile projectFileCrypto=ProjectFile.Load(Path.Combine(root,"tests","CryptoTests","CryptoTests.csproj"));
 			Assert.AreEqual("Debug|AnyCPU",projectFileCrypto.Configuration+"|"+projectFileCrypto.Platform);
 			Assert.AreEqual(@"bin\Debug\",projectFileCrypto.GetProperty("OutputPath"));
 			Assert.AreEqual(@"obj\Debug\",projectFileCrypto.GetProperty("IntermediateOutputPath"));
 			Assert.AreEqual(Path.Combine(root,"tests","CryptoTests","bin","Debug","CryptoTests.dll"),projectFileCrypto.GetProperty("TargetPath"));
-			Assert.AreEqual("x86",projectFileCrypto.GetProperty("PlatformTarget"),"Its own file's, for the AnyCPU platform too.");
-			//Read as x86, its other group would give bin\x86\Debug\, which the build never uses.
-			Assert.AreEqual(@"bin\x86\Debug\",ProjectFile.Load(projectFileCrypto.FullPath,"Debug","x86").GetProperty("OutputPath"));
+			Assert.AreEqual("x86",projectFileCrypto.GetProperty("PlatformTarget"),"The repository's Directory.Build.props', for the AnyCPU platform too.");
+			//Read as x86 the folder is the same: an SDK-style project since S1-6, it gets the flat output folder for every platform (the classic
+			//file's group for a platform other than AnyCPU gave bin\x86\Debug\, which the build never used).
+			Assert.AreEqual(@"bin\Debug\",ProjectFile.Load(projectFileCrypto.FullPath,"Debug","x86").GetProperty("OutputPath"));
 			Assert.IsTrue(countAnyCpu>=1,"CryptoTests at least.");
 			Assert.AreEqual("x86",ProjectFile.Load(Path.Combine(root,"OpenPmsDental","OpenPmsDental.csproj")).Platform);
 		}

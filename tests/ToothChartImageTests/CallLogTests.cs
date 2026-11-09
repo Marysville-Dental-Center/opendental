@@ -73,34 +73,39 @@ namespace ToothChartImageTests {
 				Assert.Inconclusive(CallLogFiles.EnvRecord+"=1: the logs are being recorded, so "+source+" is not compared.");
 			}
 			CallLogFixtures.EnsureBuilt();
-			CallLogFixtures.SetCulture();
+			CallLogFixtures.CultureScope cultureScope=CallLogFixtures.SetCulture();
 			List<string> listProblems=new List<string>();
 			int countCalls=0;
-			foreach(TScene scene in listScenes) {
-				string name=funcName(scene);
-				CallLogFixtures.ApplyUser(funcUser(scene));
-				CallLog callLog;
-				try {
-					callLog=funcRun(scene);
+			try {
+				foreach(TScene scene in listScenes) {
+					string name=funcName(scene);
+					CallLogFixtures.ApplyUser(funcUser(scene));
+					CallLog callLog;
+					try {
+						callLog=funcRun(scene);
+					}
+					finally {
+						CallLogFixtures.ApplyUser(CallLogUser.Plain);
+					}
+					countCalls+=callLog.Count;
+					TestContext.WriteLine(caller+" "+name+" ("+source+"): "+callLog.Count+" calls");
+					string text=callLog.ToText(caller,name);
+					if(CallLogFiles.IsRecording) {
+						CallLogFiles.Write(caller,name,text);
+						continue;
+					}
+					string textCommitted=CallLogFiles.Read(caller,name);
+					if(textCommitted==null) {
+						listProblems.Add(name+": no committed log at "+CallLogFiles.GetPath(caller,name));
+						continue;
+					}
+					if(text!=textCommitted) {
+						listProblems.Add(name+": "+DescribeFirstDifference(textCommitted,text));
+					}
 				}
-				finally {
-					CallLogFixtures.ApplyUser(CallLogUser.Plain);
-				}
-				countCalls+=callLog.Count;
-				TestContext.WriteLine(caller+" "+name+" ("+source+"): "+callLog.Count+" calls");
-				string text=callLog.ToText(caller,name);
-				if(CallLogFiles.IsRecording) {
-					CallLogFiles.Write(caller,name,text);
-					continue;
-				}
-				string textCommitted=CallLogFiles.Read(caller,name);
-				if(textCommitted==null) {
-					listProblems.Add(name+": no committed log at "+CallLogFiles.GetPath(caller,name));
-					continue;
-				}
-				if(text!=textCommitted) {
-					listProblems.Add(name+": "+DescribeFirstDifference(textCommitted,text));
-				}
+			}
+			finally {
+				cultureScope.Dispose();//the machine's cultures back for the later tests
 			}
 			TestContext.WriteLine(caller+" ("+source+"): "+listScenes.Count+" scenes, "+countCalls+" calls");
 			Assert.IsTrue(countCalls>0,caller+": no calls at all.");

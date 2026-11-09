@@ -1,0 +1,187 @@
+{
+  "version": 1,
+  "dependencies": {
+    ".NETFramework,Version=v4.8": {
+      "CodeBase": {
+        "type": "Project"
+      },
+      "DataConnectionBase": {
+        "type": "Project",
+        "dependencies": {
+          "CodeBase": "[1.0.0, )"
+        }
+      },
+      "ImagingCapture": {
+        "type": "Project",
+        "dependencies": {
+          "CodeBase": "[1.0.0, )",
+          "ImagingDeviceManager": "[1.0.0, )",
+          "OpenPmsDentalBusiness": "[1.0.0, )",
+          "WpfControlsOD": "[1.0.0, )"
+        }
+      },
+      "ImagingDeviceManager": {
+        "type": "Project",
+        "dependencies": {
+          "PdfSharp-gdi": "[1.0.0, )"
+        }
+      },
+      "migradoc.documentobjectmodel": {
+        "type": "Project",
+        "dependencies": {
+          "PdfSharp.Shared": "[1.0.0, )",
+          "PdfSharp.System": "[1.0.0, )"
+        }
+      },
+      "migradoc.rendering-gdi": {
+        "type": "Project",
+        "dependencies": {
+          "MigraDoc.DocumentObjectModel": "[1.0.0, )",
+          "PdfSharp-gdi": "[1.0.0, )",
+          "PdfSharp.Charting-gdi": "[1.0.0, )",
+          "PdfSharp.Shared": "[1.0.0, )",
+          "PdfSharp.System": "[1.0.0, )"
+        }
+      },
+      "ODCrypt": {
+        "type": "Project"
+      },
+      "ODR": {
+        "type": "Project",
+        "dependencies": {
+          "CodeBase": "[1.0.0, )",
+          "DataConnectionBase": "[1.0.0, )",
+          "OpenPmsDentalBusiness": "[1.0.0, )"
+        }
+      },
+      "openpmsdental": {
+        "type": "Project",
+        "dependencies": {
+          "CodeBase": "[1.0.0, )",
+          "DataConnectionBase": "[1.0.0, )",
+          "ImagingCapture": "[1.0.0, )",
+          "ImagingDeviceManager": "[1.0.0, )",
+          "MigraDoc.DocumentObjectModel": "[1.0.0, )",
+          "MigraDoc.Rendering-gdi": "[1.0.0, )",
+          "ODCrypt": "[1.0.0, )",
+          "ODR": "[1.0.0, )",
+          "OpenPmsDentalBusiness": "[1.0.0, )",
+          "OpenPmsDentalDbSettings": "[1.0.0, )",
+          "OpenPmsDentalGraph": "[1.0.0, )",
+          "OpenPmsDentalStorage": "[1.0.0, )",
+          "PdfSharp-gdi": "[1.0.0, )",
+          "PdfSharp.Charting-gdi": "[1.0.0, )",
+          "RdlEngine": "[1.0.0, )",
+          "RdlViewer": "[1.0.0, )",
+          "ServiceManager": "[1.0.0, )",
+          "SparksToothChart": "[1.0.0, )",
+          "WpfControlsOD": "[1.0.0, )"
+        }
+      },
+      "openpmsdentalbusiness": {
+        "type": "Project",
+        "dependencies": {
+          "CodeBase": "[1.0.0, )",
+          "DataConnectionBase": "[1.0.0, )",
+          "ODCrypt": "[1.0.0, )",
+          "OpenPmsDentalStorage": "[1.0.0, )",
+          "PasswordVaultWrapper": "[1.0.0, )",
+          "PdfSharp-gdi": "[1.0.0, )",
+          "PdfSharp.Shared": "[1.0.0, )",
+          "PdfSharp.System": "[1.0.0, )"
+        }
+      },
+      "openpmsdentaldbsettings": {
+        "type": "Project",
+        "dependencies": {
+          "CodeBase": "[1.0.0, )",
+          "DataConnectionBase": "[1.0.0, )"
+        }
+      },
+      "openpmsdentalgraph": {
+        "type": "Project",
+        "dependencies": {
+          "CodeBase": "[1.0.0, )",
+          "DataConnectionBase": "[1.0.0, )",
+          "OpenPmsDentalBusiness": "[1.0.0, )",
+          "PdfSharp-gdi": "[1.0.0, )"
+        }
+      },
+      "openpmsdentalstorage": {
+        "type": "Project",
+        "dependencies": {
+          "CodeBase": "[1.0.0, )"
+        }
+      },
+      "passwordvaultwrapper": {
+        "type": "Project",
+        "dependencies": {
+          "CodeBase": "[1.0.0, )"
+        }
+      },
+      "pdfsharp-gdi": {
+        "type": "Project",
+        "dependencies": {
+          "PdfSharp.Shared": "[1.0.0, )",
+          "PdfSharp.System": "[1.0.0, )"
+        }
+      },
+      "pdfsharp.charting-gdi": {
+        "type": "Project",
+        "dependencies": {
+          "PdfSharp-gdi": "[1.0.0, )",
+          "PdfSharp.Shared": "[1.0.0, )",
+          "PdfSharp.System": "[1.0.0, )"
+        }
+      },
+      "pdfsharp.shared": {
+        "type": "Project"
+      },
+      "pdfsharp.system": {
+        "type": "Project",
+        "dependencies": {
+          "PdfSharp.Shared": "[1.0.0, )"
+        }
+      },
+      "rdlengine": {
+        "type": "Project"
+      },
+      "rdlviewer": {
+        "type": "Project",
+        "dependencies": {
+          "RdlEngine": "[1.0.0, )"
+        }
+      },
+      "servicemanager": {
+        "type": "Project",
+        "dependencies": {
+          "CodeBase": "[1.0.0, )",
+          "DataConnectionBase": "[1.0.0, )",
+          "OpenPmsDentalBusiness": "[1.0.0, )"
+        }
+      },
+      "sparkstoothchart": {
+        "type": "Project",
+        "dependencies": {
+          "CodeBase": "[1.0.0, )",
+          "DataConnectionBase": "[1.0.0, )",
+          "OpenPmsDentalBusiness": "[1.0.0, )"
+        }
+      },
+      "wecantspell.hunspell": {
+        "type": "Project"
+      },
+      "wpfcontrolsod": {
+        "type": "Project",
+        "dependencies": {
+          "CodeBase": "[1.0.0, )",
+          "DataConnectionBase": "[1.0.0, )",
+          "OpenPmsDentalBusiness": "[1.0.0, )",
+          "PdfSharp-gdi": "[1.0.0, )",
+          "SparksToothChart": "[1.0.0, )",
+          "WeCantSpell.Hunspell": "[1.0.0, )"
+        }
+      }
+    }
+  }
+}

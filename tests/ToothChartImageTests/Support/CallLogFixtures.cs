@@ -132,16 +132,40 @@ namespace ToothChartImageTests {
 				if(_isBuilt) {
 					return;
 				}
-				SetCulture();
-				Build();
+				CultureScope cultureScope=SetCulture();
+				try {
+					Build();
+				}
+				finally {
+					cultureScope.Dispose();
+				}
 				_isBuilt=true;
 			}
 		}
 
-		///<summary>The call logs are compared in en-US: the progress notes table writes its dates with the workstation's short date format.</summary>
-		public static void SetCulture() {
+		///<summary>The call logs are compared in en-US: the progress notes table writes its dates with the workstation's short date format. The
+		///returned scope puts the thread's cultures back when disposed, so later tests in the assembly run under the machine's own culture.</summary>
+		public static CultureScope SetCulture() {
+			CultureScope cultureScope=new CultureScope(Thread.CurrentThread.CurrentCulture,Thread.CurrentThread.CurrentUICulture);
 			Thread.CurrentThread.CurrentCulture=new CultureInfo("en-US");
 			Thread.CurrentThread.CurrentUICulture=new CultureInfo("en-US");
+			return cultureScope;
+		}
+
+		///<summary>The thread's cultures before SetCulture; Dispose restores them.</summary>
+		public sealed class CultureScope:IDisposable {
+			private readonly CultureInfo _culture;
+			private readonly CultureInfo _cultureUI;
+
+			public CultureScope(CultureInfo culture,CultureInfo cultureUI) {
+				_culture=culture;
+				_cultureUI=cultureUI;
+			}
+
+			public void Dispose() {
+				Thread.CurrentThread.CurrentCulture=_culture;
+				Thread.CurrentThread.CurrentUICulture=_cultureUI;
+			}
 		}
 
 		private static void Build() {
