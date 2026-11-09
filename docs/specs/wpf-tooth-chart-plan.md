@@ -186,13 +186,27 @@ the later packages:
   - Owner question **O-34** (section 10) asks whether the line stays, with the live view as it actually runs.
   - G1's times process sets `SoftwareOnly` first, as the program does, and G1's table adds the live view's frame: the time until WPF has
     drawn and presented it (`MediaContext.CompleteRender`, on a window on the display that the user cannot see), and one full software
-    frame at 1x (a `RenderTargetBitmap` of the view's content) as a proxy. A second process measures the live view with hardware
-    rendering, for O-34's choice (a).
+    frame at 1x (a `RenderTargetBitmap` of the view's content) as a proxy. The same wait on the off-screen window of the UI-thread times
+    gives the same refill frame, so WPF draws that window too and the first times left the frame out rather than skipped it.
   - G1 shows the live view's 1x capture (`ToothChartWpfView.GetBitmapForTests`) next to the renderer's picture and DirectX's for six
     scenes, each with a 3x enlargement.
-  - The live view keeps its 3D layer in a `BitmapCache` (1x, snapped to the pixels; the captures are identical with and without it) and
-    draws the pen stroke in progress on an element of its own, so a selection or a pen move composites the cached 3D image instead of
-    rasterizing the 3D layer again.
+  - The live view keeps its 3D layer in a `BitmapCache` and draws the pen stroke in progress on an element of its own, so a selection or a
+    pen move composites the cached 3D image instead of rasterizing the 3D layer again. The cache is on a `Border` the size of the chart
+    that holds the background and the `Viewport3D`: on the `Viewport3D` itself, whose bounds are those of its teeth, the cached image
+    landed off the pixels and the capture changed. Now the captures are identical with and without the cache (a test).
+  - **Results** (G1 at `7e9dd3c07`, fresh process drawing in software, median of 21, at 410x307 and 615x461; the live view until WPF has
+    presented its frame). A refill: DirectX 34 and 48 ms; the live view 135 and 169 ms (the UI thread 14 and 15 ms, WPF's software frame
+    121 and 154 ms); the renderer's picture (the switch) 332 and 572 ms. A selection-only change: DirectX 48 and 47 ms; the live view 10
+    and 10 ms (frame 1.4 and 2.1 ms); without the cache, as TC-3 first built it, 132 and 165 ms, which is the reviewer's case (the
+    highlight waited for a software redraw of the whole 3D layer); the renderer's picture 16 and 16 ms. One pen move: the live view 0.4
+    ms (2.8 and 3.0 ms without the cache). With the Patient Dashboard visible a refill also makes the dashboard's picture: DirectX 111
+    and 143 ms, the live view 574 and 871 ms, the renderer's picture 333 and 587 ms (it reuses that picture's 3D layer). One full
+    software frame of the live view at 1x (the proxy) is 259 and 305 ms. The live view's captures agree with the renderer's picture at
+    all 417 parity probes of the six scenes; 4.3 to 5.3% of their pixels differ by more than 8 of 255, and 91 to 93% of those lie next to
+    an edge of the renderer's picture (a neighbour more than 24 of 255 apart): the live view's unsmoothed edges.
+  - A measurement of the live view with hardware rendering (a second process without `SoftwareOnly`) gave a fixed 110 to 130 ms per
+    frame for every change, a 4-pixel pen move included, on the build PC's 1%-opaque test window (NVIDIA and Intel adapters): a cost of
+    that window or of the present, not of drawing. It is not in G1; O-34 (a)'s package would measure hardware on the office's graphics.
   - "Drawn by the graphics card" is corrected in `ToothChartWpfView.cs`, `ToothChartEngine.cs`, `ToothChartWrapper.cs`, the tests and this
     plan. A source test pins the line and that no other render-mode setting exists, so a change to it brings this plan and the tests along.
 
@@ -719,8 +733,10 @@ sheets and the dashboard (TC-1's gallery G0, `timings.txt`). TC-3's fix round fo
     (`WpfControlsOD` and every `ElementHost`), not only the chart. A window's `HwndTarget.RenderMode` cannot turn hardware back on. So the
     live view of O-19 (b) is drawn by WPF's software rasterizer at 1x with no edge smoothing (jagged tooth edges, unlike the renderer's
     3x picture and DirectX's smoothed default; G1's live-view section shows both), and the "Draw in software" switch chooses between two
-    software pictures: the live view (fast refills) and the renderer's smoothed picture (the same as every print; a refill takes 0.4 to
-    0.7 s). G1's times now include the live view's frame in software.
+    software pictures: the live view (fast refills) and the renderer's smoothed picture (the same as every print). G1's times, now with
+    the live view's software frame (section 2, TC-3 fix round 1): a refill takes 135 and 169 ms in the live view at 100% and 150%
+    against 332 and 572 ms with the renderer's picture and 34 and 48 ms with DirectX; a selection takes 10 ms in the live view, 16 ms
+    with the renderer's picture and 47 to 48 ms with DirectX.
   - **(a)** A separate, owner-approved package removes or narrows the line. Narrowing means removing the process-wide line and asking for
     software per window (`HwndTarget.RenderMode`) where it is still wanted, since a window can ask for software but not for hardware. Either
     way it changes WPF windows of the whole program, so it needs its own launch check on the office's graphics, and it brings back the
@@ -730,8 +746,10 @@ sheets and the dashboard (TC-1's gallery G0, `timings.txt`). TC-3's fix round fo
     on-screen chart (the fastest refills; 1x edges) with the switch for the smoothed picture; or (b2) show the renderer's smoothed
     picture everywhere (O-19 (a); what is printed is what is shown, but a refill takes 0.4 to 0.7 s), and drop the live view.
   - **Recommended:** (b1). The line is upstream's and covers far more than the chart, so changing it belongs to its own package and launch
-    check, if ever. In software the live view is out of reach of driver faults, and with its cached 3D layer a selection or a pen move
-    redraws no 3D (G1's times); the switch stays for an office that prefers the smoothed picture.
+    check, if ever. In software the live view is out of reach of driver faults, a refill shows in about half the time of the smoothed
+    picture (135 and 169 ms against 332 and 572 ms), and with its cached 3D layer a selection (10 ms) or a pen move (under 1 ms) redraws
+    no 3D; the cost is the 1x edges that G1 shows. The switch stays for an office that prefers the smoothed picture. Neither path reaches
+    DirectX's refill (34 and 48 ms); the dashboard's picture on each refill (G1's question) is a separate cost.
 
 ---
 
