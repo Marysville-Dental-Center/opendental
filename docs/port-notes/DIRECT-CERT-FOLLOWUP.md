@@ -219,3 +219,23 @@ not accept them; the checks are about the key only, and the connection settings 
 - `RemoveImported` takes the certificate out of the store before it deletes the key. When the key cannot be deleted, the warning says the
   certificate "could not be removed from the computer's certificate store" and to remove it in certlm.msc, but the certificate is already
   gone and only its key is left, which certlm.msc can no longer reach.
+
+(Both done in the follow-up round, below.)
+
+## Follow-up round (branch `fix/dcfu2-1`, 2026-11-09)
+
+Cut from `fix/directcert-followup-1` (b1f47d940). The lead decided the two questions above (the same behaviour as DIRECT-CERT's import,
+`OpenPmsDentalBusiness/Email/DirectCertificateImport.cs`) and passed on the reviewer's smaller points. The plan:
+
+1. `ImportPfx` deletes the keys its `PersistKeySet` read stored and does not use: those of the file's other certificates after the add,
+   and every one (the client certificate's too) when the store refuses the certificate or anything else stops the import. Only keys this
+   import stored, and never one that a certificate of the store or the client certificate uses (DirectCertificateImport's
+   `DeleteKeysNotInStore`, `DeleteKeysNotInUse`, `GetKeyContainerName`). Tests in the test store with throwaway keys: a `.pfx` with a
+   client certificate and a CA certificate with a key; a refused import.
+2. `RemoveImported`'s warning when only the key delete fails: the certificate was removed, its private key was left, and where (its file).
+   The order is decided from DirectCertificateImport's; a seam makes the key delete fail in the test.
+3. The test store: `CertUnregisterSystemStore`'s result is checked; a throwaway key is recorded before it is inspected.
+4. The failure message of the test that pins Windows' own behaviour (`CapiKey_IsNamedAndDeletedThroughCapi_NotThroughTheCngViewOfIt`).
+5. `GetCapiRsaPrivateKey` catches what DirectCertificateImport's copy catches.
+6. The launch checks get an explicit CNG import step.
+7. Two over-long lines re-wrapped.
