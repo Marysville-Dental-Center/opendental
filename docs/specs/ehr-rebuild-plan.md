@@ -129,9 +129,9 @@ The 43 `ShowFeatureEhr` lines in 25 files (hooks survey, section 3) behave as Op
   - Rx BIN (`FormInsPlan.cs:504`).
   - Summary-of-care warnings and the CCD e-mail on referrals (`FrmRefAttachEdit.xaml.cs:238`, `FrmReferralsPatient.xaml.cs:437`).
   - Patient Export (`FormReportsMore.cs:45`).
-  - The Direct Message send option (`FormEmailMessageEdit.cs:169-171`, restored in S0-3D). Registering a Direct certificate
-    (`FormEmailCertRegister`) still fails until the certificate-import package of O-13 lands; the release notes and launch check 10 say
-    so.
+  - The Direct Message send option (`FormEmailMessageEdit.cs:169-171`, restored in S0-3D). The address's Direct certificate comes from
+    the Direct provider's file since the certificate-import package of O-13 (`FormEmailCertRegister`, `docs/port-notes/DIRECT-CERT.md`):
+    the Certificate button of Edit Email Address shows with or without EHR, because signed e-mail uses the same certificate (O-1).
 - **Already reachable without EHR on:** Setup > Chart > EHR (`FormOpenDentalMenus.cs:252`) and the Chart's CCD button
   (`ControlChart.cs:4638-4642`).
 - **No longer tied to EHR:** TimeSync (`FormOpenDentalThreads.cs:759`, section 4).
@@ -956,8 +956,8 @@ The key was a licence check, but it was also the only thing that kept these acti
    Open PMS - Dental, the address is the practice's, and no Open Dental identifier is present except the office's own root. On a database
    whose root was issued under Open Dental's arc, the export first shows the warning.
 9. **Release dry run.** The staged file list is unchanged by every EHR package.
-10. **Direct.** With EHR on, the e-mail window offers Direct sending. Registering a certificate still fails until the O-13 package; the
-    release notes say so.
+10. **Direct.** With EHR on, the e-mail window offers Direct sending. The address's certificate is imported from a generated test `.pfx`
+    (never a real one) with the Certificate button of Edit Email Address, as the launch checks of `docs/port-notes/DIRECT-CERT.md` say.
 
 ---
 
