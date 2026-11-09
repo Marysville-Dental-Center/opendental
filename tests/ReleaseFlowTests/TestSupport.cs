@@ -103,7 +103,7 @@ namespace ReleaseFlowTests {
 				}
 				else {
 					try {
-						using(MySqlConnection connection=new MySqlConnection(CONNECTION_SERVER)) {
+						using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION_SERVER))) {
 							connection.Open();
 						}
 						_isAvailable=true;
@@ -160,7 +160,7 @@ namespace ReleaseFlowTests {
 					+"FName varchar(100) NOT NULL DEFAULT '',PatStatus tinyint(4) NOT NULL DEFAULT 0,Email varchar(100) NOT NULL DEFAULT '',"
 					+"PRIMARY KEY (PatNum),KEY indexLName (LName(10))) ENGINE=MyISAM DEFAULT CHARSET=utf8mb3");
 			}
-			new DataConnection().SetDb("127.0.0.1",dbName,"root","","root","",DatabaseType.MySql,true);
+			new DataConnection().SetDb("127.0.0.1",dbName,"root","","root","",DatabaseType.MySql,true,DevDbTls.GetSslCa("127.0.0.1"));
 		}
 
 		///<summary>Throws unless the name is one this run made with RunName, so a test never recreates a database another run may be using.</summary>
@@ -217,7 +217,7 @@ namespace ReleaseFlowTests {
 		}
 
 		private static MySqlConnection Open(string dbName) {
-			MySqlConnection connection=new MySqlConnection(CONNECTION_SERVER+(dbName==null?"":";Database="+dbName));
+			MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION_SERVER+(dbName==null?"":";Database="+dbName)));
 			connection.Open();
 			using(MySqlCommand mySqlCommand=new MySqlCommand("SET SESSION sql_mode=''",connection)) {
 				mySqlCommand.ExecuteNonQuery();

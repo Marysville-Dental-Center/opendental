@@ -3,6 +3,7 @@
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Globalization;
+using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
 
@@ -31,7 +32,7 @@ namespace VendorDirectTests {
 			string nameRecent="vendordirect_zz_scratchdb_tests_"+DateTime.UtcNow.AddHours(-1).ToString("yyMMddHHmmss",CultureInfo.InvariantCulture)+"_1_1234";
 			string nameFixed="vendordirect_zz_scratchdb_tests";
 			try {
-				using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION))) {
 					connection.Open();
 					foreach(string name in new[] { nameOld,nameRecent,nameFixed }) {
 						Exec(connection,"CREATE DATABASE IF NOT EXISTS "+name);
@@ -43,7 +44,7 @@ namespace VendorDirectTests {
 			}
 			try {
 				ScratchDb.DropStale();
-				using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION))) {
 					connection.Open();
 					Assert.IsFalse(Exists(connection,nameOld),"Left by a run that started long ago.");
 					Assert.IsTrue(Exists(connection,nameRecent),"A run that may still be going.");
@@ -51,7 +52,7 @@ namespace VendorDirectTests {
 				}
 			}
 			finally {
-				using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION))) {
 					connection.Open();
 					foreach(string name in new[] { nameOld,nameRecent,nameFixed }) {
 						Exec(connection,"DROP DATABASE IF EXISTS "+name);

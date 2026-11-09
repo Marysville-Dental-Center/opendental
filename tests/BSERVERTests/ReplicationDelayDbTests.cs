@@ -66,8 +66,11 @@ namespace BSERVERTests {
 				"DELETE FROM signalod");
 			Prefs.RefreshCache();
 			ReplicationServers.RefreshCache();
-			ConnectionStore.OverrideConnection(ConnectionNames.DentalOfficeReadOnlyServer,
-				new CentralConnection { ServerName=ServerTestDb.SERVER,DatabaseName=_dbReplica,MySqlUser="root",MySqlPassword="" });
+			//ConnectionStoreBase directly: CentralConnection's conversion to CentralConnectionBase does not carry SslCA, and the local test
+			//server's CA (DevDbTls) must reach ConnectionStoreBase.SetDbT.
+			ConnectionStoreBase.OverrideConnection(ConnectionNames.DentalOfficeReadOnlyServer,
+				new CentralConnectionBase { ServerName=ServerTestDb.SERVER,DatabaseName=_dbReplica,MySqlUser="root",MySqlPassword="",
+					SslCa=DevDbTls.GetSslCa(ServerTestDb.SERVER) });
 			_msNow=1000000;
 			ReplicationDelay.ClearLastWrite();
 			ReplicationDelay.SignalLookback.Clear();

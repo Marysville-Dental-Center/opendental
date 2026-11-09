@@ -37,7 +37,7 @@ namespace VendorDirectTests.EdgeExpressTests {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION))) {
 					connection.Open();
 					Exec(connection,"DROP DATABASE IF EXISTS "+DB_NAME);
 					Exec(connection,"CREATE DATABASE "+DB_NAME+" CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci");
@@ -120,7 +120,7 @@ namespace VendorDirectTests.EdgeExpressTests {
 		}
 
 		private static void UseScratchDb() {
-			new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true);
+			new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true,DevDbTls.GetSslCa("127.0.0.1"));
 		}
 
 		private static void AddCreds(long clinicNum,string xWebID,string authKeyStored,string terminalID) {
@@ -137,7 +137,7 @@ namespace VendorDirectTests.EdgeExpressTests {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION))) {
 					connection.Open();
 					Exec(connection,"DROP DATABASE IF EXISTS "+DB_NAME);
 				}
@@ -157,7 +157,7 @@ namespace VendorDirectTests.EdgeExpressTests {
 			Prefs.RefreshCache();
 			Programs.RefreshCache();
 			ProgramProperties.RefreshCache();
-			using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
+			using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION))) {
 				connection.Open();
 				Exec(connection,"DELETE FROM "+DB_NAME+".xwebresponse");
 				Exec(connection,"DELETE FROM "+DB_NAME+".alertitem");
@@ -540,7 +540,7 @@ namespace VendorDirectTests.EdgeExpressTests {
 				Assert.AreEqual(EdgeExpressReturnMode.Embedded,EdgeExpress.CNP.GetReturnMode(2));
 			}
 			finally {
-				using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION))) {
 					connection.Open();
 					Exec(connection,"DELETE FROM "+DB_NAME+".programproperty WHERE PropertyDesc IN ('"+desc+"','"+EdgeExpress.PropertyDescs.ReturnMode+"')");
 				}
@@ -558,7 +558,7 @@ namespace VendorDirectTests.EdgeExpressTests {
 				Assert.AreEqual(EdgeExpress.CNP.DirectPayUrlTest,EdgeExpress.CNP.GetDirectPayUrl());
 			}
 			finally {
-				using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION))) {
 					connection.Open();
 					Exec(connection,"DELETE FROM "+DB_NAME+".programproperty WHERE PropertyDesc='"+EdgeExpress.PropertyDescs.UseTestGateway+"'");
 				}

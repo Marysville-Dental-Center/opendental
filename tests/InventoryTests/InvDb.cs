@@ -114,8 +114,8 @@ namespace InventoryTests {
 		}
 
 		public static MySqlConnection OpenServer(string database="") {
-			MySqlConnection connection=new MySqlConnection("Server="+Server+";Port=3306;User ID="+User+";Password="+Password
-				+(database=="" ? "" : ";Database="+database)+";Connection Timeout=15;Allow User Variables=true;Default Command Timeout=600");
+			MySqlConnection connection=new MySqlConnection(DevDbTls.Apply("Server="+Server+";Port=3306;User ID="+User+";Password="+Password
+				+(database=="" ? "" : ";Database="+database)+";Connection Timeout=15;Allow User Variables=true;Default Command Timeout=600"));
 			connection.Open();
 			return connection;
 		}
@@ -201,7 +201,7 @@ namespace InventoryTests {
 		///<summary>Points the business layer (DataCore, Db, the caches) at the database.</summary>
 		public static void Connect(string name) {
 			RemotingClient.MiddleTierRole=MiddleTierRole.ClientDirect;
-			new DataConnection().SetDb(Server,name,User,Password,"","",DatabaseType.MySql,true);
+			new DataConnection().SetDb(Server,name,User,Password,"","",DatabaseType.MySql,true,DevDbTls.GetSslCa(Server));
 		}
 
 		public static void Exec(MySqlConnection connection,string command) {

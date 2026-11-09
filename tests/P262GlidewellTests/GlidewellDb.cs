@@ -92,7 +92,7 @@ namespace P262GlidewellTests {
 
 		public static void Connect() {
 			RemotingClient.MiddleTierRole=MiddleTierRole.ClientDirect;
-			new DataConnection().SetDb(Server,DbName,User,Password,"","",DatabaseType.MySql,true);
+			new DataConnection().SetDb(Server,DbName,User,Password,"","",DatabaseType.MySql,true,DevDbTls.GetSslCa(Server));
 		}
 
 		#region Synthetic rows
@@ -183,8 +183,8 @@ namespace P262GlidewellTests {
 		}
 
 		private static MySqlConnection OpenServer() {
-			MySqlConnection connection=new MySqlConnection("Server="+Server+";Port=3306;User ID="+User+";Password="+Password
-				+";Connection Timeout=15;Allow User Variables=true;Default Command Timeout=600");
+			MySqlConnection connection=new MySqlConnection(DevDbTls.Apply("Server="+Server+";Port=3306;User ID="+User+";Password="+Password
+				+";Connection Timeout=15;Allow User Variables=true;Default Command Timeout=600"));
 			connection.Open();
 			return connection;
 		}

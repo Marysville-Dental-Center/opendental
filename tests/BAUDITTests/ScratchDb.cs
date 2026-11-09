@@ -52,7 +52,7 @@ namespace BAUDITTests {
 		}
 
 		private static MySqlConnection OpenServer() {
-			MySqlConnection connection=new MySqlConnection("Server="+SERVER+";Port=3306;User ID="+USER+";Password="+PASSWORD+";Connection Timeout=15");
+			MySqlConnection connection=new MySqlConnection(DevDbTls.Apply("Server="+SERVER+";Port=3306;User ID="+USER+";Password="+PASSWORD+";Connection Timeout=15"));
 			connection.Open();
 			return connection;
 		}
@@ -110,7 +110,7 @@ namespace BAUDITTests {
 
 		public static void Connect(string name) {
 			RemotingClient.MiddleTierRole=MiddleTierRole.ClientDirect;
-			new DataConnection().SetDb(SERVER,name,USER,PASSWORD,"","",DatabaseType.MySql,true);
+			new DataConnection().SetDb(SERVER,name,USER,PASSWORD,"","",DatabaseType.MySql,true,DevDbTls.GetSslCa(SERVER));
 		}
 
 		public static void Drop(string name) {

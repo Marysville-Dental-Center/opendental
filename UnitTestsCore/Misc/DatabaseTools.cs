@@ -23,7 +23,8 @@ namespace UnitTestsCore {
 				if(!isOracle) {
 					DataConnection.DBtype=DatabaseType.MySql;
 					//Create a database connection and make sure to set the MySQL UserLow and PassLow for Middle Tier unit tests.
-					new DataConnection().SetDb(serverAddr,dbName,userName,password,userName,password,DataConnection.DBtype,true);
+					//The local test server's CA when it has one (DevDbTls): TLS, the server verified; "" for any other server.
+					new DataConnection().SetDb(serverAddr,dbName,userName,password,userName,password,DataConnection.DBtype,true,DevDbTls.GetSslCa(serverAddr));
 					RemotingClient.MiddleTierRole=MiddleTierRole.ClientDirect;
 					return true;
 				}

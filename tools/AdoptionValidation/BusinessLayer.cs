@@ -16,12 +16,15 @@ namespace AdoptionValidation {
 		public static readonly string[] ArrayHashedTables={ "appointment","claim","claimproc","inssub","insverify","insverifyhist","patient","payplan","paysplit" };
 
 		///<summary>Connects the business layer (DataCore, Db, the caches) directly to the database. Local server only, on the port the command line
-		///gives (through an SSH local forward, runbook step 0.0, that port is the database server's MariaDB).</summary>
+		///gives (through an SSH local forward, runbook step 0.0, that port is the database server's MariaDB). The local test server on port 3306
+		///(or a test's relay to it) is reached with TLS and verified against its CA once tools/Enable-LocalDbTls.ps1 has run (DevDbTls); a
+		///forward's port as before.</summary>
 		public static void Connect(ServerSettings server,string database) {
 			LocalOnly.EnsureLocalHost(server.Server);
 			LocalOnly.EnsureSafeIdentifier(database);
 			RemotingClient.MiddleTierRole=MiddleTierRole.ClientDirect;
-			new DataConnection().SetDb(ServerAndPort(server),database,server.User,server.Password,"","",DatabaseType.MySql,true);
+			string serverAndPort=ServerAndPort(server);
+			new DataConnection().SetDb(serverAndPort,database,server.User,server.Password,"","",DatabaseType.MySql,true,DevDbTls.GetSslCa(serverAndPort));
 			if(Security.CurUser==null) {
 				Security.CurUser=new Userod();//Adoption runs before anyone logs in; a few log helpers read the current user.
 			}

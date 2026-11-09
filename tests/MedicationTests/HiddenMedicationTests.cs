@@ -115,7 +115,7 @@ namespace MedicationTests {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION))) {
 					connection.Open();
 					Exec(connection,"DROP DATABASE IF EXISTS "+_dbName);
 					Exec(connection,"CREATE DATABASE "+_dbName+" CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci");
@@ -137,7 +137,7 @@ namespace MedicationTests {
 						+"ENGINE=MyISAM DEFAULT CHARSET=utf8mb3");
 					Exec(connection,"INSERT INTO preference (PrefName,ValueString) VALUES('RandomPrimaryKeys','0')");
 				}
-				new DataConnection().SetDb("127.0.0.1",_dbName,"root","","root","",DatabaseType.MySql,true);
+				new DataConnection().SetDb("127.0.0.1",_dbName,"root","","root","",DatabaseType.MySql,true,DevDbTls.GetSslCa("127.0.0.1"));
 			}
 			catch(Exception ex) {
 				_skipReason="No scratch MariaDB database: "+ex.GetBaseException().Message;
@@ -150,7 +150,7 @@ namespace MedicationTests {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION))) {
 					connection.Open();
 					Exec(connection,"DROP DATABASE IF EXISTS "+_dbName);
 				}

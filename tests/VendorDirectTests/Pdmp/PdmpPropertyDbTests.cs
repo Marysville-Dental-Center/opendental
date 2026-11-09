@@ -27,7 +27,7 @@ namespace VendorDirectTests.Pdmp {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION))) {
 					connection.Open();
 					Exec(connection,"DROP DATABASE IF EXISTS "+DB_NAME);
 					Exec(connection,"CREATE DATABASE "+DB_NAME+" CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci");
@@ -52,7 +52,7 @@ namespace VendorDirectTests.Pdmp {
 					Exec(connection,"INSERT INTO preference (PrefName,ValueString) VALUES ('RandomPrimaryKeys','0'),('PracticeAddress','1 Practice St'),"
 						+"('PracticeCity','Practiceton'),('PracticeST','KS'),('PracticeZip','67100')");
 				}
-				new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true);
+				new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true,DevDbTls.GetSslCa("127.0.0.1"));
 				Prefs.RefreshCache();
 				Programs.InsertIfMissing(ProgramName.Bamboo,"Bamboo");
 				Programs.InsertIfMissing(ProgramName.PDMP,"PDMP");
@@ -70,7 +70,7 @@ namespace VendorDirectTests.Pdmp {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION))) {
 					connection.Open();
 					Exec(connection,"DROP DATABASE IF EXISTS "+DB_NAME);
 				}
@@ -87,8 +87,8 @@ namespace VendorDirectTests.Pdmp {
 			}
 			PdmpTestData.UseEnUs();
 			//Other test classes may have pointed the connection at their own scratch database.
-			new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true);
-			using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
+			new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true,DevDbTls.GetSslCa("127.0.0.1"));
+			using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION))) {
 				connection.Open();
 				Exec(connection,"DELETE FROM "+DB_NAME+".programproperty");
 			}

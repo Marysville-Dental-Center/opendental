@@ -8,6 +8,7 @@ using System.Data;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
 using OpenPmsDentalBusiness.ForkMigrations;
@@ -194,7 +195,7 @@ namespace MaintenanceTests {
 			TestDb.ResetOrSkip();
 			string dbName=TestDb.CreateExtra("steps");
 			try {
-				new DataConnectionBase.DataConnection().SetDb(TestDb.Server,dbName,TestDb.User,TestDb.Password,"","",DataConnectionBase.DatabaseType.MySql,true);
+				new DataConnectionBase.DataConnection().SetDb(TestDb.Server,dbName,TestDb.User,TestDb.Password,"","",DataConnectionBase.DatabaseType.MySql,true,DevDbTls.GetSslCa(TestDb.Server));
 				ForkMigrationContext context=new ForkMigrationContext(dbName);
 				List<ForkMigrationStep> listSteps=TestDb.GetMaintenanceTableSteps();
 				for(int i=0;i<listSteps.Count;i++) {
@@ -245,7 +246,7 @@ namespace MaintenanceTests {
 			TestDb.ResetOrSkip();
 			string dbName=TestDb.CreateExtra("correct");
 			try {
-				new DataConnectionBase.DataConnection().SetDb(TestDb.Server,dbName,TestDb.User,TestDb.Password,"","",DataConnectionBase.DatabaseType.MySql,true);
+				new DataConnectionBase.DataConnection().SetDb(TestDb.Server,dbName,TestDb.User,TestDb.Password,"","",DataConnectionBase.DatabaseType.MySql,true,DevDbTls.GetSslCa(TestDb.Server));
 				ForkMigrationContext context=new ForkMigrationContext(dbName);
 				foreach(string statement in new MaintenanceTables().ArrayCreateTables) {
 					context.CreateTableIfMissing(SchemaTable.Parse(statement).Name=="maintrecord" ? CREATE_RECORD_FIRST_BUILD : statement);

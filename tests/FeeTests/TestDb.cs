@@ -95,8 +95,8 @@ namespace FeeTests {
 		}
 
 		private static MySqlConnection OpenServer() {
-			MySqlConnection connection=new MySqlConnection("Server="+Server+";Port=3306;User ID="+User+";Password="+Password
-				+";Connection Timeout=15;Allow User Variables=true");
+			MySqlConnection connection=new MySqlConnection(DevDbTls.Apply("Server="+Server+";Port=3306;User ID="+User+";Password="+Password
+				+";Connection Timeout=15;Allow User Variables=true"));
 			connection.Open();
 			return connection;
 		}
@@ -142,7 +142,7 @@ namespace FeeTests {
 
 		private static void Connect(string name) {
 			RemotingClient.MiddleTierRole=MiddleTierRole.ClientDirect;
-			new DataConnection().SetDb(Server,name,User,Password,"","",DatabaseType.MySql,true);
+			new DataConnection().SetDb(Server,name,User,Password,"","",DatabaseType.MySql,true,DevDbTls.GetSslCa(Server));
 		}
 
 		///<summary>The 21.1 seed dump and the frozen convert chain to 24.3.63, then the fork migrations. Caches refreshed, user 1 logged on.</summary>

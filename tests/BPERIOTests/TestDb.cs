@@ -75,7 +75,7 @@ namespace BPERIOTests {
 				}
 			}
 			RemotingClient.MiddleTierRole=MiddleTierRole.ClientDirect;
-			new DataConnection().SetDb(Server,DbName,User,Password,"","",DatabaseType.MySql,true);
+			new DataConnection().SetDb(Server,DbName,User,Password,"","",DatabaseType.MySql,true,DevDbTls.GetSslCa(Server));
 			Security.CurUser=new Userod { UserNum=1,UserName="Synthetic" };
 		}
 
@@ -156,7 +156,7 @@ namespace BPERIOTests {
 			if(database!=null) {
 				connectionString+=";Database="+database;
 			}
-			MySqlConnection connection=new MySqlConnection(connectionString);
+			MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(connectionString));
 			connection.Open();
 			return connection;
 		}

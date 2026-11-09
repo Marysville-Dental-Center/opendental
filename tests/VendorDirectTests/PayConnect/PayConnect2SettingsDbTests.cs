@@ -22,7 +22,7 @@ namespace VendorDirectTests.PayConnectV2 {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=15")) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=15"))) {
 					connection.Open();
 					Exec(connection,"DROP DATABASE IF EXISTS "+DB_NAME);
 					Exec(connection,"CREATE DATABASE "+DB_NAME+" CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci");
@@ -45,7 +45,7 @@ namespace VendorDirectTests.PayConnectV2 {
 					Exec(connection,"INSERT INTO program (ProgName,ProgDesc,Enabled,Path,CommandLine,Note,PluginDllName,ButtonImage,FileTemplate,FilePath,"
 						+"IsDisabledByHq,CustErr) VALUES ('PayConnect','PayConnect',0,'','','','','','','',0,'')");
 				}
-				new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true);
+				new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true,DevDbTls.GetSslCa("127.0.0.1"));
 				Prefs.RefreshCache();
 				Programs.RefreshCache();
 				_programNum=Programs.GetProgramNum(ProgramName.PayConnect);
@@ -61,7 +61,7 @@ namespace VendorDirectTests.PayConnectV2 {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=15")) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=15"))) {
 					connection.Open();
 					Exec(connection,"DROP DATABASE IF EXISTS "+DB_NAME);
 				}
@@ -79,7 +79,7 @@ namespace VendorDirectTests.PayConnectV2 {
 			PayConnect2.Mock=null;
 			PayConnect2.HttpHandlerForTests=null;
 			//Each test starts from the bare, disabled program row.
-			new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true);
+			new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true,DevDbTls.GetSslCa("127.0.0.1"));
 			DataCore.NonQ("DELETE FROM programproperty");
 			DataCore.NonQ("UPDATE program SET Enabled=0");
 			Refresh();

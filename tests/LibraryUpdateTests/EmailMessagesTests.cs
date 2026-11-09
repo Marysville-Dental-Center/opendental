@@ -63,7 +63,8 @@ namespace LibraryUpdateTests {
 					UserodT.CreateUser(UNIT_TEST_USER_NAME,UNIT_TEST_PASSWORD,new List<long> { 1 });
 				}
 				ConnectionStoreBase.OverrideConnection(ConnectionNames.DentalOffice,new CentralConnectionBase {
-					ServerName=ScratchDb.Server,DatabaseName=DB_NAME,MySqlUser=ScratchDb.User,MySqlPassword=ScratchDb.Password });
+					ServerName=ScratchDb.Server,DatabaseName=DB_NAME,MySqlUser=ScratchDb.User,MySqlPassword=ScratchDb.Password,
+					SslCa=DevDbTls.GetSslCa(ScratchDb.Server) });
 			}
 			catch(Exception ex) {
 				_skipReason="Could not build the scratch database: "+ex.GetBaseException().Message;

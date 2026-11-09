@@ -85,7 +85,7 @@ namespace MiddleTierMockTests {
 				ODThread odThreadParent=new ODThread(workerParent => {
 					//The parent thread needs to connect to a database that the main thread is not connected to.
 					CreateDatabaseIfNeeded(databaseName);
-					new DataConnection().SetDbT(ScratchDb.Server,databaseName,"root","","","",DatabaseType.MySql);
+					new DataConnection().SetDbT(ScratchDb.Server,databaseName,"root","","","",DatabaseType.MySql,DevDbTls.GetSslCa(ScratchDb.Server));
 					VerifyCurrentDatabaseName(databaseName);
 					//Now the parent should spawn a child thread which should default to the thread specific database connection from the parent.
 					ODThread odThreadChild=new ODThread(workerChild => {
@@ -132,7 +132,7 @@ namespace MiddleTierMockTests {
 					ODThread odThreadChangeDb=new ODThread(workerChild => {
 						//The parent thread needs to call SetDb on a different database than the main thread is connected to.
 						CreateDatabaseIfNeeded(databaseName);
-						new DataConnection().SetDb(ScratchDb.Server,databaseName,"root","","","",DatabaseType.MySql);
+						new DataConnection().SetDb(ScratchDb.Server,databaseName,"root","","","",DatabaseType.MySql,DevDbTls.GetSslCa(ScratchDb.Server));
 						VerifyCurrentDatabaseName(databaseName);
 					});
 					odThreadChangeDb.AddExceptionHandler(e => ex=e);

@@ -247,8 +247,10 @@ namespace AdoptionValidation {
 		}
 
 		private static string ConnectionArgs(ServerSettings server) {
-			//The password, if any, goes through the MYSQL_PWD environment variable (set in Run), never the command line.
-			return "--host="+server.Server+" --port="+server.Port+" --user="+server.User+" --protocol=TCP";
+			//The password, if any, goes through the MYSQL_PWD environment variable (set in Run), never the command line. The local test server's
+			//CA when it has one (DevDbTls: --ssl-ca and --ssl-verify-server-cert); a forward's port as before.
+			string tls=string.Concat(DataConnectionBase.DevDbTls.GetClientArguments(server.Server,server.Port).Select(x => " \""+x+"\""));
+			return "--host="+server.Server+" --port="+server.Port+" --user="+server.User+" --protocol=TCP"+tls;
 		}
 
 		private static void Run(string fileName,string arguments,string pathStdIn,ServerSettings server) {

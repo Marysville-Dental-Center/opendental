@@ -285,7 +285,7 @@ namespace DbGrantsTests {
 		///(DataConnection.SetDb, whose connection test writes a preference).</summary>
 		private void ConnectProgram() {
 			RemotingClient.MiddleTierRole=MiddleTierRole.ClientDirect;
-			new DataConnection().SetDb(GrantServer.SERVER,Db,Account,_password,"","",DatabaseType.MySql);
+			new DataConnection().SetDb(GrantServer.SERVER,Db,Account,_password,"","",DatabaseType.MySql,DevDbTls.GetSslCa(GrantServer.SERVER));
 		}
 
 		///<summary>Runs statements as the account on a connection of its own (default database: the office database).</summary>

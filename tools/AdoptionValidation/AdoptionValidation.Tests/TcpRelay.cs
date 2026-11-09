@@ -8,7 +8,9 @@ using System.Threading.Tasks;
 namespace AdoptionValidation.Tests {
 	///<summary>Stands in for the SSH local forward of runbook step 0.0 ("ssh -N -L 13306:127.0.0.1:3306 admin@db-server"): listens on a free port of
 	///127.0.0.1 and relays every connection to the local MariaDB server, counting them. The tools run with --port set to the relay, as they run on
-	///the office's admin PC with --port set to the forward. Loopback only; it never reaches another host.</summary>
+	///the office's admin PC with --port set to the forward. Loopback only; it never reaches another host. A relay to the local test server
+	///(port 3306) adds its port to OPMS_DB_TLS_RELAY_PORTS while it runs, so the tools reach the server through it with TLS and its CA
+	///(DataConnectionBase.DevDbTls, SyntheticData's LocalTls), as they do on port 3306; a forward to another server never gets the test CA.</summary>
 	public sealed class TcpRelay : IDisposable {
 		private readonly TcpListener _listener;
 		private readonly int _portTarget;
@@ -27,8 +29,28 @@ namespace AdoptionValidation.Tests {
 			_listener=new TcpListener(IPAddress.Loopback,portListen);
 			_listener.Start();
 			Port=((IPEndPoint)_listener.LocalEndpoint).Port;
+			if(_portTarget==DataConnectionBase.DevDbTls.PORT) {
+				SetRelayPort(Port,isAdded:true);
+			}
 			Task.Run(AcceptLoop);
 		}
+
+		///<summary>Adds the port to OPMS_DB_TLS_RELAY_PORTS of this process (and so of the programs it starts), or removes it.</summary>
+		private static void SetRelayPort(int port,bool isAdded) {
+			lock(_lockRelayPorts) {
+				string value=Environment.GetEnvironmentVariable(DataConnectionBase.DevDbTls.RELAY_PORTS_VARIABLE)??"";
+				System.Collections.Generic.List<string> listPorts=new System.Collections.Generic.List<string>(
+					value.Split(new[] { ',' },StringSplitOptions.RemoveEmptyEntries));
+				string portText=port.ToString(System.Globalization.CultureInfo.InvariantCulture);
+				listPorts.RemoveAll(x => x.Trim()==portText);
+				if(isAdded) {
+					listPorts.Add(portText);
+				}
+				Environment.SetEnvironmentVariable(DataConnectionBase.DevDbTls.RELAY_PORTS_VARIABLE,listPorts.Count==0 ? null : string.Join(",",listPorts));
+			}
+		}
+
+		private static readonly object _lockRelayPorts=new object();
 
 		private async Task AcceptLoop() {
 			while(!_cancel.IsCancellationRequested) {
@@ -64,6 +86,9 @@ namespace AdoptionValidation.Tests {
 		public void Dispose() {
 			_cancel.Cancel();
 			_listener.Stop();
+			if(_portTarget==DataConnectionBase.DevDbTls.PORT) {
+				SetRelayPort(Port,isAdded:false);
+			}
 		}
 	}
 }

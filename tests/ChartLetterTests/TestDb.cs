@@ -79,8 +79,8 @@ namespace ChartLetterTests {
 		}
 
 		public static MySqlConnection OpenServer() {
-			MySqlConnection connection=new MySqlConnection("Server="+Server+";Port=3306;User ID="+User+";Password="+Password
-				+";Connection Timeout=15;Allow User Variables=true");
+			MySqlConnection connection=new MySqlConnection(DevDbTls.Apply("Server="+Server+";Port=3306;User ID="+User+";Password="+Password
+				+";Connection Timeout=15;Allow User Variables=true"));
 			connection.Open();
 			return connection;
 		}
@@ -97,7 +97,7 @@ namespace ChartLetterTests {
 
 		public static void Connect(string name) {
 			RemotingClient.MiddleTierRole=MiddleTierRole.ClientDirect;
-			new DataConnection().SetDb(Server,name,User,Password,"","",DatabaseType.MySql,true);
+			new DataConnection().SetDb(Server,name,User,Password,"","",DatabaseType.MySql,true,DevDbTls.GetSslCa(Server));
 		}
 
 		///<summary>A fresh 24.3.63 database built like tools/New-DevDatabase.ps1 (the seed dump, then the frozen convert chain), then brought to

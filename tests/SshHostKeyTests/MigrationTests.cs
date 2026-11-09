@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
 using OpenPmsDentalBusiness.ForkMigrations;
@@ -102,7 +103,7 @@ namespace SshHostKeyTests {
 			TestDb.ResetOrSkip();
 			string dbName=TestDb.CreateExtra("empty");
 			try {
-				new DataConnectionBase.DataConnection().SetDb(TestDb.Server,dbName,TestDb.User,TestDb.Password,"","",DataConnectionBase.DatabaseType.MySql,true);
+				new DataConnectionBase.DataConnection().SetDb(TestDb.Server,dbName,TestDb.User,TestDb.Password,"","",DataConnectionBase.DatabaseType.MySql,true,DevDbTls.GetSslCa(TestDb.Server));
 				ForkMigrationContext context=new ForkMigrationContext(dbName);
 				new SshHostKeyTableStep().Apply(context);
 				Assert.AreEqual(1,context.ListChanges.Count,string.Join("\r\n",context.ListChanges));

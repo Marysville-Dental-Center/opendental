@@ -31,7 +31,7 @@ namespace VendorDirectTests.DentalXChange {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION))) {
 					connection.Open();
 					Exec(connection,"DROP DATABASE IF EXISTS "+DB_NAME);
 					Exec(connection,"CREATE DATABASE "+DB_NAME+" CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci");
@@ -41,7 +41,7 @@ namespace VendorDirectTests.DentalXChange {
 					}
 				}
 				RemotingClient.MiddleTierRole=MiddleTierRole.ClientDirect;
-				new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true);
+				new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true,DevDbTls.GetSslCa("127.0.0.1"));
 			}
 			catch(Exception ex) {
 				_skipReason="No scratch MariaDB database: "+ex.GetBaseException().Message;
@@ -54,7 +54,7 @@ namespace VendorDirectTests.DentalXChange {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION))) {
 					connection.Open();
 					Exec(connection,"DROP DATABASE IF EXISTS "+DB_NAME);
 				}
@@ -70,7 +70,7 @@ namespace VendorDirectTests.DentalXChange {
 				Assert.Inconclusive(_skipReason);
 			}
 			RemotingClient.MiddleTierRole=MiddleTierRole.ClientDirect;
-			new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true);
+			new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true,DevDbTls.GetSslCa("127.0.0.1"));
 			using(MySqlConnection connection=OpenDb()) {
 				for(int i=0;i<_arrayTables.Length;i++) {
 					Exec(connection,"DELETE FROM "+_arrayTables[i]);
@@ -87,7 +87,7 @@ namespace VendorDirectTests.DentalXChange {
 		}
 
 		private static MySqlConnection OpenDb() {
-			MySqlConnection connection=new MySqlConnection(CONNECTION+";Database="+DB_NAME);
+			MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION+";Database="+DB_NAME));
 			connection.Open();
 			Exec(connection,"SET SESSION sql_mode=''");//Test rows leave out columns that have no default.
 			return connection;

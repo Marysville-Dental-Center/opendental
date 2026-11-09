@@ -34,7 +34,7 @@ namespace BWIKITests {
 					return _skipReason;
 				}
 				try {
-					using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
+					using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION))) {
 						connection.Open();
 						DropStale(connection);
 						Exec(connection,"DROP DATABASE IF EXISTS `"+DbName+"`");
@@ -63,7 +63,7 @@ namespace BWIKITests {
 							+"('DocPath',''),('CorruptedDatabase','0')");
 					}
 					RemotingClient.MiddleTierRole=MiddleTierRole.ClientDirect;
-					new DataConnection().SetDb("127.0.0.1",DbName,"root","","root","",DatabaseType.MySql,true);
+					new DataConnection().SetDb("127.0.0.1",DbName,"root","","root","",DatabaseType.MySql,true,DevDbTls.GetSslCa("127.0.0.1"));
 					Prefs.RefreshCache();
 					_isCreated=true;
 				}
@@ -81,7 +81,7 @@ namespace BWIKITests {
 					return;
 				}
 				try {
-					using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
+					using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION))) {
 						connection.Open();
 						Exec(connection,"DROP DATABASE IF EXISTS `"+DbName+"`");
 					}
@@ -133,7 +133,7 @@ namespace BWIKITests {
 		///<summary>An open connection to this run's database outside the program's data layer and not pooled, so a table lock taken on it ends when
 		///it is closed. The caller disposes it.</summary>
 		public static MySqlConnection OpenSeparateConnection() {
-			MySqlConnection connection=new MySqlConnection(CONNECTION+";Database="+DbName+";Pooling=false");
+			MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION+";Database="+DbName+";Pooling=false"));
 			connection.Open();
 			return connection;
 		}

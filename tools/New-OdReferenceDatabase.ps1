@@ -16,6 +16,9 @@ reference use it when it is there (for example ForkMigrationTests and M201Tests)
 Safety: only 127.0.0.1 or localhost, only a database named od_<digits>_schema, and an existing database is dropped only with -Force and only
 when none of its tables holds a row.
 
+TLS: once tools\Enable-LocalDbTls.ps1 has turned on TLS in the local server, the client connects to 127.0.0.1:3306 with its CA
+(tools\DevDbTls.ps1, docs/port-notes/DB-TLS.md).
+
 .PARAMETER Version
 Which reference to load: 26.2.0 (default), 26.1.70 or 25.3.48.
 
@@ -107,7 +110,9 @@ function Find-Client {
 }
 
 $clientExe = Find-Client
-$baseArgs = @("--host=$Server", "--port=$Port", "--user=$User", '--batch', '--skip-column-names')
+# The local test server with its CA (tools\DevDbTls.ps1): TLS, the server verified (--ssl-ca, --ssl-verify-server-cert); otherwise as before.
+. (Join-Path $PSScriptRoot 'DevDbTls.ps1')
+$baseArgs = @("--host=$Server", "--port=$Port", "--user=$User", '--batch', '--skip-column-names') + @(Get-DevDbTlsClientArguments $Server $Port)
 $previousPwd = $env:MYSQL_PWD
 $env:MYSQL_PWD = $env:DEVDB_PASSWORD
 

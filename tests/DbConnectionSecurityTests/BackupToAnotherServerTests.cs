@@ -2,7 +2,8 @@
 // MiscData.MakeABackup copied the rows there with MySqlBulkLoader (LOAD DATA LOCAL INFILE), which MySqlConnector refuses without
 // AllowLoadLocalInfile=true, so it stopped at the first table with rows. It now copies them with ordinary INSERT statements, one parameter per
 // value. Two scratch databases on the local MariaDB at 127.0.0.1:3306 stand in for the two servers: the program's connection names the server
-// "localhost", the backup "127.0.0.1:3306", so MakeABackup takes the other-server path. Synthetic rows only. Scratch databases test_presw_*.
+// "localhost", the backup "127.0.0.1:3306", so MakeABackup takes the other-server path, with the local test server's CA
+// when it has one (DevDbTls). Synthetic rows only. Scratch databases test_presw_*.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -27,7 +28,7 @@ namespace DbConnectionSecurityTests {
 
 		private static void ExecRoot(params string[] arrayCommands) {
 			using MySqlConnection mySqlConnection=DbConnectionSecurity.NewMySqlConnection(
-				DataConnection.BuildSimpleConnectionString(DatabaseType.MySql,SERVER,"","root",""));
+				DataConnection.BuildSimpleConnectionString(DatabaseType.MySql,SERVER,"","root","",DevDbTls.GetSslCa(SERVER)));
 			mySqlConnection.Open();
 			foreach(string command in arrayCommands) {
 				using MySqlCommand mySqlCommand=new MySqlCommand(command,mySqlConnection);
@@ -37,7 +38,7 @@ namespace DbConnectionSecurityTests {
 
 		private static List<string> GetDatabases(string prefix) {
 			using MySqlConnection mySqlConnection=DbConnectionSecurity.NewMySqlConnection(
-				DataConnection.BuildSimpleConnectionString(DatabaseType.MySql,SERVER,"","root",""));
+				DataConnection.BuildSimpleConnectionString(DatabaseType.MySql,SERVER,"","root","",DevDbTls.GetSslCa(SERVER)));
 			mySqlConnection.Open();
 			using MySqlCommand mySqlCommand=new MySqlCommand("SHOW DATABASES LIKE '"+prefix.Replace("_","\\_")+"%'",mySqlConnection);
 			List<string> listNames=new List<string>();
@@ -71,7 +72,7 @@ namespace DbConnectionSecurityTests {
 			}
 			//The program's connection: the source database, named "localhost". The two caches MakeABackup reads are filled in memory, so the scratch
 			//database needs no program tables.
-			new DataConnection().SetDb(SERVER_PROGRAM,_dbSource,"root","","","",DatabaseType.MySql,true);
+			new DataConnection().SetDb(SERVER_PROGRAM,_dbSource,"root","","","",DatabaseType.MySql,true,DevDbTls.GetSslCa(SERVER_PROGRAM));
 			ReplicationServers.FillCacheFromTable(new DataTable());
 			ODEvent.Fired+=OnFired;
 		}
@@ -108,7 +109,7 @@ namespace DbConnectionSecurityTests {
 
 		///<summary>Every row of the table, ordered by its first column, from the database.</summary>
 		private static DataTable ReadAll(string database,string table) {
-			DataConnection dataConnection=new DataConnection(SERVER,database,"root","",DatabaseType.MySql);
+			DataConnection dataConnection=new DataConnection(SERVER,database,"root","",DatabaseType.MySql,DevDbTls.GetSslCa(SERVER));
 			return dataConnection.GetTable("SELECT * FROM `"+table+"` ORDER BY 1");
 		}
 
@@ -134,7 +135,8 @@ namespace DbConnectionSecurityTests {
 
 		[TestMethod]
 		public void MakeABackup_ToAnotherServer_CopiesEveryRow_WithInsertStatements() {
-			string dbBackup=MiscData.MakeABackup(serverName:SERVER,user:"root",pass:"",doVerify:true,isAutoBackup:false);
+			string dbBackup=MiscData.MakeABackup(serverName:SERVER,user:"root",pass:"",doVerify:true,isAutoBackup:false,
+				sslCa:DevDbTls.GetSslCa(SERVER));
 			Assert.IsTrue(dbBackup.StartsWith(_dbSource+"backup_"),dbBackup);
 			Assert.IsTrue(GetDatabases(_dbSource).Contains(dbBackup));
 			foreach(string table in new[] { "sample","largetable","documentmisc","emptytable" }) {
@@ -142,7 +144,7 @@ namespace DbConnectionSecurityTests {
 			}
 			Assert.AreEqual(ROWS_LARGE,ReadAll(dbBackup,"largetable").Rows.Count,"More rows than one batch of the source (10000).");
 			Assert.AreEqual(3*1024*1024+3,ReadAll(dbBackup,"documentmisc").Rows[1]["RawBase64"].ToString().Length);
-			DataConnection dataConnectionBackup=new DataConnection(SERVER,dbBackup,"root","",DatabaseType.MySql);
+			DataConnection dataConnectionBackup=new DataConnection(SERVER,dbBackup,"root","",DatabaseType.MySql,DevDbTls.GetSslCa(SERVER));
 			Assert.AreEqual("0",dataConnectionBackup.GetCount("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='"+dbBackup
 				+"' AND TABLE_NAME='sampleview'"),"Views are not backed up, as before.");
 			Assert.AreEqual("MyISAM",dataConnectionBackup.GetScalar("SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA='"+dbBackup
@@ -153,7 +155,8 @@ namespace DbConnectionSecurityTests {
 				CollectionAssert.Contains(_listProgress,"Verifying backup: "+table);
 			}
 			//A second backup the same day gets its own name, and copies again.
-			string dbBackup2=MiscData.MakeABackup(serverName:SERVER,user:"root",pass:"",doVerify:true,isAutoBackup:false);
+			string dbBackup2=MiscData.MakeABackup(serverName:SERVER,user:"root",pass:"",doVerify:true,isAutoBackup:false,
+				sslCa:DevDbTls.GetSslCa(SERVER));
 			Assert.AreEqual(dbBackup+"_1",dbBackup2);
 			AssertSameRows(_dbSource,dbBackup2,"sample");
 		}

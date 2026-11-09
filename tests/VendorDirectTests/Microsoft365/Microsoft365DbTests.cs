@@ -26,7 +26,7 @@ namespace VendorDirectTests.Microsoft365 {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=3")) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=3"))) {
 					connection.Open();
 					Exec(connection,"DROP DATABASE IF EXISTS "+DB_NAME);
 					Exec(connection,"CREATE DATABASE "+DB_NAME+" CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci");
@@ -56,7 +56,7 @@ namespace VendorDirectTests.Microsoft365 {
 						+"ENGINE=MyISAM DEFAULT CHARSET=utf8mb3");
 					Exec(connection,"INSERT INTO preference (PrefName,ValueString) VALUES ('RandomPrimaryKeys','0')");
 				}
-				new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true);
+				new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true,DevDbTls.GetSslCa("127.0.0.1"));
 				Prefs.RefreshCache();
 				Programs.RefreshCache();
 				ProgramProperties.RefreshCache();
@@ -72,7 +72,7 @@ namespace VendorDirectTests.Microsoft365 {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=3")) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=3"))) {
 					connection.Open();
 					Exec(connection,"DROP DATABASE IF EXISTS "+DB_NAME);
 				}
@@ -88,7 +88,7 @@ namespace VendorDirectTests.Microsoft365 {
 				Assert.Inconclusive(_skipReason);
 			}
 			//Each test starts from the database this class created (another class may have pointed the connection elsewhere).
-			new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true);
+			new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true,DevDbTls.GetSslCa("127.0.0.1"));
 			Programs.RefreshCache();
 			ProgramProperties.RefreshCache();
 		}

@@ -159,7 +159,7 @@ namespace VendorDirectTests.Usps {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=3")) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=3"))) {
 					connection.Open();
 					Exec(connection,"DROP DATABASE IF EXISTS "+DB_NAME);
 					Exec(connection,"CREATE DATABASE "+DB_NAME+" CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci");
@@ -191,7 +191,7 @@ namespace VendorDirectTests.Usps {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=3")) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=3"))) {
 					connection.Open();
 					Exec(connection,"DROP DATABASE IF EXISTS "+DB_NAME);
 				}
@@ -207,9 +207,9 @@ namespace VendorDirectTests.Usps {
 				Assert.Inconclusive(_skipReason);
 			}
 			//Point the business layer at this class's database for every test, so tests of other classes can't leave it elsewhere.
-			new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true);
+			new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true,DevDbTls.GetSslCa("127.0.0.1"));
 			Prefs.RefreshCache();
-			using(MySqlConnection connection=new MySqlConnection("Server=127.0.0.1;Port=3306;User ID=root;Password=;Database="+DB_NAME)) {
+			using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply("Server=127.0.0.1;Port=3306;User ID=root;Password=;Database="+DB_NAME))) {
 				connection.Open();
 				Exec(connection,"DELETE FROM programproperty");
 				Exec(connection,"DELETE FROM program");

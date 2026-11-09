@@ -30,7 +30,7 @@ namespace M2ADJTests {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION))) {
 					connection.Open();
 					Exec(connection,"CREATE DATABASE `"+_dbName+"` CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci");
 				}
@@ -40,7 +40,7 @@ namespace M2ADJTests {
 				return;
 			}
 			//The server answers, so from here on a failure is a real failure, not a reason to skip.
-			using(MySqlConnection connection=new MySqlConnection(CONNECTION+";Database="+_dbName)) {
+			using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION+";Database="+_dbName))) {
 				connection.Open();
 				//The default reference is 26.1.70 (package M2-01), so definition.Supp is part of it.
 				foreach(SchemaTable table in SchemaVerifier.GetReference().Tables) {
@@ -50,7 +50,7 @@ namespace M2ADJTests {
 				Exec(connection,"INSERT INTO preference (PrefName,ValueString) VALUES ('RandomPrimaryKeys','0'),('DxIcdVersion','9')");
 			}
 			RemotingClient.MiddleTierRole=MiddleTierRole.ClientDirect;
-			new DataConnection().SetDb(SERVER,_dbName,"root","","","",DatabaseType.MySql,true);
+			new DataConnection().SetDb(SERVER,_dbName,"root","","","",DatabaseType.MySql,true,DevDbTls.GetSslCa(SERVER));
 			//The tests without a database may have filled the preference cache with a few values; load it from the scratch database instead.
 			Prefs.RefreshCache();
 			Security.CurUser=new Userod { UserNum=1,UserName="Synthetic" };
@@ -62,7 +62,7 @@ namespace M2ADJTests {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection(CONNECTION)) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply(CONNECTION))) {
 					connection.Open();
 					Exec(connection,"DROP DATABASE IF EXISTS `"+_dbName+"`");
 				}

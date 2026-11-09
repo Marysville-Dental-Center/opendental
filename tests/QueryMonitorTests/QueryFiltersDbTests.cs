@@ -46,7 +46,7 @@ namespace QueryMonitorTests {
 				Exec(connection,"INSERT INTO preference (PrefName,ValueString) VALUES ('RandomPrimaryKeys','0')");
 			}
 			RemotingClient.MiddleTierRole=MiddleTierRole.ClientDirect;
-			new DataConnection().SetDb(Server,_dbName,User,"","","",DatabaseType.MySql,true);
+			new DataConnection().SetDb(Server,_dbName,User,"","","",DatabaseType.MySql,true,DevDbTls.GetSslCa(Server));
 			Cache.Refresh(InvalidType.Prefs);
 		}
 
@@ -87,7 +87,7 @@ namespace QueryMonitorTests {
 		}
 
 		private static MySqlConnection OpenServer() {
-			MySqlConnection connection=new MySqlConnection("Server="+Server+";Port=3306;User ID="+User+";Password=;Connection Timeout=15");
+			MySqlConnection connection=new MySqlConnection(DevDbTls.Apply("Server="+Server+";Port=3306;User ID="+User+";Password=;Connection Timeout=15"));
 			connection.Open();
 			return connection;
 		}

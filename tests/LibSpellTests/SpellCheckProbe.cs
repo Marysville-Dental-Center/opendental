@@ -131,7 +131,7 @@ namespace LibSpellTests {
 		///refreshes this computer's caches of the signalled types.</summary>
 		public void Connect(string databaseName) {
 			RemotingClient.MiddleTierRole=MiddleTierRole.ClientDirect;
-			new DataConnection().SetDb(ScratchDb.Server,databaseName,ScratchDb.User,ScratchDb.Password,"","",DatabaseType.MySql,true);
+			new DataConnection().SetDb(ScratchDb.Server,databaseName,ScratchDb.User,ScratchDb.Password,"","",DatabaseType.MySql,true,DevDbTls.GetSslCa(ScratchDb.Server));
 			OpenPmsDental.DataValid.EventInvalid+=(sender,e) => {
 				_listSignals.Add(string.Join(",",e.ITypes.Select(x => x.ToString())));
 				Cache.Refresh(e.ITypes);

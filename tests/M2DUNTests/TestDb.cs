@@ -53,8 +53,8 @@ namespace M2DUNTests {
 		}
 
 		public static MySqlConnection OpenServer() {
-			MySqlConnection connection=new MySqlConnection("Server="+Server+";Port=3306;User ID="+User+";Password="+Password
-				+";Connection Timeout=15;Allow User Variables=true");
+			MySqlConnection connection=new MySqlConnection(DevDbTls.Apply("Server="+Server+";Port=3306;User ID="+User+";Password="+Password
+				+";Connection Timeout=15;Allow User Variables=true"));
 			connection.Open();
 			return connection;
 		}
@@ -102,7 +102,7 @@ namespace M2DUNTests {
 		///<summary>Points the business layer (DataCore, Db, the caches) at the database.</summary>
 		public static void Connect(string name) {
 			RemotingClient.MiddleTierRole=MiddleTierRole.ClientDirect;
-			new DataConnection().SetDb(Server,name,User,Password,"","",DatabaseType.MySql,true);
+			new DataConnection().SetDb(Server,name,User,Password,"","",DatabaseType.MySql,true,DevDbTls.GetSslCa(Server));
 		}
 
 		///<summary>Builds a database the way tools/New-DevDatabase.ps1 does: the 21.1 seed dump UnitTests\Resources\dump.txt, every frozen

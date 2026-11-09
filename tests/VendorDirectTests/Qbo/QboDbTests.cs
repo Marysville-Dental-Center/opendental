@@ -23,7 +23,7 @@ namespace VendorDirectTests.Qbo {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=3")) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=3"))) {
 					connection.Open();
 					Exec(connection,"DROP DATABASE IF EXISTS "+DB_NAME);
 					Exec(connection,"CREATE DATABASE "+DB_NAME+" CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci");
@@ -46,7 +46,7 @@ namespace VendorDirectTests.Qbo {
 					Exec(connection,"INSERT INTO program (ProgName,ProgDesc,Enabled,Path,CommandLine,Note,PluginDllName,ButtonImage,FileTemplate,FilePath,"
 						+"IsDisabledByHq,CustErr) VALUES ('QuickBooksOnline','QuickBooks Online',0,'','','','','','','',0,'')");
 				}
-				new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true);
+				new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true,DevDbTls.GetSslCa("127.0.0.1"));
 				Prefs.RefreshCache();
 				Programs.RefreshCache();
 				ProgramProperties.RefreshCache();
@@ -63,7 +63,7 @@ namespace VendorDirectTests.Qbo {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=3")) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=3"))) {
 					connection.Open();
 					Exec(connection,"DROP DATABASE IF EXISTS "+DB_NAME);
 				}
@@ -80,7 +80,7 @@ namespace VendorDirectTests.Qbo {
 			}
 			//Each test starts from the rows an Open Dental database has, with the token rows encrypted by another installation. Each test class sets
 			//the shared connection; take it back too.
-			using(MySqlConnection connection=new MySqlConnection("Server=127.0.0.1;Port=3306;User ID=root;Password=;Database="+DB_NAME+";Connection Timeout=3")) {
+			using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply("Server=127.0.0.1;Port=3306;User ID=root;Password=;Database="+DB_NAME+";Connection Timeout=3"))) {
 				connection.Open();
 				Exec(connection,"DELETE FROM programproperty");
 				Exec(connection,"INSERT INTO programproperty (ProgramNum,PropertyDesc,PropertyValue,ComputerName,ClinicNum,IsMasked,IsHighSecurity) VALUES "
@@ -90,7 +90,7 @@ namespace VendorDirectTests.Qbo {
 					+"(1,'Refresh Token','odv2e$AAAAfromanotherinstall','',0,1,0),"
 					+"(1,'Realm ID','odv2e$BBBBfromanotherinstall','',0,1,1)");
 			}
-			new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true);
+			new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true,DevDbTls.GetSslCa("127.0.0.1"));
 			Programs.RefreshCache();
 			ProgramProperties.RefreshCache();
 		}

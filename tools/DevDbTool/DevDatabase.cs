@@ -35,10 +35,12 @@ namespace DevDbTool {
 			}
 		}
 
-		///<summary>Connects to the server without selecting a database.</summary>
+		///<summary>Connects to the server without selecting a database. The local test server is reached with TLS and verified against its CA once
+		///tools/Enable-LocalDbTls.ps1 has run (DevDbTls); any other server as before.</summary>
 		public void ConnectToServer() {
 			RemotingClient.MiddleTierRole=MiddleTierRole.ClientDirect;
-			new DataConnection().SetDb(_options.ServerAndPort,"",_options.User,_options.Password,"","",DatabaseType.MySql,true);
+			new DataConnection().SetDb(_options.ServerAndPort,"",_options.User,_options.Password,"","",DatabaseType.MySql,true,
+				DevDbTls.GetSslCa(_options.ServerAndPort));
 		}
 
 		///<summary>Connects to the target database. Validation runs a harmless UPDATE against the preference table, so skip it until the
@@ -46,7 +48,7 @@ namespace DevDbTool {
 		public void ConnectToDatabase(bool skipValidation) {
 			RemotingClient.MiddleTierRole=MiddleTierRole.ClientDirect;
 			new DataConnection().SetDb(_options.ServerAndPort,_options.Database,_options.User,_options.Password,"","",DatabaseType.MySql,
-				skipValidation);
+				skipValidation,DevDbTls.GetSslCa(_options.ServerAndPort));
 		}
 
 		///<summary>Prints the server version and makes sure sql_mode is one the convert scripts tolerate. OpenPmsDental.exe itself runs the same

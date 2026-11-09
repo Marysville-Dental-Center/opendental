@@ -27,7 +27,7 @@ namespace VendorDirectTests.Email {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=20")) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=20"))) {
 					connection.Open();
 					Exec(connection,"DROP DATABASE IF EXISTS "+DB_NAME);
 					Exec(connection,"CREATE DATABASE "+DB_NAME+" CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci");
@@ -44,7 +44,7 @@ namespace VendorDirectTests.Email {
 				return;
 			}
 			try {
-				using(MySqlConnection connection=new MySqlConnection("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=20")) {
+				using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=20"))) {
 					connection.Open();
 					Exec(connection,"DROP DATABASE IF EXISTS "+DB_NAME);
 				}
@@ -60,7 +60,7 @@ namespace VendorDirectTests.Email {
 			if(_skipReason!=null) {
 				Assert.Inconclusive(_skipReason);
 			}
-			using(MySqlConnection connection=new MySqlConnection("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=20;Database="+DB_NAME)) {
+			using(MySqlConnection connection=new MySqlConnection(DevDbTls.Apply("Server=127.0.0.1;Port=3306;User ID=root;Password=;Connection Timeout=20;Database="+DB_NAME))) {
 				connection.Open();
 				Exec(connection,"DROP TABLE IF EXISTS program,programproperty,preference,signalod,emailaddress");
 				//The same definitions as Open Dental 24.3's tables.
@@ -88,7 +88,7 @@ namespace VendorDirectTests.Email {
 					+"ENGINE=MyISAM DEFAULT CHARSET=utf8mb3");
 				Exec(connection,"INSERT INTO preference (PrefName,ValueString) VALUES ('RandomPrimaryKeys','0')");
 			}
-			new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true);
+			new DataConnection().SetDb("127.0.0.1",DB_NAME,"root","","root","",DatabaseType.MySql,true,DevDbTls.GetSslCa("127.0.0.1"));
 			Prefs.RefreshCache();
 			Programs.RefreshCache();
 			ProgramProperties.RefreshCache();
