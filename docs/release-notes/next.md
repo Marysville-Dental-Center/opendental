@@ -381,6 +381,13 @@ no connection allows local files, and no temporary file of the rows is written. 
 `INSERT` and `SELECT` on the backup database. The program's own database account keeps its three server-wide rights (owner question
 DB-SEC 1, answered on 2026-11-07).
 
+## Insurance Verification List: no patient left out
+
+When a patient's insurance plan and patient plan happened to have the same number in the database, which is common, the Insurance
+Verification List showed only the plan's benefits verification and left out the patient's eligibility verification, and the batch
+insurance verification skipped the patient. Inherited from Open Dental 24.1.71. Both verifications are now listed for every patient, as
+they always were for the others; nothing else about the list changes.
+
 ## Direct certificates: imported from your Direct provider's file
 
 Edit Email Address's **Certificate** button registered the address's certificate with Open Dental's own servers, which this program no
