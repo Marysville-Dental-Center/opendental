@@ -394,9 +394,13 @@ longer reaches, so it always failed. It now imports the certificate your Direct 
 - **What is refused**, each with a message: a wrong password or another kind of file, a file with no certificate for the address or its
   domain, a certificate without its private key, an expired certificate or one not valid yet, and one Windows finds a problem in (revoked, a
   bad signature).
-- **Replacing a certificate.** When the store already has an older certificate for the address (or for its domain, for a domain
-  certificate), the window lists it and replaces it only if you answer Yes; No imports nothing. The private key of a replaced certificate
-  is deleted too when this window imported it; one put there another way keeps its key.
+- **The address.** The program finds the certificate by the user name of Edit Email Address (Username or email address), the address
+  Direct sends from, so that must be the Direct address (name@domain). Certificate says so, and does not open the window, when it is not.
+- **Replacing a certificate.** When the store already has a certificate for the address (or for its domain, for a domain certificate),
+  the window asks first, showing the certificate in the file and the one on this computer with their last days; No imports nothing. The
+  one on this computer may be the newer one (an old file picked by mistake): when it is valid longer, the question says so, and you should
+  answer No unless your Direct provider told you to replace it. The private key of a replaced certificate is deleted too when this window
+  imported it, so messages encrypted to it can then be read only after importing its file again; one put there another way keeps its key.
 - **The provider's trust anchor** (a `.cer`, `.crt`, `.der` or `.pem` file) is imported into the Direct trust anchors (`NHINDAnchors`)
   after the window shows it and you answer Yes. Messages from addresses whose certificates it issued are then trusted.
 - **Administrator rights and every computer.** The import needs a Windows administrator: start the program with Run as administrator to
