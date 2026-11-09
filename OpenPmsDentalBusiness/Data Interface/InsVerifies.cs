@@ -330,7 +330,7 @@ namespace OpenPmsDentalBusiness{
 				patient.LName,patient.FName,patient.Preferred,appointment.PatNum,appointment.AptNum,appointment.AptDateTime,patplan.PatPlanNum,insplan.PlanNum,carrier.CarrierName,
 				COALESCE(clinic.Abbr,'None') AS ClinicName,appointment.ClinicNum,inssub.InsSubNum,carrier.CarrierNum,
 				ROW_NUMBER() OVER(PARTITION BY patplan.PatPlanNum,insverify.VerifyType,insverify.FKey ORDER BY appointment.AptDateTime,appointment.AptNum) AS AptOrder
-				FROM appointment
+				FROM appointment 
 				LEFT JOIN clinic ON clinic.ClinicNum=appointment.ClinicNum 
 				INNER JOIN patient ON patient.PatNum=appointment.PatNum 
 				INNER JOIN patplan ON patplan.PatNum=appointment.PatNum 
@@ -365,7 +365,7 @@ namespace OpenPmsDentalBusiness{
 					AND (insverifylater.DateLastVerified>insverify.DateLastVerified
 						OR (insverifylater.DateLastVerified=insverify.DateLastVerified AND insverifylater.InsVerifyNum>insverify.InsVerifyNum)) ";
 			string whereClause=@"
-				WHERE appointment.AptDateTime BETWEEN "+DbHelper.DtimeToDate(POut.Date(dateStart))+" AND "+DbHelper.DtimeToDate(POut.Date(dateEnd.AddDays(1)))+@"
+				WHERE appointment.AptDateTime BETWEEN "+DbHelper.DtimeToDate(POut.Date(dateStart))+" AND "+DbHelper.DtimeToDate(POut.Date(dateEnd.AddDays(1)))+@" 
 				AND appointment.AptStatus IN ("+POut.Int((int)ApptStatus.Scheduled)+","+POut.Int((int)ApptStatus.Complete)+@")
 				AND insverifylater.InsVerifyNum IS NULL
 				"+(userNum==-1 ? "" : "AND insverify.UserNum="+POut.Long(userNum))+@"
