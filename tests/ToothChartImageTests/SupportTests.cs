@@ -268,6 +268,32 @@ namespace ToothChartImageTests {
 		}
 
 		[TestMethod]
+		public void Recorder_DrawsTheSmoothedPictures_OnlyWithTheSearchedMultisampledFormat() {
+			string formatSearched="0;Hardware;64;D16;X8R8G8B8;FourSamples";
+			string formatBaseline="0;Hardware;64;D16;X8R8G8B8;None";
+			//The default path of the build PC: the search found a multisampled format, and the baseline is drawn without multisampling.
+			Assert.IsTrue(LegacyRecording.CanRecordSmoothed(false,formatSearched,formatBaseline,out string reasonSkip),reasonSkip);
+			Assert.IsNull(reasonSkip);
+			//DirectX cannot start.
+			Assert.IsFalse(LegacyRecording.CanRecordSmoothed(false,"none (d3dx9_43.dll is missing)",null,out reasonSkip));
+			Assert.AreEqual("DirectX cannot start.",reasonSkip);
+			Assert.IsFalse(LegacyRecording.CanRecordSmoothed(false,"none (no standard format starts)",null,out reasonSkip));
+			//A given format: there was no search, so there is no format to draw them with (FindDirectXFormat's given branch), whatever the strings are.
+			Assert.IsFalse(LegacyRecording.CanRecordSmoothed(true,"not searched (given)",formatBaseline,out reasonSkip));
+			StringAssert.Contains(reasonSkip,LegacyRecorder.EnvDirectXFormat+"="+formatBaseline);
+			Assert.IsFalse(LegacyRecording.CanRecordSmoothed(true,"not searched (given)",formatSearched,out reasonSkip),"A given multisampled format too.");
+			Assert.IsFalse(LegacyRecording.CanRecordSmoothed(true,formatSearched,formatBaseline,out reasonSkip),"Given wins over a format-like search value.");
+			//A search value that names no device format, given or not: DirectXDeviceFormat would read it as invalid and DirectX would not start.
+			Assert.IsFalse(LegacyRecording.CanRecordSmoothed(false,"not searched (given)",formatBaseline,out reasonSkip));
+			StringAssert.Contains(reasonSkip,"no device format");
+			Assert.IsFalse(LegacyRecording.CanRecordSmoothed(false,null,formatBaseline,out reasonSkip));
+			//The search's format is the baseline's (it does not multisample, or does not start without multisampling): the pictures would be the baseline's.
+			Assert.IsFalse(LegacyRecording.CanRecordSmoothed(false,formatBaseline,formatBaseline,out reasonSkip));
+			StringAssert.Contains(reasonSkip,"would be the baseline's");
+			Assert.IsFalse(LegacyRecording.CanRecordSmoothed(false,formatSearched,formatSearched,out reasonSkip));
+		}
+
+		[TestMethod]
 		public void Recorder_SmoothedList_NamesSizesOfItsScenes_AndDirectXNeedsAControlForTheAdapter() {
 			Assert.IsTrue(LegacyRecorder.ListSmoothed.Count>=8 && LegacyRecorder.ListSmoothed.Count<=12,"About ten smoothed pictures.");
 			Assert.AreEqual(LegacyRecorder.ListSmoothed.Count,LegacyRecorder.ListSmoothed.Select(x => x.PathRelative).Distinct().Count());

@@ -66,8 +66,9 @@ namespace ToothChartImageTests {
 	///are drawn with the standard format as it is, multisampled as the program draws them, into Baselines\legacy-smoothed\&lt;width&gt;x&lt;height&gt;\
 	///(the output folder's name plus "-smoothed"); they are never compared. Optional: OPMS_RECORD_LEGACY_CHART_OUT (another folder),
 	///OPMS_RECORD_LEGACY_CHART_ENGINES (for example "DirectX"), OPMS_RECORD_LEGACY_CHART_SCENES (scene names, for a quick look),
-	///OPMS_RECORD_LEGACY_CHART_DIRECTX_FORMAT (a device format string instead of the first standard format that works) and
-	///OPMS_RECORD_LEGACY_CHART_SMOOTHED ("0": no smoothed pictures; "only": the smoothed pictures alone).
+	///OPMS_RECORD_LEGACY_CHART_DIRECTX_FORMAT (a device format string instead of the first standard format that works; then there was no search,
+	///so no smoothed pictures are drawn and their folder is left as it is) and OPMS_RECORD_LEGACY_CHART_SMOOTHED ("0": no smoothed pictures;
+	///"only": the smoothed pictures alone).
 	///
 	///Check a re-recording (after a change of the chart's code, on the same PC): record into a scratch folder with OPMS_RECORD_LEGACY_CHART_OUT
 	///(and OPMS_RECORD_LEGACY_CHART_SMOOTHED=0), then
@@ -191,14 +192,16 @@ namespace ToothChartImageTests {
 		private string _folderOut;
 		private string _environmentText;
 		private string _directXFormat;
-		///<summary>The format the standard search found, before multisampling was turned off.</summary>
+		///<summary>The format the standard search found, before multisampling was turned off; or why there is none.</summary>
 		private string _directXFormatSearched;
+		///<summary>True when the DirectX format was given (OPMS_RECORD_LEGACY_CHART_DIRECTX_FORMAT) rather than searched.</summary>
+		private bool _isDirectXFormatGiven;
 		private Form _formHost;
 
 		///<summary>Draws every scene in every mode at every size of the scene, writes a PNG and a .txt for each, then the smoothed DirectX pictures
 		///(per smoothedMode), then rewrites manifest.txt and index.html from all the .txt files in folderOut and its smoothed folder. When
-		///isAllScenes, the old files of the recorded modes (and the old smoothed pictures, when they are recorded) are deleted first. Runs on an STA
-		///thread.</summary>
+		///isAllScenes, the old files of the recorded modes are deleted first, and the old smoothed pictures once CanRecordSmoothed says they will be
+		///drawn again. Runs on an STA thread.</summary>
 		public static LegacyRecording Record(string folderOut,List<DrawingMode> listEngines,List<ChartScene> listScenes,bool isAllScenes,
 			string directXFormatGiven,SmoothedMode smoothedMode=SmoothedMode.Also)
 		{
@@ -295,20 +298,16 @@ namespace ToothChartImageTests {
 		}
 
 		///<summary>The smoothed DirectX pictures of LegacyRecorder.ListSmoothed whose scene is in listScenes, each on a new wrapper with the standard
-		///search's format as it is (multisampled), as the program saves it for a computer with no format saved. Only when that format multisamples:
-		///otherwise the pictures would be the baseline's.</summary>
+		///search's format as it is (multisampled), as the program saves it for a computer with no format saved. Only when CanRecordSmoothed says so;
+		///otherwise a note says why and the smoothed folder is left as it is. The folder is emptied (when isAllScenes) only after that check.</summary>
 		private void RecordSmoothed(List<ChartScene> listScenes,bool isAllScenes) {
+			if(!CanRecordSmoothed(_isDirectXFormatGiven,_directXFormatSearched,_directXFormat,out string reasonSkip)) {
+				ListNotes.Add("No smoothed pictures, and the smoothed folder is left as it is: "+reasonSkip);
+				return;
+			}
 			string folderSmoothed=LegacyRecorder.GetSmoothedFolder(_folderOut);
 			if(isAllScenes && Directory.Exists(folderSmoothed)) {
 				Directory.Delete(folderSmoothed,true);
-			}
-			if(_directXFormat==null) {
-				ListNotes.Add("No smoothed pictures: DirectX cannot start.");
-				return;
-			}
-			if(_directXFormatSearched==_directXFormat) {
-				ListNotes.Add("No smoothed pictures: the DirectX format used ("+_directXFormat+") is the standard search's own, so they would be the baseline's.");
-				return;
 			}
 			foreach(SmoothedPicture smoothedPicture in LegacyRecorder.ListSmoothed) {
 				ChartScene scene=listScenes.FirstOrDefault(x => x.Name==smoothedPicture.SceneName);
@@ -327,8 +326,33 @@ namespace ToothChartImageTests {
 			}
 		}
 
+		///<summary>Whether this run can draw the smoothed pictures, decided from the DirectX formats alone (no device): formatUsed is the baseline's
+		///format (null when DirectX cannot start), formatSearched the standard search's own and isFormatGiven whether formatUsed came from
+		///OPMS_RECORD_LEGACY_CHART_DIRECTX_FORMAT. They are drawn only with a device format the standard search found that differs from the
+		///baseline's, which is the multisampled format the program saves for a computer with no format saved. Not when DirectX cannot start, not when
+		///the format was given (there was no search: formatSearched then names no format, and a smoothed picture drawn with it would be a fallback's
+		///under "DirectX, smoothed"), not when formatSearched is no device format, and not when the search's format is the baseline's (it does not
+		///multisample, or does not start without multisampling): the pictures would be the baseline's. reasonSkip says why not, or is null.</summary>
+		public static bool CanRecordSmoothed(bool isFormatGiven,string formatSearched,string formatUsed,out string reasonSkip) {
+			reasonSkip=null;
+			if(formatUsed==null) {
+				reasonSkip="DirectX cannot start.";
+			}
+			else if(isFormatGiven) {
+				reasonSkip="the DirectX format was given ("+LegacyRecorder.EnvDirectXFormat+"="+formatUsed+"), so there is no standard search's format to draw "
+					+"them with.";
+			}
+			else if(formatSearched==null || formatSearched.IndexOf(';')<0) {
+				reasonSkip="the standard search found no device format ("+(formatSearched??"none")+").";
+			}
+			else if(formatSearched==formatUsed) {
+				reasonSkip="the DirectX format used ("+formatUsed+") is the standard search's own, so they would be the baseline's.";
+			}
+			return reasonSkip==null;
+		}
+
 		///<summary>Draws the scene and writes its PNG and .txt: into &lt;folderOut&gt;\&lt;engine&gt;\&lt;size&gt;, or, for a smoothed picture,
-		///into the smoothed folder's &lt;size&gt;.</summary>
+		///into the smoothed folder's &lt;size&gt;. A smoothed picture that DirectX did not draw is a failure, and no PNG is left for it.</summary>
 		private void RecordScene(ToothChartWrapper wrapper,ToothChartRelay relay,DrawingMode engine,ChartScene scene,ChartSize chartSize,bool isSmoothed) {
 			string folder;
 			string pathRelative;
@@ -360,11 +384,16 @@ namespace ToothChartImageTests {
 						+"along the edges. The baseline of this scene and size, without multisampling, is in the recording folder.");
 				}
 				else {
-					listLines.Add("DirectX standard search: "+_directXFormatSearched+(_directXFormatSearched!=_directXFormat?" (multisampling turned off: "
-						+"with it a draw is not repeatable on every driver)":""));
+					listLines.Add("DirectX standard search: "+_directXFormatSearched+(!_isDirectXFormatGiven && _directXFormatSearched!=_directXFormat
+						?" (multisampling turned off: with it a draw is not repeatable on every driver)":""));
 				}
 			}
 			try {
+				if(isSmoothed && wrapper.DrawMode!=DrawingMode.DirectX) {
+					//The catch below fails the run and deletes the PNG: a fallback's picture must never stand under "DirectX, smoothed" in the gallery.
+					throw new Exception("DirectX did not start with "+_directXFormatSearched+" (the chart fell back to "+wrapper.DrawMode
+						+"), and a smoothed picture is DirectX's only.");
+				}
 				_formHost.Activate();
 				Application.DoEvents();
 				ChartScenes.Prepare(relay,scene,chartSize.ColorSet);
@@ -465,6 +494,7 @@ namespace ToothChartImageTests {
 		private string FindDirectXFormat(string directXFormatGiven) {
 			if(!string.IsNullOrWhiteSpace(directXFormatGiven)) {
 				ListNotes.Add("DirectX device format given: "+directXFormatGiven);
+				_isDirectXFormatGiven=true;
 				_directXFormatSearched="not searched (given)";
 				return directXFormatGiven;
 			}
