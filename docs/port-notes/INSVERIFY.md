@@ -7,6 +7,9 @@ Follow-up round **INSV2** on branch `fix/insv2-1` (from `fix/insverify-1` b6edbf
 lead's decision on question 1, the review's corrections to this note, and the batch test's clean-up. See [INSV2](#insv2-the-latest-verification-and-the-earliest-appointment).
 Still no schema change, no enumeration value, no preference.
 
+Last round **INSV3** on branch `fix/insv3-1` (from `fix/insv2-1` 07923aec7): the lead's decision on INSV2's question (no window function: the
+earliest appointment is chosen in C#), and the review's points. See [INSV3](#insv3-the-earliest-appointment-chosen-in-c-no-window-function).
+
 ## The bug
 
 The Insurance Verification List (`FormInsVerificationList`: the Verification List, Past Due, Assign Standard and Assign Medicaid grids)
@@ -100,17 +103,20 @@ New project `tests/INSVERIFYTests` (MSTest v1, x86, SDK-style on `tests/Director
 `OpenDental.Local.slnf`, wired in its own commit). It references the business library and UnitTestsCore (for the batch verification's
 setup), not the program.
 
-- `InsvDb`: the scratch database `insv2_<run id>_main` on 127.0.0.1:3306 (`insv_` before INSV2): the committed `db/init/new-database.sql`,
-  then `ForkMigrationRunner.Run()`; dropped after the run (`INSVERIFY_KEEP_DB=1` keeps it); leftovers of earlier `insv2_` runs older than 12
-  hours are dropped; skipped (inconclusive) when the server does not answer or `INSVERIFY_TEST_DB=skip`. No other database is touched.
+- `InsvDb`: the scratch database `insv_<run id>_main` on 127.0.0.1:3306 (one stable prefix; INSV2 used `insv2_` for a while): the committed
+  `db/init/new-database.sql`, then `ForkMigrationRunner.Run()`; dropped after the run (`INSVERIFY_KEEP_DB=1` keeps it); leftovers of earlier
+  runs of the fixture's own name scheme, `insv_` or `insv2_`, older than 12 hours are dropped; skipped (inconclusive) when the server does not
+  answer or `INSVERIFY_TEST_DB=skip`. No other database is touched.
 - `VerifyGridKeyTests` (database). Each test sets the next keys of `insplan` and `patplan` itself (`ALTER TABLE ... AUTO_INCREMENT`, above
   every key either table holds or handed out) and checks that the plan and patient plan got them, so no test depends on the keys earlier
   tests used:
   - `GridList_PlanNumEqualsPatPlanNum_ListsTheEligibilityAndTheBenefitsRow`: both year checks off: one combined row with both verifications.
-  - `GridList_PlanNumEqualsPatPlanNum_SeparateRowsWhenOnlyOneYearCheckIsOn`: a "Pat" row and an "Ins" row.
+  - `GridList_PlanNumEqualsPatPlanNum_SeparateRowsWhenOnlyOneYearCheckIsOn`: a "Pat" row and an "Ins" row. Since INSV3 it reads the two
+    year checks first and writes the values it read back in a `finally` block (before, it set both off afterwards, whatever they were).
   - `GridList_DifferentKeys_ListsTheEligibilityAndTheBenefitsRow`: the control; passes before and after the fix.
-  - `Query_PlanNumEqualsPatPlanNum_OneRowPerPatientPlanVerifyTypeAndKey`: the query itself (the private method, by reflection) with two
-    appointments in the range and a second benefits row of the plan: exactly one benefits row and one eligibility row for the patient plan.
+  - `Query_PlanNumEqualsPatPlanNum_OneRowPerPatientPlanVerifyTypeAndKey`: the query itself (the private method, by reflection; since INSV3
+    followed by the C# choice of the earliest appointment, also by reflection) with two appointments in the range and a second benefits row of
+    the plan: exactly one benefits row and one eligibility row for the patient plan.
   - `BatchVerify_PlanNumEqualsPatPlanNum_VerifiesTheEligibilityRow`: `TryBatchPatInsVerify` with a carrier trusted for eligibility and a
     synthetic 271 (`x270Controller.FakeResponseOverride271`, nothing is sent): the patient's eligibility row is verified (state Success,
     `DateLastVerified` today) and the benefits row is left alone. Since INSV2 it reads the preferences it changes first and writes them back
@@ -156,8 +162,11 @@ MySQL and MariaDB use `insverify.FKey` as an index (the reason for 24.1.71) and 
 
 - **The latest verification.** Both parts of the union join `insverify` a second time, as `insverifylater`, on the same `VerifyType` and
   `FKey` for a row verified later, or verified on the same date and inserted later (a higher `InsVerifyNum`), and keep the row only when
-  there is none (`insverifylater.InsVerifyNum IS NULL`, in `whereClause`, which both parts end with). The tie is the one `GetOneByFKey`
-  (`ORDER BY DateLastVerified DESC,InsVerifyNum DESC`) and Database Maintenance's `InsVerifyRedundantEntries` (P262-TOOLS) break the same way.
+  there is none (`insverifylater.InsVerifyNum IS NULL`, in `whereClause`, which both parts end with). **The tie rule is the fork's own**:
+  two rows of a key verified on the same date go to the higher `InsVerifyNum`, as the fork's `GetOneByFKey`
+  (`ORDER BY DateLastVerified DESC,InsVerifyNum DESC`, P262-TOOLS) and Database Maintenance's `InsVerifyRedundantEntries` (P262-TOOLS) break
+  it. Open Dental 24.2.1 had no tie rule: its subquery kept every row with the key's maximum `DateLastVerified`, so both rows of a tie were
+  listed and the list showed whichever came first, and its `GetOneByFKey` ordered by `DateLastVerified DESC` alone.
   As in 24.2.1, the latest row is chosen before the list's conditions (due date, year checks, assigned user, status), which apply to it: a
   key whose latest verification is not due is not listed for an older row that is, and a user or status filter looks at the latest row.
   The second join is on `FKey` like the first, so both use the index; 24.2.1 joined a subquery grouping the whole table instead.
@@ -166,6 +175,7 @@ MySQL and MariaDB use `insverify.FKey` as an index (the reason for 24.1.71) and 
   AS AptOrder`), and the outer query keeps `AptOrder=1`. The numbering is done in each part of the union: each part joins `insverify` on one
   verify type, so no group spans both parts. Only appointments that pass the list's conditions are numbered (in the range, scheduled or
   complete, the clinic filter, and with a year check the verification due by that appointment's date). The appointment's clinic comes with it.
+  INSV3 replaced the numbering with the same choice made in C# (below).
 - **No GROUP BY.** With one row left per group, the outer query is
   `SELECT * FROM (...) AS iv WHERE AptOrder=1 AND DateLastVerified ORDER BY AptDateTime,AptNum,PatPlanNum,VerifyType`. A `GROUP BY` on
   top changed nothing but cost a temporary table (about 65 ms of the 7-day query below, in one comparison of medians), so it went.
@@ -177,7 +187,7 @@ MySQL and MariaDB use `insverify.FKey` as an index (the reason for 24.1.71) and 
   with appointments at the same time no longer decide by read order whose row carries it: the lower `AptNum`.
 - **Server version.** `ROW_NUMBER() OVER` needs MariaDB 10.2 or MySQL 8.0; it is the first window function in the program. The program's
   server is MariaDB 10.11 (README, `docs/adoption-runbook.md`), but the start-up check (`PrefL.CheckMySqlVersion`) still accepts MySQL 5.0
-  and later: on an older server this list would fail with an SQL error. A question for the lead below.
+  and later: on an older server this list would fail with an SQL error. A question for the lead below; INSV3 removed the window function.
 
 What a user sees: a plan or patient plan with a leftover second verification record shows the latest one, and is not listed as due when
 that one is recent; a patient with several appointments in the range shows the earliest (and its clinic). The batch verification works from
@@ -271,8 +281,140 @@ After merging `main` (S2-1), `tests/INSVERIFYTests/packages.lock.json` was delet
 1. The window function needs MariaDB 10.2 or MySQL 8.0, while `PrefL.CheckMySqlVersion` lets the program start on MySQL 5.0 and later. The
    office runs MariaDB 10.11, so nothing changes there; should the start-up check (or the release notes) name MariaDB 10.2 / MySQL 8.0 as
    the minimum? Without window functions the choice of appointment would need a join back to the appointment per row or a choice in C#.
+   **Decided by the lead (INSV3): no window function; a bug fix must not raise the database requirement. The choice is made in C#; done in
+   the next section.**
+
+## INSV3: the earliest appointment chosen in C#, no window function
+
+The lead's decision on INSV2's question: no window function. `ROW_NUMBER() OVER` was the program's first and needs MariaDB 10.2 or MySQL
+8.0, while `PrefL.CheckMySqlVersion` (`OpenPmsDental/Logic/PrefL.cs`) still lets the program start on MySQL 5.0 and later, and a bug fix must
+not raise the database requirement. The latest-verification join stays (it is plain SQL); the choice of the earliest appointment moves into
+the business layer, after the query. Still no schema change, no enumeration value, no preference; `GetVerifyGridList`'s signature and return
+type are unchanged.
+
+### The change
+
+- **The query** (`GetVerifyGridListQuery`) has no `ROW_NUMBER() OVER` and no `AptOrder`. The outer query is
+  `SELECT * FROM (...) AS iv WHERE DateLastVerified ORDER BY AptDateTime,AptNum,PatPlanNum,VerifyType`: a row for every appointment that
+  passes the list's conditions, each with the latest verification of its key (INSV2's `insverifylater ... IS NULL` join in each part of the
+  union). Nothing in it needs more than MySQL 5.0: a derived table, `UNION ALL`, `LEFT JOIN ... IS NULL`, `DATE_FORMAT`, `LPAD`.
+- **The choice** (`InsVerifies.RemoveLaterAppointmentRows`, new, private) keeps the first row of each `PatPlanNum`, `VerifyType`, `FKey` in
+  the query's order and removes the others; the rows it keeps stay in that order. It is `AptOrder=1`, exactly:
+  - The query's order starts with `AptDateTime`, then `AptNum`, the window's `ORDER BY`. Within one key every row is a different
+    appointment: from an appointment, the key's patient plan leads to one subscriber, plan and carrier, the clinic is one row or none, the
+    latest-verification join leaves one `insverify` row of the key, and the clone join keeps only rows without a clone link. So the first
+    row of a key is its earliest appointment, the lower `AptNum` at the same time.
+  - It chooses among the rows the query returned, after all of its conditions (range, status, clinic and region, user, status, and the
+    year checks), as the window numbered only those rows. With a year check, that is the earliest appointment the verification is due for.
+  - The window numbered each part of the union on its own; all rows of a key come from one part (each part joins `insverify` on one verify
+    type), so one choice over the whole table is the same.
+  - The outer filter `DateLastVerified` (the zero-date filter of Open Dental's HAVING) depends only on the key's one verification, so it
+    removes all rows of a key or none, before the choice as after it.
+  - Its comment says why the choice is in C#. INSV2's comment above `mainQuery` (on `AptOrder`) went with the window function.
+- **`GetVerifyGridList`** calls it after each query (the standard and the Medicaid list), before `TableToListInsVerifyGridObjects`. With
+  the Middle Tier the client returns at the `Meth.GetObject` call and the method runs on the server, so the choice runs there, and the
+  grid rows sent are those of INSV2.
+- `TableToListInsVerifyGridObjects`, the batch verification and the window are unchanged.
+
+### The same rows
+
+- **Tests.** The two new year-check tests (below) were committed first and pass on INSV2's window function: INSVERIFYTests 19 of 19
+  (INSV2's 17 and the 2). After the change the 19 pass with the C# choice, and the 4 new tests of the choice too (23 of 23). The two
+  `Query_` tests now run the query and then the choice, by reflection: the rows the list works from.
+- **The synthetic set** of INSV2, built again as `insv_perf_261109` from the committed `db/init/new-database.sql` and INSV2's data script
+  (dropped afterwards; the scripts in the session's scratch folder, not committed). A 32-bit PowerShell script loaded this branch's
+  business library from the test project's output, took the query `GetVerifyGridListQuery` writes (by reflection, every filter on "All",
+  plans without a filing code, verifications older than 30 days), and derived INSV2's (the `ROW_NUMBER()` column in both parts, `AptOrder=1
+  AND` in the outer query) and `main`'s (no `insverifylater` join, no `IS NULL`, Open Dental's
+  `GROUP BY PatPlanNum,FKey HAVING MAX(DateLastVerified) ORDER BY AptDateTime`) by exact text edits, each required to apply exactly as often
+  as it occurs (the source of the three versions differs, comments aside, by these edits only). For each case it compared INSV2's rows
+  (without `AptOrder`) with INSV3's after the choice, every column of every row in order, and the grid rows
+  `TableToListInsVerifyGridObjects` builds from each (every field of both halves):
+
+| Range, year checks | Rows main | Rows INSV2 | Rows INSV3: query, after the choice | Rows identical | Grid rows INSV2, INSV3, identical |
+|---|---|---|---|---|---|
+| today through 7 days, off (the default) | 2,321 | 3,685 | 3,865, 3,685 | yes | 2,090, 2,090, yes |
+| today through 7 days, both on | 2,327 | 3,701 | 3,881, 3,701 | yes | 2,092, 2,092, yes |
+| today through 60 days, off | 12,873 | 20,290 | 29,401, 20,290 | yes | 11,282, 11,282, yes |
+| today through 60 days, both on | 12,907 | 20,484 | 29,641, 20,484 | yes | 11,297, 11,297, yes |
+| 30 days ago through 30 days ahead, off | 12,848 | 20,274 | 29,387, 20,274 | yes | 11,281, 11,281, yes |
+| 30 days ago through 30 days ahead, both on | 12,866 | 20,360 | 29,485, 20,360 | yes | 11,290, 11,290, yes |
+
+The last two ranges hold completed appointments too, which the range scan reads in another order than the scheduled ones (INSV2's
+note above): the choice does not depend on the order MariaDB reads rows in. `main` lists fewer rows because of the bug (a patient plan's
+eligibility row folded into its benefits row when the keys are equal, 16,000 of the 20,000 here) and shows any verification and any
+appointment of a group; its grid rows are 1,954, 1,954, 9,825, 9,816, 9,808 and 9,806.
+
+### Cost
+
+The same script, on the same set, timed what `GetVerifyGridList` spends for the standard list, as the program does it in a 32-bit process:
+`DataCore.GetTable` (the statement, the transfer of its rows and the `DataTable`), the choice (INSV3 only), and
+`TableToListInsVerifyGridObjects` (the grid rows), with a `Stopwatch`; and, in a separate run of the same statement in the same round, its
+server time (`ANALYZE FORMAT=JSON`, `r_total_time_ms` of the query block, no rows sent). The three versions interleaved in every round, the
+first round not counted, on the development PC's MariaDB 10.11.19 (MyISAM) with other work running on the PC, so the minimum is the steadier
+figure (medians moved by 30 to 50 ms between rounds in 7 days). Minimum, median, in ms:
+
+| Range, year checks | Version | Rows sent | Server | Statement, transfer, table | Choice | Grid rows | Total | Rounds |
+|---|---|---|---|---|---|---|---|---|
+| 7 days, off (the default) | main | 2,321 | 272, 334 | 306, 343 | | 65, 83 | 371, 423 | 15 |
+| | INSV2 | 3,685 | 304, 371 | 334, 405 | | 116, 146 | 450, 544 | 15 |
+| | INSV3 | 3,865 | 319, 365 | 341, 402 | 4.2, 5.4 | 119, 146 | 483, 558 | 15 |
+| 7 days, both on | main | 2,327 | 263, 289 | 286, 319 | | 65, 74 | 352, 397 | 15 |
+| | INSV2 | 3,701 | 301, 332 | 343, 375 | | 113, 130 | 461, 496 | 15 |
+| | INSV3 | 3,881 | 284, 336 | 310, 356 | 4.1, 4.6 | 117, 137 | 432, 500 | 15 |
+| 60 days, off | main | 12,873 | 1,924, 2,178 | 1,879, 2,377 | | 1,059, 1,299 | 2,938, 3,707 | 9 |
+| | INSV2 | 20,290 | 2,249, 2,497 | 2,466, 2,670 | | 2,468, 2,742 | 4,934, 5,378 | 9 |
+| | INSV3 | 29,401 | 2,210, 2,418 | 2,339, 2,717 | 49, 68 | 2,396, 2,740 | 4,791, 5,571 | 9 |
+
+- **INSV3 against INSV2: the same, within this PC's noise.** The statement without the numbering is no slower on the server (no sort of
+  each part's rows). It sends the rows of the later appointments too: 180 more in 7 days (5 per cent), 9,111 more in 60 days (45 per cent);
+  in 7 days that is not measurable in the transfer, in 60 days it is about what the numbering saved on the server. The choice costs 4 to 5
+  ms in 7 days and 50 to 70 ms in 60 days (it reads three columns of every row and removes the later rows). Totals: 7 days off +33 ms
+  (minimum) and +15 ms (median), both on -29 and +4, 60 days -142 and +192. An office with 50 to 100 appointments a day has a fifth to a
+  third of these rows: about a millisecond for the choice in its default range.
+- **Against `main`: 80 to 135 ms more in 7 days**, as INSV2 measured on the server (the second `insverify` join), plus about 50 to 65 ms in
+  the grid rows: `main` lists fewer rows because of the bug, and `TableToListInsVerifyGridObjects` searches the grid rows it has built for
+  every row it reads (`List.Find`), so its time grows about with the square of the rows (65 ms for 2,321 rows, 2.4 s for 20,290). That method is
+  unchanged since Open Dental; a question for the lead below.
+
+### Tests
+
+- `VerifyGridChoiceTests`, the year check (the review's point): the plan renews on the first of the month after next (32 to 62 days ahead,
+  so the appointment every test patient gets in two days is outside the range of five days on either side of it). In the range: an
+  appointment two days before the renewal, and two after it, created in the opposite order.
+  - `GridList_YearCheck_ShowsTheEarliestAppointmentTheVerificationIsDueFor`: both verifications done 5 days ago. With both year checks off
+    nothing is listed (neither is due by its age); with both on, the combined row shows the appointment the day after the renewal, the
+    earliest it is due for, and its clinic, not the earlier one before the renewal.
+  - `GridList_YearCheck_EachVerificationShowsTheEarliestAppointmentItIsDueFor`: the eligibility done 40 days ago (due by its age for
+    every appointment), the benefits 5 days ago (due from the renewal on): the combined row's eligibility half shows the appointment before
+    the renewal, its benefits half the earliest after it.
+  Both read the two year checks first and write the values back in a `finally` block, then check database and cache.
+- `EarliestAppointmentTests` (new file, no database): the choice on tables built by hand in the query's order, typed as MySqlConnector fills
+  them: the first row of each key stays, in order, when the keys of the two kinds are equal and when two patient plans share a plan; rows
+  in the state `Db.GetTable` leaves them (unchanged) and new ones (added); an empty table.
+- `QuerySourceTests`: `GetVerifyGridListQuery_NoWindowFunctionAndTheEarliestAppointmentOfEachKeyFirst` replaces INSV2's
+  `GetVerifyGridListQuery_OneRowPerPatientPlanVerifyTypeAndKey`: no `GROUP BY`, `OVER(`, `ROW_NUMBER`, `RANK(`, `PARTITION BY` or `AptOrder`
+  in the method's code, and the outer query, its filter and its order; `GetVerifyGridList_KeepsTheEarliestAppointmentOfEachKeyAfterEachQuery`:
+  both `Db.GetTable` calls of `GetVerifyGridList` come after its Middle Tier call and are followed by the choice, then the grid rows.
+- The review's points on the fixture: one stable prefix for the scratch databases, `insv_` (`InsvDb`), with `DropStale` sweeping old
+  leftovers of `insv_` and `insv2_`; `GridList_PlanNumEqualsPatPlanNum_SeparateRowsWhenOnlyOneYearCheckIsOn` puts back the values it read
+  (`GetPrefValues`, `RestorePrefValues`, and the check `AssertPrefValuesRestored` the batch test now shares).
+
+| Run (`.git/od-tools/test-results/`) | Code | Result |
+|---|---|---|
+| `insv3-1-tests-on-insv2.txt` | INSV2's window function, the new tests | INSVERIFYTests 19 of 19, NoHqTests 50 of 58 (8 skipped: the program was not built yet in this worktree). |
+| `insv3-1-after-change.txt` | INSV3 | INSVERIFYTests 23 of 23, NoHqTests 50 of 58 (the same 8 skipped). |
+
+### For the lead
+
+1. `TableToListInsVerifyGridObjects` (unchanged since Open Dental) looks up each row's plan and patient plan in the grid rows it has built
+   with `List.Find`, so the list's time grows about with the square of its rows: on the synthetic set 65 to 145 ms of about 400 to 560 in the
+   default 7 days, 2.4 to 2.7 s of about 5 s in 60 days. A dictionary by `PlanNum` and by `PatPlanNum` would make it linear, with the same
+   rows. Not done here: it is not part of the bug, and every row the list shows would have to be shown to stay the same (the comparison
+   above would do it). A follow-up package?
 
 ## Release notes
 
 A section "Insurance Verification List: no patient left out" in `docs/release-notes/next.md`; INSV2 added its second paragraph (the latest
-verification and the earliest appointment).
+verification and the earliest appointment). INSV3 added to it the tie rule (the fork's own), the year check's earliest due appointment, and
+that the list needs no newer database server.

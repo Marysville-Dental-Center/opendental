@@ -390,7 +390,11 @@ they always were for the others.
 
 Each row of the list also shows the latest verification of its plan or patient plan, and the patient's earliest appointment in the date
 range, as Open Dental 23.3.54 to 24.2.1 did. Before, a plan with a leftover second verification record could show the older one (and be listed
-as due although it was verified recently), and a patient with several appointments in the range could show any of them.
+as due although it was verified recently), and a patient with several appointments in the range could show any of them. When two
+verification records of a plan or patient plan have the same date, the list shows the one entered last, the one Database Maintenance's
+InsVerifyRedundantEntries fix keeps; this tie rule is this program's own (Open Dental 24.2.1 listed whichever came first). With "Always
+reverify service year insurance benefits" or "... patient eligibility" checked in Insurance Verification Setup, a row shows the earliest
+appointment its verification is due for. The list needs no newer database server than before.
 
 ## Direct certificates: imported from your Direct provider's file
 
