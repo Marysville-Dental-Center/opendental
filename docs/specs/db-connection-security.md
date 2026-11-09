@@ -398,7 +398,8 @@ server of its own (section 5.1).
 | `DatabaseIntegrityCheck` | no | Dev-only. Its connection now goes through `NewMySqlConnection`, so with its `SslMode=none` it reaches loopback databases only. |
 | `CentralManager`, `MySQLManager` | no | Dev-only; they connect through `DataConnection`, so the rule applies. |
 | `DocumentationBuilder` | no | Dev-only, in the solution filter since S1-5 of the .NET 10 plan (not shipped), unchanged: it reads the config of a local Release build (`..\..\..\OpenPmsDental\bin\Release`), a loopback database. |
-| `tools/SyntheticData`, `tools/AdoptionValidation` | no | Dev-only, unchanged: they refuse any server but this computer themselves (`LocalOnly.EnsureLocalHost`, the adoption tools' loopback and SSH-forward checks). |
+| `tools/SyntheticData`, `tools/AdoptionValidation` | no | Dev-only: they refuse any server but this computer themselves (`LocalOnly.EnsureLocalHost`, the adoption tools' loopback and SSH-forward checks). With the local test server's CA (O-12, below) they reach `127.0.0.1:3306` with `SslMode=VerifyCA`; the local end of an SSH forward as before. |
+| `DataConnectionBase.DevDbTls` (O-12, [docs/port-notes/DB-TLS.md](../port-notes/DB-TLS.md)) | in `DataConnectionBase.dll`, never called by a shipped binary (a test checks it) | For the development set-up, the test helpers and the dev tools only: the local test server (`localhost` or a loopback address on port 3306) gets `SslMode=VerifyCA` with the test CA of `tools/Enable-LocalDbTls.ps1` once it exists; the program's own loopback branch with a CA (`BuildSimpleConnectionString`, `SslMode=VerifyCA`) is what the helpers' `SetDb` calls build. The rule above does not change. |
 
 ## 8. Open points for the owner
 

@@ -221,7 +221,7 @@ namespace DbConnectionSecurityTests {
 		[TestMethod]
 		public void TheProgramNeverCallsDevDbTls() {
 			string root=GetRepoRoot();
-			string[] arrayTopNotProgram={ "tests","tools","UnitTests","UnitTestsCore",".git",".claude",".vs","packages","docs" };
+			string[] arrayTopNotProgram={ "tests","tools","UnitTests","UnitTestsCore","NoHqTests","TestResults",".git",".claude",".vs","packages","docs" };
 			List<string> listCallers=new List<string>();
 			foreach(string folder in Directory.GetDirectories(root)) {
 				if(arrayTopNotProgram.Contains(Path.GetFileName(folder),StringComparer.OrdinalIgnoreCase)) {
@@ -347,7 +347,7 @@ namespace DbConnectionSecurityTests {
 			Regex regexSetDb=new Regex(@"\.SetDbT?\s*\(");
 			List<string> listMissing=new List<string>();
 			int countChecked=0;
-			foreach(string top in new[] { "tests","tools","UnitTestsCore" }) {
+			foreach(string top in new[] { "tests","tools","UnitTests","UnitTestsCore","NoHqTests" }) {
 				foreach(string path in GetSourceFiles(Path.Combine(root,top))) {
 					string relative=path.Substring(root.Length+1);
 					string text=File.ReadAllText(path);
