@@ -1235,7 +1235,7 @@ OpenPmsDentalBusiness|Compile|Crud\EhrLabSpecimenCrud.cs|
 OpenPmsDentalBusiness|Compile|Crud\EhrLabSpecimenRejectReasonCrud.cs|
 OpenPmsDentalBusiness|Compile|Crud\EhrMeasureCrud.cs|
 OpenPmsDentalBusiness|Compile|Crud\EhrMeasureEventCrud.cs|
-OpenPmsDentalBusiness|Compile|Crud\EhrNotPerformedCrud.cs|SubType=Code
+OpenPmsDentalBusiness|Compile|Crud\EhrNotPerformedCrud.cs|
 OpenPmsDentalBusiness|Compile|Crud\EhrPatientCrud.cs|
 OpenPmsDentalBusiness|Compile|Crud\EhrProvKeyCrud.cs|
 OpenPmsDentalBusiness|Compile|Crud\EhrQuarterlyKeyCrud.cs|
@@ -1697,7 +1697,7 @@ OpenPmsDentalBusiness|Compile|Data Interface\DiseaseDefs.cs|
 OpenPmsDentalBusiness|Compile|Data Interface\Diseases.cs|
 OpenPmsDentalBusiness|Compile|Data Interface\DispSupplies.cs|
 OpenPmsDentalBusiness|Compile|Data Interface\DisplayFields.Era.cs|
-OpenPmsDentalBusiness|Compile|Data Interface\DisplayFields.cs|SubType=Code
+OpenPmsDentalBusiness|Compile|Data Interface\DisplayFields.cs|
 OpenPmsDentalBusiness|Compile|Data Interface\DisplayReports.cs|
 OpenPmsDentalBusiness|Compile|Data Interface\DocumentMiscs.cs|
 OpenPmsDentalBusiness|Compile|Data Interface\Documents.cs|
@@ -1726,8 +1726,8 @@ OpenPmsDentalBusiness|Compile|Data Interface\EhrLabSpecimens.cs|
 OpenPmsDentalBusiness|Compile|Data Interface\EhrLabs.cs|
 OpenPmsDentalBusiness|Compile|Data Interface\EhrMeasureEvents.cs|
 OpenPmsDentalBusiness|Compile|Data Interface\EhrMeasures.cs|
-OpenPmsDentalBusiness|Compile|Data Interface\EhrNotPerformeds.cs|SubType=Code
-OpenPmsDentalBusiness|Compile|Data Interface\EhrPatients.cs|SubType=Code
+OpenPmsDentalBusiness|Compile|Data Interface\EhrNotPerformeds.cs|
+OpenPmsDentalBusiness|Compile|Data Interface\EhrPatients.cs|
 OpenPmsDentalBusiness|Compile|Data Interface\EhrProvKeys.cs|
 OpenPmsDentalBusiness|Compile|Data Interface\EhrSummaryCcds.cs|
 OpenPmsDentalBusiness|Compile|Data Interface\EhrTriggers.cs|
@@ -2402,7 +2402,7 @@ OpenPmsDentalBusiness|Compile|Reports\RpFinanceCharge.cs|
 OpenPmsDentalBusiness|Compile|Reports\RpHiddenPaySplits.cs|
 OpenPmsDentalBusiness|Compile|Reports\RpInsAging.cs|
 OpenPmsDentalBusiness|Compile|Reports\RpInsCo.cs|
-OpenPmsDentalBusiness|Compile|Reports\RpInsOverpaid.cs|SubType=Code
+OpenPmsDentalBusiness|Compile|Reports\RpInsOverpaid.cs|
 OpenPmsDentalBusiness|Compile|Reports\RpInsPendingSupplementals.cs|
 OpenPmsDentalBusiness|Compile|Reports\RpNewPatients.cs|
 OpenPmsDentalBusiness|Compile|Reports\RpOutstandingIns.cs|
@@ -2440,7 +2440,7 @@ OpenPmsDentalBusiness|Compile|SheetFramework\GraphicsHelper.cs|
 OpenPmsDentalBusiness|Compile|SheetFramework\SheetAutoSaveImages.cs|
 OpenPmsDentalBusiness|Compile|SheetFramework\SheetDataTableUtil.cs|
 OpenPmsDentalBusiness|Compile|SheetFramework\SheetDrawingJob.cs|
-OpenPmsDentalBusiness|Compile|SheetFramework\SheetEnums.cs|SubType=Code
+OpenPmsDentalBusiness|Compile|SheetFramework\SheetEnums.cs|
 OpenPmsDentalBusiness|Compile|SheetFramework\SheetFieldsAvailable.cs|
 OpenPmsDentalBusiness|Compile|SheetFramework\SheetFiller.cs|
 OpenPmsDentalBusiness|Compile|SheetFramework\SheetFonts.cs|
@@ -2656,7 +2656,7 @@ OpenPmsDentalBusiness|Compile|TableTypes\HL7DefMessage.cs|
 OpenPmsDentalBusiness|Compile|TableTypes\HL7DefSegment.cs|
 OpenPmsDentalBusiness|Compile|TableTypes\HL7Msg.cs|
 OpenPmsDentalBusiness|Compile|TableTypes\HL7ProcAttach.cs|
-OpenPmsDentalBusiness|Compile|TableTypes\Hcpcs.cs|SubType=Code
+OpenPmsDentalBusiness|Compile|TableTypes\Hcpcs.cs|
 OpenPmsDentalBusiness|Compile|TableTypes\HieClinic.cs|
 OpenPmsDentalBusiness|Compile|TableTypes\HieQueue.cs|
 OpenPmsDentalBusiness|Compile|TableTypes\HistAppointment.cs|
@@ -2915,18 +2915,18 @@ OpenPmsDentalBusiness|Compile|UI\DpiScale.cs|
 OpenPmsDentalBusiness|Compile|UI\GlobalFormOpenDental.cs|
 OpenPmsDentalBusiness|Compile|UI\GridCell.cs|
 OpenPmsDentalBusiness|Compile|UI\GridColumn.cs|
-OpenPmsDentalBusiness|Compile|UI\GridOD.cs|SubType=UserControl
+OpenPmsDentalBusiness|Compile|UI\GridOD.cs|
 OpenPmsDentalBusiness|Compile|UI\GridODExport.cs|
-OpenPmsDentalBusiness|Compile|UI\GridOld.cs|SubType=UserControl
+OpenPmsDentalBusiness|Compile|UI\GridOld.cs|
 OpenPmsDentalBusiness|Compile|UI\GridRow.cs|
 OpenPmsDentalBusiness|Compile|UI\ListGridColumns.cs|
-OpenPmsDentalBusiness|Compile|UI\ODGridPageNav.cs|SubType=UserControl
+OpenPmsDentalBusiness|Compile|UI\ODGridPageNav.cs|
 OpenPmsDentalBusiness|Compile|UI\PopupHelper.cs|
 OpenPmsDentalBusiness|Compile|UI\SigBox.cs|
 OpenPmsDentalBusiness|Compile|UI\SignatureBox.Designer.cs|DependentUpon=SignatureBox.cs
-OpenPmsDentalBusiness|Compile|UI\SignatureBox.cs|SubType=Component
+OpenPmsDentalBusiness|Compile|UI\SignatureBox.cs|
 OpenPmsDentalBusiness|Compile|UI\SignatureBoxWrapper.Designer.cs|DependentUpon=SignatureBoxWrapper.cs
-OpenPmsDentalBusiness|Compile|UI\SignatureBoxWrapper.cs|SubType=UserControl
+OpenPmsDentalBusiness|Compile|UI\SignatureBoxWrapper.cs|
 OpenPmsDentalBusiness|Compile|UI\TopazWrapper.cs|
 OpenPmsDentalBusiness|Compile|VendorDirect\DentalXChange\DxcPartnerIdentity.cs|
 OpenPmsDentalBusiness|Compile|VendorDirect\DentalXChange\DxcPdfAttachment.cs|
@@ -3090,14 +3090,14 @@ OpenPmsDentalBusiness|Content|Shared\README.txt|
 OpenPmsDentalBusiness|EmbeddedResource|Misc\ForkMigrations\Reference\OdSchema-25.3.48.sql|LogicalName=OdSchema-25.3.48.sql
 OpenPmsDentalBusiness|EmbeddedResource|Misc\ForkMigrations\Reference\OdSchema-26.1.70.sql|LogicalName=OdSchema-26.1.70.sql
 OpenPmsDentalBusiness|EmbeddedResource|Misc\ForkMigrations\Reference\OdSchema-26.2.0.sql|LogicalName=OdSchema-26.2.0.sql
-OpenPmsDentalBusiness|EmbeddedResource|Properties\Resources.resx|Generator=PublicResXFileCodeGenerator;LastGenOutput=Resources.Designer.cs;SubType=Designer
+OpenPmsDentalBusiness|EmbeddedResource|Properties\Resources.resx|Generator=PublicResXFileCodeGenerator;LastGenOutput=Resources.Designer.cs
 OpenPmsDentalBusiness|EmbeddedResource|UI\GridCell.resx|DependentUpon=GridCell.cs
 OpenPmsDentalBusiness|EmbeddedResource|UI\GridColumn.resx|DependentUpon=GridColumn.cs
 OpenPmsDentalBusiness|EmbeddedResource|UI\GridOD.resx|DependentUpon=GridOD.cs
 OpenPmsDentalBusiness|EmbeddedResource|UI\GridOld.resx|DependentUpon=GridOld.cs
 OpenPmsDentalBusiness|EmbeddedResource|UI\GridRow.resx|DependentUpon=GridRow.cs
-OpenPmsDentalBusiness|EmbeddedResource|UI\ODGridPageNav.resx|DependentUpon=ODGridPageNav.cs;SubType=Designer
-OpenPmsDentalBusiness|EmbeddedResource|UI\SignatureBoxWrapper.resx|DependentUpon=SignatureBoxWrapper.cs;SubType=Designer
+OpenPmsDentalBusiness|EmbeddedResource|UI\ODGridPageNav.resx|DependentUpon=ODGridPageNav.cs
+OpenPmsDentalBusiness|EmbeddedResource|UI\SignatureBoxWrapper.resx|DependentUpon=SignatureBoxWrapper.cs
 OpenPmsDentalBusiness|None|Properties\Settings.settings|Generator=SettingsSingleFileGenerator;LastGenOutput=Settings.Designer.cs
 OpenPmsDentalBusiness|None|Resources\ApptBackTest.gif|
 OpenPmsDentalBusiness|None|Resources\COVID19.xml|
@@ -3150,8 +3150,8 @@ OpenPmsDentalBusiness|None|Resources\TreatmentPlan.xml|
 OpenPmsDentalBusiness|None|Resources\icd9.txt|
 OpenPmsDentalBusiness|None|Web References\Dentalxchange2016\ClaimPaymentListResponse.datasource|DependentUpon=Reference.map
 OpenPmsDentalBusiness|None|Web References\Dentalxchange2016\DwsService.wsdl|
-OpenPmsDentalBusiness|None|Web References\Dentalxchange2016\DwsService.xsd|SubType=Designer
-OpenPmsDentalBusiness|None|Web References\Dentalxchange2016\DwsService0.xsd|SubType=Designer
+OpenPmsDentalBusiness|None|Web References\Dentalxchange2016\DwsService.xsd|
+OpenPmsDentalBusiness|None|Web References\Dentalxchange2016\DwsService0.xsd|
 OpenPmsDentalBusiness|None|Web References\Dentalxchange2016\PayerListInfoResponse.datasource|DependentUpon=Reference.map
 OpenPmsDentalBusiness|None|Web References\Dentalxchange2016\PayerListResponse.datasource|DependentUpon=Reference.map
 OpenPmsDentalBusiness|None|Web References\Dentalxchange2016\Reference.map|Generator=MSDiscoCodeGenerator;LastGenOutput=Reference.cs
@@ -3159,8 +3159,8 @@ OpenPmsDentalBusiness|None|Web References\Dentalxchange2016\UnProcessedEraRespon
 OpenPmsDentalBusiness|None|Web References\Dentalxchange2016\textResponse.datasource|DependentUpon=Reference.map
 OpenPmsDentalBusiness|None|Web References\DentalxchangePartnerService\AttachmentReferenceResponse.datasource|DependentUpon=Reference.map
 OpenPmsDentalBusiness|None|Web References\DentalxchangePartnerService\DeaPartnerService.wsdl|
-OpenPmsDentalBusiness|None|Web References\DentalxchangePartnerService\DeaPartnerService.xsd|SubType=Designer
-OpenPmsDentalBusiness|None|Web References\DentalxchangePartnerService\DeaPartnerService0.xsd|SubType=Designer
+OpenPmsDentalBusiness|None|Web References\DentalxchangePartnerService\DeaPartnerService.xsd|
+OpenPmsDentalBusiness|None|Web References\DentalxchangePartnerService\DeaPartnerService0.xsd|
 OpenPmsDentalBusiness|None|Web References\DentalxchangePartnerService\DeaResponse.datasource|DependentUpon=Reference.map
 OpenPmsDentalBusiness|None|Web References\DentalxchangePartnerService\ImageReferenceResponses.datasource|DependentUpon=Reference.map
 OpenPmsDentalBusiness|None|Web References\DentalxchangePartnerService\Reference.map|Generator=MSDiscoCodeGenerator;LastGenOutput=Reference.cs
@@ -3234,7 +3234,8 @@ OpenPmsDentalBusiness|None|Web References\OpenDentalServer\ServiceMain.wsdl|
 OpenPmsDentalBusiness|None|Web References\com.dentalxchange.webservices\Reference.map|Generator=MSDiscoCodeGenerator;LastGenOutput=Reference.cs
 OpenPmsDentalBusiness|None|Web References\com.dentalxchange.webservices\Response.datasource|DependentUpon=Reference.map
 OpenPmsDentalBusiness|None|Web References\com.dentalxchange.webservices\wsdl.wsdl|
-OpenPmsDentalBusiness|None|app.config|SubType=Designer
+OpenPmsDentalBusiness|None|app.config|
+OpenPmsDentalBusiness|None|packages.lock.json|
 OpenPmsDentalDbSettings|Compile|..\SharedAssemblyInfo.cs|Link=Properties\SharedAssemblyInfo.cs
 OpenPmsDentalDbSettings|Compile|ClientCertificateStore.cs|
 OpenPmsDentalDbSettings|Compile|DbSettingsArgs.cs|
@@ -7122,10 +7123,15 @@ ProjectFileTests|Compile|BrokenFixtureTests.cs|
 ProjectFileTests|Compile|BuildOutput.cs|
 ProjectFileTests|Compile|BuildOutputTests.cs|
 ProjectFileTests|Compile|FixtureFolder.cs|
+ProjectFileTests|Compile|FolderWildcardTests.cs|
+ProjectFileTests|Compile|ProjectBaselineTests.cs|
 ProjectFileTests|Compile|ProjectFile.cs|
 ProjectFileTests|Compile|ProjectFormatTests.cs|
 ProjectFileTests|Compile|Properties\AssemblyInfo.cs|
+ProjectFileTests|Compile|ReaderLimitsTests.cs|
 ProjectFileTests|Compile|RepositoryProjectsTests.cs|
+ProjectFileTests|Compile|SdkComputedTests.cs|
+ProjectFileTests|Compile|SolutionPlatformTests.cs|
 QueryMonitorTests|Compile|ActiveGroupTests.cs|
 QueryMonitorTests|Compile|Properties\AssemblyInfo.cs|
 QueryMonitorTests|Compile|QueryFiltersDbTests.cs|
