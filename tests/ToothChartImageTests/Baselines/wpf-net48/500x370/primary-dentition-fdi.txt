@@ -11,5 +11,3 @@ Pixels SHA-256: 16ac62d81748c4c0f58073e66520ded0a3b95a9cd94c31efd938f97be0b822cf
 Repeatable: yes (a second GetBitmap gave the same pixels)
 Framework: .NET Framework 4.8, x86
 Windows: build 26300.9711 (26H2)
-Fresh render: yes (both layers drawn again without the layer cache gave the same pixels)
-Screen DPI seen by the test host: 96

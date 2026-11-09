@@ -186,6 +186,8 @@ namespace ToothChartImageTests {
 			listLines.Add("Repeatable: "+(pixelsSecond==bitmapFacts.PixelsSha256?"yes (a second GetBitmap gave the same pixels)":"no"));
 			listLines.Add("Framework: "+GetFramework()+", "+GetBitness());
 			listLines.Add("Windows: "+windows);
+			//The last two lines came with TC-1's fix round (ITEMs 32 and 33). The committed Baselines/wpf-net48 .txt files were recorded before them
+			//and do not have them yet; nothing reads them. The next deliberate WPF re-record adds both lines to every .txt.
 			listLines.Add("Fresh render: "+(pixelsFresh==bitmapFacts.PixelsSha256?"yes (both layers drawn again without the layer cache gave the same pixels)":"no"));
 			listLines.Add("Screen DPI seen by the test host: "+WpfRendererTests.GetScreenDpi());
 			File.WriteAllLines(Path.ChangeExtension(pathPng,".txt"),listLines,new UTF8Encoding(false));
