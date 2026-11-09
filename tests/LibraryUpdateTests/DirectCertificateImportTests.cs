@@ -18,6 +18,8 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
+using BcPkcs=Org.BouncyCastle.Asn1.Pkcs;
+using BcSecurity=Org.BouncyCastle.Security;
 
 namespace LibraryUpdateTests {
 	[TestClass]
@@ -680,6 +682,355 @@ namespace LibraryUpdateTests {
 			}
 		}
 
+		///<summary>Third fix round, item 1: a .pfx with a renewed certificate and last year's of the same key (as OpenSSL writes them: one key bag,
+		///the renewed certificate named by its localKeyId). Windows stores the key once for both; the import adds the renewed one only and does
+		///not delete the key of last year's, which is the renewed one's. With last year's in the store (imported here, from its own file, with its
+		///own key), it is replaced and its own key deleted, and the renewed one still signs. An import that stops partway deletes the shared key
+		///once and names nothing as not deleted. For a file that names no key provider (OpenSSL's: .NET Framework stores the key in a CAPI
+		///container) and one that names the CNG provider (a CNG key).</summary>
+		[TestMethod]
+		public void ImportPrivateFile_KeepsTheKeyARenewalWithTheSameKeyShares() {
+			foreach(string keyProviderName in new[] { null,"Microsoft Software Key Storage Provider" }) {
+				AssertRenewalWithTheSameKeyKeepsItsKey(keyProviderName);
+			}
+		}
+
+		private void AssertRenewalWithTheSameKeyKeepsItsKey(string keyProviderName) {
+			using(DirectTestPki directTestPki=new DirectTestPki())
+			using(DirectTestStores directTestStores=new DirectTestStores()) {
+				try {
+					DirectTestPki.Issued issuedOld=directTestPki.Issue(ADDRESS,dateTimeOffsetNotAfter:DateTimeOffset.UtcNow.AddDays(10));
+					DirectTestPki.Issued issuedRenewed=directTestPki.Issue(ADDRESS,dateTimeOffsetNotAfter:DateTimeOffset.UtcNow.AddDays(40),issuedSameKey:issuedOld);
+					Assert.IsTrue(issuedOld.X509Certificate2WithKey.GetPublicKey().SequenceEqual(issuedRenewed.X509Certificate2WithKey.GetPublicKey()),"One key.");
+					string pathShared=directTestPki.WritePfxSharedKey("renewed-and-old.pfx",keyProviderName,issuedRenewed,issuedOld);
+					DirectCertificateResult directCertificateResultCheck=DirectCertificateImport.CheckPrivateFile(ADDRESS,pathShared,directTestPki.Password,DateTime.UtcNow);
+					Assert.AreEqual("",directCertificateResultCheck.Error);
+					Assert.AreEqual(issuedRenewed.Thumbprint,directCertificateResultCheck.ListDetails.Single().Thumbprint,"Read without storing, the key is the renewed one's.");
+					//(1) The store is empty: the renewed one is added; last year's is not, and the key it was given is the renewed one's.
+					Dictionary<string,KeyLocation> dictKeyLocations=new Dictionary<string,KeyLocation>();
+					DirectCertificateImport.ActionAfterKeysStoredForTests=x509Certificate2Collection => {
+						dictKeyLocations.Clear();
+						foreach(X509Certificate2 x509Certificate2 in x509Certificate2Collection) {
+							Assert.IsTrue(x509Certificate2.HasPrivateKey,"Windows gives the stored key to both: "+x509Certificate2.Subject);
+							dictKeyLocations[x509Certificate2.Thumbprint]=KeyLocation.Of(x509Certificate2);
+						}
+					};
+					DirectCertificateResult directCertificateResult=DirectCertificateImport.ImportPrivateFile(ADDRESS,pathShared,directTestPki.Password,null,DateTime.UtcNow);
+					Assert.IsTrue(directCertificateResult.IsImported,directCertificateResult.Error);
+					Assert.AreEqual(2,dictKeyLocations.Count);
+					Assert.AreEqual(dictKeyLocations[issuedRenewed.Thumbprint].Name,dictKeyLocations[issuedOld.Thumbprint].Name,"One key container for both.");
+					Assert.AreEqual(keyProviderName!=null,dictKeyLocations[issuedRenewed.Thumbprint].IsCng,dictKeyLocations[issuedRenewed.Thumbprint].Name);
+					Assert.AreEqual("",directCertificateResult.Warning,"The key last year's was given is in use: nothing to delete, nothing to warn of.");
+					CollectionAssert.AreEqual(new List<string> { issuedRenewed.Thumbprint },directTestStores.GetThumbprints(directTestStores.NamePrivate));
+					Assert.IsTrue(dictKeyLocations[issuedRenewed.Thumbprint].Exists());
+					using(X509Certificate2 x509Certificate2Stored=FindStored(directTestStores.NamePrivate,issuedRenewed.Thumbprint)) {
+						Assert.IsTrue(DirectCertificateImport.IsKeyUsable(x509Certificate2Stored));
+						AssertKeyNotExportableButUsable(x509Certificate2Stored);
+					}
+					Assert.AreEqual(issuedRenewed.Thumbprint,EmailMessages.GetCertFromPrivateStore(ADDRESS)?.Thumbprint);
+					DeleteImportedKeys(directTestStores);
+					directTestStores.RemovePrivate(issuedRenewed.X509Certificate2WithKey);
+					//(2) Last year's is in the store, imported here from its own file with its own key: it is replaced, its key deleted, and the renewed
+					//one, added with the key the file gives both, still signs.
+					DirectCertificateImport.ActionAfterKeysStoredForTests=null;
+					Assert.IsTrue(DirectCertificateImport.ImportPrivateFile(ADDRESS,directTestPki.WritePfx("old.pfx",issuedOld,isCaIncluded:false),directTestPki.Password,null,
+						DateTime.UtcNow).IsImported);
+					KeyLocation keyLocationOldInStore;
+					using(X509Certificate2 x509Certificate2Old=FindStored(directTestStores.NamePrivate,issuedOld.Thumbprint)) {
+						keyLocationOldInStore=KeyLocation.Of(x509Certificate2Old);
+					}
+					directCertificateResultCheck=DirectCertificateImport.CheckPrivateFile(ADDRESS,pathShared,directTestPki.Password,DateTime.UtcNow);
+					Assert.AreEqual(issuedOld.Thumbprint,directCertificateResultCheck.ListDetailsReplaced.Single().Thumbprint);
+					DirectCertificateImport.ActionAfterKeysStoredForTests=x509Certificate2Collection => {
+						dictKeyLocations.Clear();
+						foreach(X509Certificate2 x509Certificate2 in x509Certificate2Collection) {
+							dictKeyLocations[x509Certificate2.Thumbprint]=KeyLocation.Of(x509Certificate2);
+						}
+					};
+					directCertificateResult=DirectCertificateImport.ImportPrivateFile(ADDRESS,pathShared,directTestPki.Password,new List<string> { issuedOld.Thumbprint },
+						DateTime.UtcNow);
+					Assert.IsTrue(directCertificateResult.IsImported,directCertificateResult.Error);
+					Assert.AreEqual("",directCertificateResult.Warning);
+					Assert.AreNotEqual(keyLocationOldInStore.Name,dictKeyLocations[issuedRenewed.Thumbprint].Name,"Each import stores its own container.");
+					Assert.IsFalse(keyLocationOldInStore.Exists(),"The replaced certificate's own key, imported here, is deleted.");
+					Assert.IsTrue(dictKeyLocations[issuedRenewed.Thumbprint].Exists(),"The renewed one's stays, though last year's of the file had it too.");
+					CollectionAssert.AreEqual(new List<string> { issuedRenewed.Thumbprint },directTestStores.GetThumbprints(directTestStores.NamePrivate));
+					using(X509Certificate2 x509Certificate2Stored=FindStored(directTestStores.NamePrivate,issuedRenewed.Thumbprint)) {
+						AssertKeyNotExportableButUsable(x509Certificate2Stored);
+					}
+					DeleteImportedKeys(directTestStores);
+					directTestStores.RemovePrivate(issuedRenewed.X509Certificate2WithKey);
+					//(3) The import stops right after the keys were stored: Undo deletes the key both were given once, and names nothing as not deleted
+					//(the second certificate's key is the one already deleted).
+					DirectCertificateImport.ActionAfterKeysStoredForTests=x509Certificate2Collection => {
+						dictKeyLocations.Clear();
+						foreach(X509Certificate2 x509Certificate2 in x509Certificate2Collection) {
+							dictKeyLocations[x509Certificate2.Thumbprint]=KeyLocation.Of(x509Certificate2);
+						}
+						throw new InvalidOperationException("The test stops the import.");
+					};
+					directCertificateResult=DirectCertificateImport.ImportPrivateFile(ADDRESS,pathShared,directTestPki.Password,null,DateTime.UtcNow);
+					Assert.AreEqual("The import failed: The test stops the import. Nothing was imported.",directCertificateResult.Error);
+					Assert.AreEqual(2,dictKeyLocations.Count);
+					Assert.AreEqual(dictKeyLocations[issuedRenewed.Thumbprint].Name,dictKeyLocations[issuedOld.Thumbprint].Name);
+					Assert.IsTrue(dictKeyLocations.Values.All(x => !x.Exists()),"The stored key is deleted.");
+					//(4) The store refuses the renewed one: the same.
+					DirectCertificateImport.ActionAfterKeysStoredForTests=x509Certificate2Collection => {
+						dictKeyLocations.Clear();
+						foreach(X509Certificate2 x509Certificate2 in x509Certificate2Collection) {
+							dictKeyLocations[x509Certificate2.Thumbprint]=KeyLocation.Of(x509Certificate2);
+						}
+					};
+					DirectCertificateImport.ActionBeforeStoreAddForTests=x509Certificate2 => {
+						throw new CryptographicException("The test's store refuses.");
+					};
+					directCertificateResult=DirectCertificateImport.ImportPrivateFile(ADDRESS,pathShared,directTestPki.Password,null,DateTime.UtcNow);
+					AssertRefused(directCertificateResult,"The test's store refuses. Nothing was imported.");
+					Assert.IsFalse(directCertificateResult.Error.Contains("Not removed"),directCertificateResult.Error);
+					Assert.AreEqual(2,dictKeyLocations.Count);
+					Assert.IsTrue(dictKeyLocations.Values.All(x => !x.Exists()),"The stored key is deleted.");
+					Assert.AreEqual(0,directTestStores.GetThumbprints(directTestStores.NamePrivate).Count);
+				}
+				finally {
+					DirectCertificateImport.ActionAfterKeysStoredForTests=null;
+					DirectCertificateImport.ActionBeforeStoreAddForTests=null;
+					DeleteImportedKeys(directTestStores);
+				}
+			}
+		}
+
+		///<summary>Third fix round, item 1: a signing and an encryption certificate of one key, both in the store (put there from one .pfx by the
+		///Windows tools, which store the key once) and both marked as imported here. A renewed signing certificate replaces the signing one; the
+		///encryption one stays (another purpose), and so does the key it shares with the replaced one: it still decrypts. A CAPI and a CNG key.</summary>
+		[TestMethod]
+		public void ImportPrivateFile_ReplacingKeepsTheKeyAKeptCertificateShares() {
+			foreach(string keyProviderName in new[] { null,"Microsoft Software Key Storage Provider" }) {
+				AssertReplacingKeepsTheSharedKey(keyProviderName);
+			}
+		}
+
+		private void AssertReplacingKeepsTheSharedKey(string keyProviderName) {
+			using(DirectTestPki directTestPki=new DirectTestPki())
+			using(DirectTestStores directTestStores=new DirectTestStores()) {
+				X509Certificate2Collection x509Certificate2CollectionShared=new X509Certificate2Collection();
+				try {
+					DirectTestPki.Issued issuedSigning=directTestPki.Issue(ADDRESS,keyUsageFlags:X509KeyUsageFlags.DigitalSignature,
+						dateTimeOffsetNotAfter:DateTimeOffset.UtcNow.AddDays(10));
+					DirectTestPki.Issued issuedEncryption=directTestPki.Issue(ADDRESS,keyUsageFlags:X509KeyUsageFlags.KeyEncipherment,
+						dateTimeOffsetNotAfter:DateTimeOffset.UtcNow.AddDays(30),issuedSameKey:issuedSigning);
+					byte[] byteArrayShared=File.ReadAllBytes(directTestPki.WritePfxSharedKey("signing-encryption-one-key.pfx",keyProviderName,issuedSigning,
+						issuedEncryption));
+					x509Certificate2CollectionShared.Import(byteArrayShared,directTestPki.Password,X509KeyStorageFlags.PersistKeySet|X509KeyStorageFlags.UserKeySet);
+					Assert.AreEqual(2,x509Certificate2CollectionShared.Count);
+					foreach(X509Certificate2 x509Certificate2 in x509Certificate2CollectionShared) {
+						x509Certificate2.FriendlyName=DirectCertificateImport.FRIENDLY_NAME_IMPORTED;
+						directTestStores.AddPrivate(x509Certificate2);
+					}
+					KeyLocation keyLocationShared;
+					using(X509Certificate2 x509Certificate2Signing=FindStored(directTestStores.NamePrivate,issuedSigning.Thumbprint))
+					using(X509Certificate2 x509Certificate2Encryption=FindStored(directTestStores.NamePrivate,issuedEncryption.Thumbprint))
+					{
+						keyLocationShared=KeyLocation.Of(x509Certificate2Encryption);
+						Assert.AreEqual(keyLocationShared.Name,KeyLocation.Of(x509Certificate2Signing).Name,"One key container for both.");
+						Assert.AreEqual(keyProviderName!=null,keyLocationShared.IsCng,keyLocationShared.Name);
+						Assert.IsTrue(DirectCertificateImport.IsKeyUsable(x509Certificate2Encryption));
+					}
+					DirectTestPki.Issued issuedSigningRenewed=directTestPki.Issue(ADDRESS,keyUsageFlags:X509KeyUsageFlags.DigitalSignature,
+						dateTimeOffsetNotAfter:DateTimeOffset.UtcNow.AddDays(50));
+					string pathRenewed=directTestPki.WritePfx("signing-renewed.pfx",issuedSigningRenewed,isCaIncluded:false);
+					DirectCertificateResult directCertificateResultCheck=DirectCertificateImport.CheckPrivateFile(ADDRESS,pathRenewed,directTestPki.Password,DateTime.UtcNow);
+					Assert.AreEqual(issuedSigning.Thumbprint,directCertificateResultCheck.ListDetailsReplaced.Single().Thumbprint);
+					Assert.AreEqual(issuedEncryption.Thumbprint,directCertificateResultCheck.ListDetailsKept.Single().Thumbprint);
+					DirectCertificateResult directCertificateResult=DirectCertificateImport.ImportPrivateFile(ADDRESS,pathRenewed,directTestPki.Password,
+						new List<string> { issuedSigning.Thumbprint },DateTime.UtcNow);
+					Assert.IsTrue(directCertificateResult.IsImported,directCertificateResult.Error);
+					Assert.AreEqual("",directCertificateResult.Warning,"The replaced one's key is the kept one's: nothing to delete, nothing to warn of.");
+					CollectionAssert.AreEquivalent(new List<string> { issuedSigningRenewed.Thumbprint,issuedEncryption.Thumbprint },
+						directTestStores.GetThumbprints(directTestStores.NamePrivate));
+					Assert.IsTrue(keyLocationShared.Exists(),"The kept certificate's key stays.");
+					using(X509Certificate2 x509Certificate2Encryption=FindStored(directTestStores.NamePrivate,issuedEncryption.Thumbprint)) {
+						Assert.IsTrue(DirectCertificateImport.IsKeyUsable(x509Certificate2Encryption),"It still decrypts.");
+					}
+				}
+				finally {
+					//Quietly: the signing and the encryption certificate may both still be in the store, with the one key (a failure above).
+					using(X509Store x509Store=new X509Store(directTestStores.NamePrivate,StoreLocation.CurrentUser)) {
+						x509Store.Open(OpenFlags.ReadOnly);
+						foreach(X509Certificate2 x509Certificate2 in x509Store.Certificates) {
+							if(x509Certificate2.FriendlyName==DirectCertificateImport.FRIENDLY_NAME_IMPORTED) {
+								DirectCertificateImport.TryDeletePrivateKey(x509Certificate2);
+							}
+						}
+					}
+					foreach(X509Certificate2 x509Certificate2 in x509Certificate2CollectionShared) {
+						DirectCertificateImport.TryDeletePrivateKey(x509Certificate2);//The key the test stored, if a failure left it ("" or already gone).
+						x509Certificate2.Reset();
+					}
+				}
+			}
+		}
+
+		///<summary>Third fix round, item 3: something throws after the certificate was added. The warnings collected until then (a key of the file
+		///not deleted, a replaced certificate the store did not remove) are in Warning, before the line that says the import stopped.</summary>
+		[TestMethod]
+		public void ImportPrivateFile_KeepsTheWarningsWhenItStopsAfterAdding() {
+			using(DirectTestPki directTestPki=new DirectTestPki())
+			using(DirectTestStores directTestStores=new DirectTestStores()) {
+				try {
+					DirectTestPki.Issued issuedStore1=directTestPki.Issue(ADDRESS,dateTimeOffsetNotAfter:DateTimeOffset.UtcNow.AddDays(10));
+					DirectTestPki.Issued issuedStore2=directTestPki.Issue(ADDRESS,dateTimeOffsetNotAfter:DateTimeOffset.UtcNow.AddDays(15));
+					directTestStores.AddPrivate(issuedStore1.X509Certificate2WithKey);
+					directTestStores.AddPrivate(issuedStore2.X509Certificate2WithKey);
+					DirectTestPki.Issued issuedNew=directTestPki.Issue(ADDRESS,dateTimeOffsetNotAfter:DateTimeOffset.UtcNow.AddDays(40));
+					DirectTestPki.Issued issuedOther=directTestPki.Issue(ADDRESS_OTHER);
+					string pathNew=directTestPki.WritePfxMany("new-other.pfx",issuedNew,issuedOther);
+					DirectCertificateResult directCertificateResultCheck=DirectCertificateImport.CheckPrivateFile(ADDRESS,pathNew,directTestPki.Password,DateTime.UtcNow);
+					Assert.AreEqual(2,directCertificateResultCheck.ListDetailsReplaced.Count);
+					//The other address's key can't be deleted (the test deletes it first); the store refuses to remove the first replaced certificate and
+					//something else stops the import at the second.
+					DirectCertificateImport.ActionAfterKeysStoredForTests=x509Certificate2Collection => {
+						X509Certificate2 x509Certificate2Other=x509Certificate2Collection.Cast<X509Certificate2>().Single(x => x.Thumbprint==issuedOther.Thumbprint);
+						Assert.AreEqual("",DirectCertificateImport.TryDeletePrivateKey(x509Certificate2Other));
+					};
+					List<X509Certificate2> listRemoving=new List<X509Certificate2>();
+					DirectCertificateImport.ActionBeforeStoreRemoveForTests=x509Certificate2 => {
+						listRemoving.Add(new X509Certificate2(x509Certificate2.RawData));
+						if(listRemoving.Count==1) {
+							throw new CryptographicException("The test's store refuses to remove it.");
+						}
+						throw new InvalidOperationException("The test stops the import.");
+					};
+					DirectCertificateResult directCertificateResult=DirectCertificateImport.ImportPrivateFile(ADDRESS,pathNew,directTestPki.Password,
+						directCertificateResultCheck.ListDetailsReplaced.Select(x => x.Thumbprint).ToList(),DateTime.UtcNow);
+					Assert.IsTrue(directCertificateResult.IsImported);
+					Assert.AreEqual("",directCertificateResult.Error);
+					Assert.AreEqual(2,listRemoving.Count);
+					string[] arrayLines=directCertificateResult.Warning.Split(new[] { "\r\n" },StringSplitOptions.None);
+					Assert.AreEqual(3,arrayLines.Length,directCertificateResult.Warning);
+					StringAssert.StartsWith(arrayLines[0],"A private key this import stored could not be deleted ("+issuedOther.Subject+", "+issuedOther.Thumbprint+"): ");
+					Assert.AreEqual("The replaced certificate could not be removed from the store ("+listRemoving[0].Subject+", "+listRemoving[0].Thumbprint+"): "
+						+"The test's store refuses to remove it.",arrayLines[1]);
+					Assert.AreEqual("The import stopped after the certificate was added: The test stops the import.",arrayLines[2]);
+					CollectionAssert.AreEquivalent(new List<string> { issuedNew.Thumbprint,issuedStore1.Thumbprint,issuedStore2.Thumbprint },
+						directTestStores.GetThumbprints(directTestStores.NamePrivate),"The new one is in; neither replaced one was removed.");
+					listRemoving.ForEach(x => x.Dispose());
+				}
+				finally {
+					DirectCertificateImport.ActionAfterKeysStoredForTests=null;
+					DirectCertificateImport.ActionBeforeStoreRemoveForTests=null;
+					DeleteImportedKeys(directTestStores);
+				}
+			}
+		}
+
+		///<summary>Third fix round, item 4: IsKeyUsable, TryDeletePrivateKey and GetKeyContainerName ("Never throws") answer instead of throwing for
+		///every exception but the critical ones.</summary>
+		[TestMethod]
+		public void KeyChecks_NeverThrowButLetTheCriticalExceptionsThrough() {
+			Assert.IsFalse(DirectCertificateImport.IsKeyUsable(null),"A NullReferenceException is not usable.");
+			Assert.AreNotEqual("",DirectCertificateImport.TryDeletePrivateKey(null),"A NullReferenceException is not deleted, with why.");
+			Assert.IsNull(DirectCertificateImport.GetKeyContainerName(null));
+			Assert.IsTrue(DirectCertificateImport.IsCriticalException(new OutOfMemoryException()));
+			Assert.IsTrue(DirectCertificateImport.IsCriticalException(new StackOverflowException()));
+			foreach(Exception ex in new Exception[] { new CryptographicException(),new NullReferenceException(),new InvalidOperationException(),
+				new ArgumentException(),new IOException(),new UnauthorizedAccessException(),new NotSupportedException() })
+			{
+				Assert.IsFalse(DirectCertificateImport.IsCriticalException(ex),ex.GetType().Name);
+			}
+			string textBusiness=ReadNormalized(@"OpenPmsDentalBusiness\Email\DirectCertificateImport.cs");
+			StringAssert.Contains(textBusiness,"return ex is OutOfMemoryException || ex is StackOverflowException || ex is ThreadAbortException;");
+			foreach(string method in new[] { "public static bool IsKeyUsable(","internal static string TryDeletePrivateKey(","internal static string GetKeyContainerName(" }) {
+				int indexStart=textBusiness.IndexOf(method,StringComparison.Ordinal);
+				int indexEnd=textBusiness.IndexOf("\n\t\t}\n",indexStart,StringComparison.Ordinal);
+				string textMethod=textBusiness.Substring(indexStart,indexEnd-indexStart);
+				Assert.AreEqual(1,Regex.Matches(textMethod,@"catch\(").Count,method);
+				StringAssert.Contains(textMethod,"catch(Exception ex) when(!IsCriticalException(ex)) {",method);
+			}
+		}
+
+		///<summary>Third fix round, item 5: the store holds a copy without its key of each of the file's two certificates. The first added takes
+		///its copy's place (with its key); the store refuses the second. Undo removes the first and puts its copy back, and deletes every key the
+		///import stored: the store holds the two copies without keys, as before.</summary>
+		[TestMethod]
+		public void ImportPrivateFile_UndoPutsBackTheKeylessCopyItOverwrote() {
+			using(DirectTestPki directTestPki=new DirectTestPki())
+			using(DirectTestStores directTestStores=new DirectTestStores()) {
+				try {
+					DirectTestPki.Issued issuedSigning=directTestPki.Issue(ADDRESS,keyUsageFlags:X509KeyUsageFlags.DigitalSignature);
+					DirectTestPki.Issued issuedEncryption=directTestPki.Issue(ADDRESS,keyUsageFlags:X509KeyUsageFlags.KeyEncipherment);
+					directTestStores.AddPrivateWithoutKey(issuedSigning.X509Certificate2WithKey);
+					directTestStores.AddPrivateWithoutKey(issuedEncryption.X509Certificate2WithKey);
+					string pathBoth=directTestPki.WritePfxMany("signing-encryption.pfx",issuedSigning,issuedEncryption);
+					DirectCertificateResult directCertificateResultCheck=DirectCertificateImport.CheckPrivateFile(ADDRESS,pathBoth,directTestPki.Password,DateTime.UtcNow);
+					Assert.AreEqual(2,directCertificateResultCheck.ListDetails.Count,"Both are offered: the store's copies have no key.");
+					Assert.AreEqual(0,directCertificateResultCheck.ListDetailsReplaced.Count);
+					Dictionary<string,KeyLocation> dictKeyLocations=new Dictionary<string,KeyLocation>();
+					DirectCertificateImport.ActionAfterKeysStoredForTests=x509Certificate2Collection => {
+						foreach(X509Certificate2 x509Certificate2 in x509Certificate2Collection) {
+							dictKeyLocations[x509Certificate2.Thumbprint]=KeyLocation.Of(x509Certificate2);
+						}
+					};
+					List<string> listThumbprintsAdding=new List<string>();
+					bool isFirstWithKey=false;
+					DirectCertificateImport.ActionBeforeStoreAddForTests=x509Certificate2 => {
+						listThumbprintsAdding.Add(x509Certificate2.Thumbprint);
+						if(listThumbprintsAdding.Count<2) {
+							return;
+						}
+						using(X509Certificate2 x509Certificate2First=FindStored(directTestStores.NamePrivate,listThumbprintsAdding[0])) {
+							isFirstWithKey=x509Certificate2First.HasPrivateKey;//The first took its copy's place.
+						}
+						throw new CryptographicException("The test's store refuses.");
+					};
+					DirectCertificateResult directCertificateResult=DirectCertificateImport.ImportPrivateFile(ADDRESS,pathBoth,directTestPki.Password,null,DateTime.UtcNow);
+					AssertRefused(directCertificateResult,"The certificate could not be added to this computer's Direct certificate store: The test's store refuses. "
+						+"Nothing was imported.");
+					Assert.IsFalse(directCertificateResult.Error.Contains("Not removed"),directCertificateResult.Error);
+					Assert.AreEqual(2,listThumbprintsAdding.Count);
+					Assert.IsTrue(isFirstWithKey,"Before the refusal the first was in the store with its key, in its copy's place.");
+					CollectionAssert.AreEquivalent(new List<string> { issuedSigning.Thumbprint,issuedEncryption.Thumbprint },
+						directTestStores.GetThumbprints(directTestStores.NamePrivate),"Both copies are there again.");
+					foreach(string thumbprint in listThumbprintsAdding) {
+						using(X509Certificate2 x509Certificate2Stored=FindStored(directTestStores.NamePrivate,thumbprint)) {
+							Assert.IsFalse(x509Certificate2Stored.HasPrivateKey,"The copy as it was, without a key: "+thumbprint);
+							Assert.AreNotEqual(DirectCertificateImport.FRIENDLY_NAME_IMPORTED,x509Certificate2Stored.FriendlyName);
+						}
+					}
+					Assert.AreEqual(2,dictKeyLocations.Count);
+					Assert.IsTrue(dictKeyLocations.Values.All(x => !x.Exists()),"Every key the import stored is deleted.");
+				}
+				finally {
+					DirectCertificateImport.ActionAfterKeysStoredForTests=null;
+					DirectCertificateImport.ActionBeforeStoreAddForTests=null;
+					DeleteImportedKeys(directTestStores);
+				}
+			}
+		}
+
+		///<summary>Third fix round, item 6: when Windows' import of the file with PersistKeySet fails, .NET gives no certificate, so the import knows
+		///of no key to delete: the message says that nothing was imported and that Windows may have left a private key of the file behind.</summary>
+		[TestMethod]
+		public void ImportPrivateFile_SaysWindowsMayHaveLeftAKeyWhenStoringTheKeysFails() {
+			using(DirectTestPki directTestPki=new DirectTestPki())
+			using(DirectTestStores directTestStores=new DirectTestStores()) {
+				try {
+					DirectTestPki.Issued issued=directTestPki.Issue(ADDRESS);
+					string pathPfx=directTestPki.WritePfx("pat.pfx",issued,isCaIncluded:false);
+					DirectCertificateImport.ActionBeforeKeysStoredForTests=() => {
+						throw new CryptographicException("The test's import fails.");
+					};
+					DirectCertificateResult directCertificateResult=DirectCertificateImport.ImportPrivateFile(ADDRESS,pathPfx,directTestPki.Password,null,DateTime.UtcNow);
+					Assert.IsFalse(directCertificateResult.IsImported);
+					Assert.AreEqual("The certificate's private key could not be stored on this computer: The test's import fails. Nothing was imported. Windows may "
+						+"have left a private key of the file behind on this computer, which the program cannot find to delete.",directCertificateResult.Error);
+					Assert.AreEqual(0,directTestStores.GetThumbprints(directTestStores.NamePrivate).Count);
+				}
+				finally {
+					DirectCertificateImport.ActionBeforeKeysStoredForTests=null;
+				}
+			}
+		}
+
 		///<summary>The security log text is plain English with invariant dates and numbers, whatever the user's culture (a Thai or Arabic calendar
 		///writes another year), and is never translated.</summary>
 		[TestMethod]
@@ -905,12 +1256,36 @@ namespace LibraryUpdateTests {
 			//The trust anchor's DER and PEM paths read with EphemeralKeySet: a key in the file is never written anywhere.
 			StringAssert.Contains(textBusiness,"x509Certificate2Collection.Import(byteArrayFile,\"\",X509KeyStorageFlags.EphemeralKeySet);");
 			StringAssert.Contains(textBusiness,"x509Certificate2Collection.Import(listPem[i],\"\",X509KeyStorageFlags.EphemeralKeySet);");
-			Assert.IsFalse(Regex.IsMatch(textBusiness,@"\.Import\([^,()]*\);"),"No import with the default key flags.");
+			//No import with the default key flags (third fix round, item 8): one argument, a password and no flags, or DefaultKeySet. The check
+			//finds each of those in a sample, and none in the business layer's four imports.
+			List<string> listImportsDefault=GetImportsWithDefaultKeyFlags(textBusiness,out int countImports);
+			Assert.AreEqual(4,countImports,"The private file's check and import, the anchor's DER and PEM reads.");
+			CollectionAssert.AreEqual(new List<string>(),listImportsDefault,"No import with the default key flags.");
+			Assert.IsFalse(textBusiness.Contains("DefaultKeySet"));
+			string textSamples="x509Certificate2Collection.Import(byteArrayFile);\nx509Certificate2Collection.Import(byteArrayFile,password??\"\");\n"
+				+"x509Certificate2Collection.Import(byteArrayFile,\n\t\tpassword,X509KeyStorageFlags.DefaultKeySet);\n"
+				+"x509Certificate2Collection.Import(byteArrayFile,password,X509KeyStorageFlags.DefaultKeySet|X509KeyStorageFlags.UserKeySet);\n"
+				+"x509Certificate2Collection.Import(byteArrayFile,password,X509KeyStorageFlags.EphemeralKeySet);\n";
+			Assert.AreEqual(4,GetImportsWithDefaultKeyFlags(textSamples,out int countSamples).Count,"Each of the four default-flag samples is found.");
+			Assert.AreEqual(5,countSamples);
 			//The key objects are disposed, and so are the certificates read from a store.
 			Assert.IsFalse(Regex.IsMatch(textBusiness,@"^\s*(RSA rsa|ECDsa ecdsa)=x509Certificate2\.Get(RSA|ECDsa)PrivateKey\(\);",RegexOptions.Multiline),
 				"Every key object of GetRSAPrivateKey or GetECDsaPrivateKey is in a using.");
-			Assert.AreEqual(6,Regex.Matches(textBusiness,@"using\((RSA rsa|ECDsa ecdsa)=x509Certificate2\.Get(RSA|ECDsa)PrivateKey\(\)\)").Count,
-				"IsKeyUsable, TryDeletePrivateKey and GetMachinePrivateKeyFilePath, RSA and ECDSA each.");
+			Assert.AreEqual(8,Regex.Matches(textBusiness,@"using\((RSA rsa|ECDsa ecdsa)=x509Certificate2\.Get(RSA|ECDsa)PrivateKey\(\)\)").Count,
+				"IsKeyUsable, TryDeletePrivateKey, GetKeyContainerName and GetMachinePrivateKeyFilePath, RSA and ECDSA each.");
+			Assert.AreEqual(4,Regex.Matches(textBusiness,@"using\(CngKey cngKey=\(\((RSACng|ECDsaCng)\)(rsa|ecdsa)\)\.Key\)").Count,
+				"The CngKey of GetKeyContainerName and GetMachinePrivateKeyFilePath.");
+			//A CAPI key first (.NET Framework's GetRSAPrivateKey gives it as an RSACng): deleted, named and found (the machine key's file, for the
+			//users' read access, which needs administrator rights: launch check 1) through CAPI. The deletion and the name are tested in
+			//ImportPrivateFile_KeepsTheKeyARenewalWithTheSameKeyShares.
+			foreach(string method in new[] { "internal static string TryDeletePrivateKey(","internal static string GetKeyContainerName(",
+				"private static string GetMachinePrivateKeyFilePath(" })
+			{
+				int indexMethod=textBusiness.IndexOf(method,StringComparison.Ordinal);
+				int indexCapi=textBusiness.IndexOf("=GetCapiRsaPrivateKey(x509Certificate2);",indexMethod,StringComparison.Ordinal);
+				Assert.IsTrue(indexCapi>indexMethod && indexCapi<textBusiness.IndexOf("x509Certificate2.GetRSAPrivateKey()",indexMethod,StringComparison.Ordinal),method);
+			}
+			StringAssert.Contains(textBusiness,"return Path.Combine(folderCrypto,\"RSA\",\"MachineKeys\",rsaCryptoServiceProviderCapi.CspKeyContainerInfo.UniqueKeyContainerName);");
 			Assert.AreEqual(3,Regex.Matches(textBusiness,@"listStore=ReadStore\(").Count);
 			Assert.AreEqual(3,Regex.Matches(textBusiness,@"DisposeAll\(listStore\);").Count,"Every certificate ReadStore returns is disposed.");
 			Assert.IsTrue(Regex.IsMatch(textBusiness,@"if\(EmailMessages\.CertStoreLocation==StoreLocation\.LocalMachine\) \{\s*for\(int i=0;i<listAdding\.Count;i\+\+\) \{\s*try \{\s*GrantUsersReadToPrivateKey\(listAdding\[i\]\);"),
@@ -930,6 +1305,21 @@ namespace LibraryUpdateTests {
 		#region Helpers
 		private static string ReadNormalized(string relativePath) {
 			return File.ReadAllText(ScratchDb.FindRepoFile(relativePath)).Replace("\r\n","\n");
+		}
+
+		///<summary>The calls of Import(...) in the text (over lines too) that store keys with the default flags: one argument, two (a password and no
+		///flags), or flags that name DefaultKeySet. countImports: every Import(...) call found.</summary>
+		private static List<string> GetImportsWithDefaultKeyFlags(string text,out int countImports) {
+			List<string> listImports=new List<string>();
+			MatchCollection matchCollection=Regex.Matches(text,@"\.Import\(([^;]*)\);");
+			countImports=matchCollection.Count;
+			foreach(Match match in matchCollection) {
+				string[] arrayArguments=match.Groups[1].Value.Split(',');
+				if(arrayArguments.Length<3 || arrayArguments[2].Contains("DefaultKeySet")) {
+					listImports.Add(match.Value);
+				}
+			}
+			return listImports;
 		}
 
 		///<summary>The block of the question that starts with the label line, up to the next blank line (or the end); "" when it has none.</summary>
@@ -1013,8 +1403,32 @@ namespace LibraryUpdateTests {
 			private string _provider;
 			private int _providerType;
 
+			///<summary>The kind, provider and name of the key container: the same for two certificates that use one key.</summary>
+			public string Name {
+				get { return (_isCng ? "CNG|" : "CAPI|")+_provider+"|"+_name; }
+			}
+
+			public bool IsCng {
+				get { return _isCng; }
+			}
+
 			public static KeyLocation Of(X509Certificate2 x509Certificate2) {
 				KeyLocation keyLocation=new KeyLocation();
+				//A CAPI key first: .NET Framework's GetRSAPrivateKey gives it as an RSACng (a .pfx without a CNG provider, as WritePfxSharedKey writes).
+				RSACryptoServiceProvider rsaCryptoServiceProviderCapi=null;
+				try {
+					rsaCryptoServiceProviderCapi=x509Certificate2.PrivateKey as RSACryptoServiceProvider;
+				}
+				catch(CryptographicException) {
+					//A CNG key.
+				}
+				if(rsaCryptoServiceProviderCapi!=null) {
+					CspKeyContainerInfo cspKeyContainerInfoCapi=rsaCryptoServiceProviderCapi.CspKeyContainerInfo;
+					keyLocation._name=cspKeyContainerInfoCapi.KeyContainerName;
+					keyLocation._provider=cspKeyContainerInfoCapi.ProviderName;
+					keyLocation._providerType=cspKeyContainerInfoCapi.ProviderType;
+					return keyLocation;
+				}
 				using(RSA rsa=x509Certificate2.GetRSAPrivateKey()) {
 					if(rsa is RSACng) {
 						keyLocation._isCng=true;
@@ -1074,6 +1488,8 @@ namespace LibraryUpdateTests {
 		///<summary>A certificate the CA issued, as the provider's .pfx holds it: the certificate and its key, exportable only to write the test's files.</summary>
 		public class Issued {
 			public X509Certificate2 X509Certificate2WithKey;
+			///<summary>The key, in memory only: for a certificate of the same key (Issue's issuedSameKey) and a .pfx written by hand (WritePfxSharedKey).</summary>
+			public RSAParameters RsaParameters;
 			public string Thumbprint { get { return X509Certificate2WithKey.Thumbprint; } }
 			public string Subject { get { return X509Certificate2WithKey.Subject; } }
 			public string SerialNumber { get { return X509Certificate2WithKey.SerialNumber; } }
@@ -1106,12 +1522,16 @@ namespace LibraryUpdateTests {
 		///<summary>An address certificate (E= and the rfc822 name), or with dnsName a domain certificate (the DNS name), issued by the CA, valid from
 		///yesterday for 20 days unless the dates are given. isPrivateExtensionFirst: an extension of a private OID that Windows has no name for
 		///comes before the subject alternative name. keyUsageFlags: the Key Usage, digitalSignature and keyEncipherment unless given (None: no
-		///Key Usage extension); arrayEkuOids: the Extended Key Usage, e-mail protection unless given (empty: no Extended Key Usage extension).</summary>
+		///Key Usage extension); arrayEkuOids: the Extended Key Usage, e-mail protection unless given (empty: no Extended Key Usage extension);
+		///issuedSameKey: the key of that certificate instead of a new one (a renewal with the same key).</summary>
 		public Issued Issue(string emailAddress,string dnsName=null,DateTimeOffset? dateTimeOffsetNotBefore=null,DateTimeOffset? dateTimeOffsetNotAfter=null,
 			bool isPrivateExtensionFirst=false,X509KeyUsageFlags keyUsageFlags=X509KeyUsageFlags.DigitalSignature|X509KeyUsageFlags.KeyEncipherment,
-			string[] arrayEkuOids=null)
+			string[] arrayEkuOids=null,Issued issuedSameKey=null)
 		{
 			using(RSA rsa=RSA.Create(2048)) {
+				if(issuedSameKey!=null) {
+					rsa.ImportParameters(issuedSameKey.RsaParameters);
+				}
 				string subject=(dnsName==null) ? "CN=DIRECT-CERT Test Address, E="+emailAddress : "CN="+dnsName;
 				CertificateRequest certificateRequest=new CertificateRequest(subject,rsa,HashAlgorithmName.SHA256,RSASignaturePadding.Pkcs1);
 				SubjectAlternativeNameBuilder subjectAlternativeNameBuilder=new SubjectAlternativeNameBuilder();
@@ -1144,6 +1564,7 @@ namespace LibraryUpdateTests {
 				{
 					Issued issued=new Issued();
 					issued.X509Certificate2WithKey=new X509Certificate2(x509Certificate2WithKey.Export(X509ContentType.Pfx,""),"",X509KeyStorageFlags.Exportable);
+					issued.RsaParameters=rsa.ExportParameters(true);
 					_listIssued.Add(issued);
 					return issued;
 				}
@@ -1171,6 +1592,61 @@ namespace LibraryUpdateTests {
 				x509Certificate2Collection.Add(issued.X509Certificate2WithKey);
 			}
 			return WriteFile(fileName,x509Certificate2Collection.Export(X509ContentType.Pfx,Password));
+		}
+
+		///<summary>One .pfx in which the certificates share one key (issued with Issue's issuedSameKey), written as OpenSSL writes a key with its
+		///certificate and further certificates: one key bag, the first certificate named its certificate by a localKeyId, the others after it
+		///without one. Windows' import (PersistKeySet) then gives the one key it stores to every certificate of the file with that public key, in
+		///one key container; .NET's EphemeralKeySet read gives it to the first only. Built with BouncyCastle's ASN.1 types, as Windows' own export
+		///writes one key bag for each certificate. keyProviderName: the key bag names that provider (Microsoft's attribute, as Windows writes it),
+		///so the key is stored in it; null for none, as OpenSSL writes it, and .NET Framework's import then stores it in a CAPI container.</summary>
+		public string WritePfxSharedKey(string fileName,string keyProviderName,params Issued[] arrayIssued) {
+			char[] charArrayPassword=Password.ToCharArray();
+			BcSecurity.SecureRandom secureRandom=new BcSecurity.SecureRandom();
+			byte[] byteArraySaltKey=new byte[20];
+			secureRandom.NextBytes(byteArraySaltKey);
+			BcPkcs.EncryptedPrivateKeyInfo encryptedPrivateKeyInfo=Org.BouncyCastle.Pkcs.EncryptedPrivateKeyInfoFactory.CreateEncryptedPrivateKeyInfo(
+				BcPkcs.PkcsObjectIdentifiers.PbeWithShaAnd3KeyTripleDesCbc,charArrayPassword,byteArraySaltKey,2048,
+				BcSecurity.DotNetUtilities.GetRsaKeyPair(arrayIssued[0].RsaParameters).Private);
+			BcPkcs.AttributePkcs attributePkcsLocalKeyId=new BcPkcs.AttributePkcs(BcPkcs.PkcsObjectIdentifiers.Pkcs9AtLocalKeyID,
+				new Org.BouncyCastle.Asn1.DerSet(new Org.BouncyCastle.Asn1.DerOctetString(new byte[] { 0x44,0x43,0x45,0x52 })));
+			Org.BouncyCastle.Asn1.Asn1Set asn1SetLocalKeyId=new Org.BouncyCastle.Asn1.DerSet(attributePkcsLocalKeyId);
+			Org.BouncyCastle.Asn1.Asn1Set asn1SetKeyBag=asn1SetLocalKeyId;
+			if(keyProviderName!=null) {
+				//szOID_PKCS_12_KEY_PROVIDER_NAME_ATTR, a BMPString.
+				asn1SetKeyBag=new Org.BouncyCastle.Asn1.DerSet(attributePkcsLocalKeyId,new BcPkcs.AttributePkcs(new Org.BouncyCastle.Asn1.DerObjectIdentifier("1.3.6.1.4.1.311.17.1"),
+					new Org.BouncyCastle.Asn1.DerSet(new Org.BouncyCastle.Asn1.DerBmpString(keyProviderName))));
+			}
+			BcPkcs.SafeBag safeBagKey=new BcPkcs.SafeBag(BcPkcs.PkcsObjectIdentifiers.Pkcs8ShroudedKeyBag,encryptedPrivateKeyInfo.ToAsn1Object(),asn1SetKeyBag);
+			Org.BouncyCastle.Asn1.Asn1EncodableVector asn1EncodableVectorCerts=new Org.BouncyCastle.Asn1.Asn1EncodableVector();
+			for(int i=0;i<arrayIssued.Length;i++) {
+				BcPkcs.CertBag certBag=new BcPkcs.CertBag(BcPkcs.PkcsObjectIdentifiers.X509Certificate,new Org.BouncyCastle.Asn1.DerOctetString(arrayIssued[i].RawData));
+				if(i==0) {
+					asn1EncodableVectorCerts.Add(new BcPkcs.SafeBag(BcPkcs.PkcsObjectIdentifiers.CertBag,certBag.ToAsn1Object(),asn1SetLocalKeyId));
+				}
+				else {
+					asn1EncodableVectorCerts.Add(new BcPkcs.SafeBag(BcPkcs.PkcsObjectIdentifiers.CertBag,certBag.ToAsn1Object()));
+				}
+			}
+			BcPkcs.ContentInfo contentInfoKey=new BcPkcs.ContentInfo(BcPkcs.PkcsObjectIdentifiers.Data,
+				new Org.BouncyCastle.Asn1.DerOctetString(new Org.BouncyCastle.Asn1.DerSequence(safeBagKey).GetEncoded()));
+			BcPkcs.ContentInfo contentInfoCerts=new BcPkcs.ContentInfo(BcPkcs.PkcsObjectIdentifiers.Data,
+				new Org.BouncyCastle.Asn1.DerOctetString(new Org.BouncyCastle.Asn1.DerSequence(asn1EncodableVectorCerts).GetEncoded()));
+			byte[] byteArrayAuthenticatedSafe=new BcPkcs.AuthenticatedSafe(new BcPkcs.ContentInfo[] { contentInfoKey,contentInfoCerts }).GetEncoded();
+			//The PKCS #12 MAC over the content: HMAC-SHA1 with a key made from the password.
+			byte[] byteArraySaltMac=new byte[20];
+			secureRandom.NextBytes(byteArraySaltMac);
+			Org.BouncyCastle.Asn1.DerObjectIdentifier derObjectIdentifierSha1=Org.BouncyCastle.Asn1.Oiw.OiwObjectIdentifiers.IdSha1;
+			Org.BouncyCastle.Asn1.Asn1Encodable asn1EncodableMacParameters=BcSecurity.PbeUtilities.GenerateAlgorithmParameters(derObjectIdentifierSha1,byteArraySaltMac,2048);
+			Org.BouncyCastle.Crypto.ICipherParameters cipherParameters=BcSecurity.PbeUtilities.GenerateCipherParameters(derObjectIdentifierSha1,charArrayPassword,false,
+				asn1EncodableMacParameters);
+			Org.BouncyCastle.Crypto.IMac mac=(Org.BouncyCastle.Crypto.IMac)BcSecurity.PbeUtilities.CreateEngine(derObjectIdentifierSha1);
+			mac.Init(cipherParameters);
+			byte[] byteArrayMac=BcSecurity.MacUtilities.DoFinal(mac,byteArrayAuthenticatedSafe);
+			BcPkcs.MacData macData=new BcPkcs.MacData(new Org.BouncyCastle.Asn1.X509.DigestInfo(new Org.BouncyCastle.Asn1.X509.AlgorithmIdentifier(derObjectIdentifierSha1,
+				Org.BouncyCastle.Asn1.DerNull.Instance),byteArrayMac),byteArraySaltMac,2048);
+			BcPkcs.Pfx pfx=new BcPkcs.Pfx(new BcPkcs.ContentInfo(BcPkcs.PkcsObjectIdentifiers.Data,new Org.BouncyCastle.Asn1.DerOctetString(byteArrayAuthenticatedSafe)),macData);
+			return WriteFile(fileName,pfx.GetEncoded(Org.BouncyCastle.Asn1.Asn1Encodable.Der));
 		}
 
 		public string WriteFile(string fileName,byte[] byteArray) {
