@@ -89,6 +89,10 @@ namespace OpenPmsDental {
 			string text=string.Join("\r\n\r\n",directCertificateResult.ListDetails.Select(x => x.Describe()));
 			if(directCertificateResult.ListDetailsReplaced.Count>0) {
 				text+="\r\n\r\n"+Lan.g(this,"Replaces, after asking")+":\r\n"+string.Join("\r\n",directCertificateResult.ListDetailsReplaced.Select(x => x.DescribeShort()));
+				string warning=DirectCertificateImport.GetReplaceWarning(directCertificateResult);
+				if(warning!="") {
+					text+="\r\n\r\n"+warning;
+				}
 			}
 			return text;
 		}
@@ -106,11 +110,9 @@ namespace OpenPmsDental {
 			textDetails.Text=DescribeCheck(directCertificateResultCheck);
 			List<string> listThumbprintsReplaceAllowed=new List<string>();
 			if(directCertificateResultCheck.ListDetailsReplaced.Count>0) {
-				//Only after asking: No imports nothing, so the store never holds two current certificates for the address.
-				string question=Lan.g(this,"This computer's Direct certificate store already has an older certificate for this address or its domain")+":\r\n\r\n"
-					+string.Join("\r\n",directCertificateResultCheck.ListDetailsReplaced.Select(x => x.DescribeShort()))+"\r\n\r\n"
-					+Lan.g(this,"Replace it with the new certificate? It is removed from the store, and so is its private key if this window imported it. Messages "
-					+"encrypted to it can then be read here only after importing it again. No imports nothing.");
+				//Only after asking: No imports nothing, so the store never holds two current certificates for the address. The store's are not
+				//compared by date and may be valid longer than the file's: the question shows both sides and says so (GetReplaceQuestion).
+				string question=DirectCertificateImport.GetReplaceQuestion(directCertificateResultCheck);
 				if(MessageBox.Show(this,question,Text,MessageBoxButtons.YesNo)!=DialogResult.Yes) {
 					return;
 				}

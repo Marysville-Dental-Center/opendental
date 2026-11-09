@@ -493,6 +493,12 @@ namespace OpenPmsDental{
 				MsgBox.Show(this,"Enter the email address first.");
 				return;
 			}
+			if(DirectCertificateImport.GetAddressError(textUsername.Text.Trim())!="") {
+				//A plain SMTP login: the certificate window shows the address read-only, so it is fixed here.
+				MsgBox.Show(this,"The Direct certificate is found by the user name. Enter the Direct address (name@domain) in Username or email address, then "
+					+"click Certificate.");
+				return;
+			}
 			using FormEmailCertRegister formEmailCertRegister=new FormEmailCertRegister(textUsername.Text.Trim(),_emailAddress.EmailAddressNum);
 			formEmailCertRegister.ShowDialog();
 		}
