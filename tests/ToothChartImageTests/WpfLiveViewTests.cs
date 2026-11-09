@@ -257,25 +257,35 @@ namespace ToothChartImageTests {
 				form.Show();
 				ToothChartWpfView toothChartWpfView=wrapper.LiveViewWpf;
 				Assert.IsTrue(WpfRendererTests.PumpUntil(() => toothChartWpfView.SceneShown!=null && !wrapper.IsWpfSceneDirty,20000));
-				//The 3D layer is kept in a bitmap cache at 1x, snapped to the pixels, so a frame that changes only the 2D layer composites it.
+				//The 3D layer (the Viewport3D over the background, the size of the chart) is kept in a bitmap cache at 1x, snapped to the pixels, so a
+				//frame that changes only the 2D layer composites it.
 				Assert.IsTrue(toothChartWpfView.Is3DLayerCached,"The default.");
 				System.Windows.Controls.Grid grid=(System.Windows.Controls.Grid)toothChartWpfView.Child;
-				System.Windows.Controls.Viewport3D viewport3D=grid.Children.OfType<System.Windows.Controls.Viewport3D>().Single();
-				System.Windows.Media.BitmapCache bitmapCache=viewport3D.CacheMode as System.Windows.Media.BitmapCache;
+				System.Windows.Controls.Border border3D=grid.Children.OfType<System.Windows.Controls.Border>().Single();
+				Assert.IsInstanceOfType(border3D.Child,typeof(System.Windows.Controls.Viewport3D));
+				Assert.AreEqual(ChartScenes.SizeModule.Size.Width,border3D.ActualWidth,"The cached element is the size of the chart.");
+				Assert.AreEqual(ChartScenes.SizeModule.Size.Height,border3D.ActualHeight);
+				System.Windows.Media.BitmapCache bitmapCache=border3D.CacheMode as System.Windows.Media.BitmapCache;
 				Assert.IsNotNull(bitmapCache,"The 3D layer is kept in a bitmap cache.");
 				Assert.AreEqual(1.0,bitmapCache.RenderAtScale,"At 1x: the cached image has the 3D layer's own pixels.");
 				Assert.IsTrue(bitmapCache.SnapsToDevicePixels);
 				using(Bitmap bitmapCached=toothChartWpfView.GetBitmapForTests()) {
 					toothChartWpfView.Is3DLayerCached=false;
-					Assert.IsNull(viewport3D.CacheMode);
+					Assert.IsNull(border3D.CacheMode);
 					double millisecondsFrame=toothChartWpfView.MeasureSoftwareFrameForTests();
 					Assert.IsTrue(millisecondsFrame>0 && millisecondsFrame<10000,"One full software frame: "+millisecondsFrame);
 					using(Bitmap bitmapUncached=toothChartWpfView.GetBitmapForTests()) {
-						Assert.IsTrue(ChartImageCompare.GetPixelsArgb(bitmapCached).SequenceEqual(ChartImageCompare.GetPixelsArgb(bitmapUncached)),
-							"The cache changes no pixel of the view.");
+						if(!ChartImageCompare.GetPixelsArgb(bitmapCached).SequenceEqual(ChartImageCompare.GetPixelsArgb(bitmapUncached))) {
+							string folder=System.IO.Path.Combine(System.IO.Path.GetTempPath(),"ToothChartImageTests","liveview-cache");
+							System.IO.Directory.CreateDirectory(folder);
+							PngWriter.Save(bitmapCached,System.IO.Path.Combine(folder,"cached.png"));
+							PngWriter.Save(bitmapUncached,System.IO.Path.Combine(folder,"uncached.png"));
+							Assert.Fail("The cache changes pixels of the view ("+ChartImageCompare.Compare(bitmapUncached,bitmapCached)+"); both pictures are in "
+								+folder+".");
+						}
 					}
 					toothChartWpfView.Is3DLayerCached=true;
-					Assert.IsInstanceOfType(viewport3D.CacheMode,typeof(System.Windows.Media.BitmapCache));
+					Assert.IsInstanceOfType(border3D.CacheMode,typeof(System.Windows.Media.BitmapCache));
 				}
 				//A pen move draws the stroke's own element, not the 2D layer, and builds no 3D layer.
 				grid.UpdateLayout();

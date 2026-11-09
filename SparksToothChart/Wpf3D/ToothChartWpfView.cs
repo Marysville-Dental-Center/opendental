@@ -47,6 +47,9 @@ namespace SparksToothChart.Wpf3D {
 		private readonly ToothChartMouse _toothChartMouse=new ToothChartMouse();
 		private readonly Grid _gridRoot;
 		private readonly Viewport3D _viewport3D;
+		///<summary>The 3D layer: the Viewport3D over the scene's background, the size of the chart. The bitmap cache is on this element, so the cache
+		///covers whole pixels from 0,0 (the Viewport3D's own bounds are those of its teeth, which need not fall on whole pixels).</summary>
+		private readonly Border _border3D;
 		private readonly ModelVisual3D _modelVisual3D;
 		private readonly LiveLayer2D _liveLayer2D;
 		private readonly LivePenLayer _livePenLayer;
@@ -69,6 +72,12 @@ namespace SparksToothChart.Wpf3D {
 			_viewport3D.IsHitTestVisible=false;
 			_modelVisual3D=new ModelVisual3D();
 			_viewport3D.Children.Add(_modelVisual3D);
+			_border3D=new Border();
+			_border3D.HorizontalAlignment=HorizontalAlignment.Left;
+			_border3D.VerticalAlignment=VerticalAlignment.Top;
+			_border3D.SnapsToDevicePixels=true;
+			_border3D.IsHitTestVisible=false;
+			_border3D.Child=_viewport3D;
 			_liveLayer2D=new LiveLayer2D(this);
 			_liveLayer2D.IsHitTestVisible=false;
 			_livePenLayer=new LivePenLayer(this);
@@ -79,7 +88,7 @@ namespace SparksToothChart.Wpf3D {
 			_gridRoot.Focusable=false;
 			_gridRoot.SnapsToDevicePixels=true;
 			_gridRoot.Background=Brushes.Gray;//hit-testable from the start; the scene's background replaces it
-			_gridRoot.Children.Add(_viewport3D);
+			_gridRoot.Children.Add(_border3D);
 			_gridRoot.Children.Add(_liveLayer2D);
 			_gridRoot.Children.Add(_livePenLayer);
 			_gridRoot.MouseDown+=GridRoot_MouseDown;
@@ -168,8 +177,9 @@ namespace SparksToothChart.Wpf3D {
 			}
 		}
 
-		///<summary>True (the default) when the 3D layer is kept in a bitmap cache: a BitmapCache on the Viewport3D, at 1x and snapped to the device pixels,
-		///so the cached image lands on the pixels the 3D layer itself would. WPF then rasterizes the 3D layer only when it changes (a refill), and a frame
+		///<summary>True (the default) when the 3D layer is kept in a bitmap cache: a BitmapCache on the 3D layer's element (the Viewport3D over the
+		///background, the size of the chart), at 1x and snapped to the device pixels, so the cached image covers whole pixels from 0,0 and lands on the
+		///pixels the 3D layer itself would. WPF then rasterizes the 3D layer only when it changes (a refill), and a frame
 		///that redraws only the 2D layer or the pen stroke composites the cached image under it. Without the cache every such frame rasterizes the 3D
 		///layer again wherever the 2D layer changed, which in software (the program, O-34) costs about as much as a refill. False only for the
 		///measurement that compares the two (G1's times).</summary>
@@ -182,13 +192,13 @@ namespace SparksToothChart.Wpf3D {
 			set {
 				_is3DLayerCached=value;
 				if(!value) {
-					_viewport3D.CacheMode=null;
+					_border3D.CacheMode=null;
 					return;
 				}
 				BitmapCache bitmapCache=new BitmapCache(1.0);
 				bitmapCache.SnapsToDevicePixels=true;
 				bitmapCache.Freeze();
-				_viewport3D.CacheMode=bitmapCache;
+				_border3D.CacheMode=bitmapCache;
 			}
 		}
 
@@ -231,6 +241,9 @@ namespace SparksToothChart.Wpf3D {
 				SolidColorBrush brushBackground=new SolidColorBrush(Color.FromRgb(scene.ColorBackground.R,scene.ColorBackground.G,scene.ColorBackground.B));
 				brushBackground.Freeze();
 				_gridRoot.Background=brushBackground;
+				_border3D.Background=brushBackground;
+				_border3D.Width=scene.Size.Width;
+				_border3D.Height=scene.Size.Height;
 				_viewport3D.Width=scene.Size.Width;
 				_viewport3D.Height=scene.Size.Height;
 				_viewport3D.Camera=ToothChartRenderer.CreateCamera(scene);
@@ -311,14 +324,15 @@ namespace SparksToothChart.Wpf3D {
 			return stopwatch.Elapsed.TotalMilliseconds;
 		}
 
-		///<summary>Draws the content into renderTargetBitmap in its order: the background, the 3D layer, the 2D layer and the pen stroke.</summary>
+		///<summary>Draws the content into renderTargetBitmap in its order: the background, the 3D layer (over its own copy of the background), the 2D
+		///layer and the pen stroke.</summary>
 		private void RenderContent(RenderTargetBitmap renderTargetBitmap) {
 			DrawingVisual drawingVisualBackground=new DrawingVisual();
 			using(DrawingContext drawingContext=drawingVisualBackground.RenderOpen()) {
 				drawingContext.DrawRectangle(_gridRoot.Background,null,new Rect(0,0,renderTargetBitmap.PixelWidth,renderTargetBitmap.PixelHeight));
 			}
 			renderTargetBitmap.Render(drawingVisualBackground);
-			renderTargetBitmap.Render(_viewport3D);
+			renderTargetBitmap.Render(_border3D);
 			renderTargetBitmap.Render(_liveLayer2D);
 			renderTargetBitmap.Render(_livePenLayer);
 		}
