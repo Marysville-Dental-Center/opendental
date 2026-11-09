@@ -118,12 +118,14 @@ change) are removed: nothing calls them any more. The class stays in the global 
 
 `tests/EhrTests` (classic MSTest v1, x86, explicit items, references the program and the business library as `tests/LibWebTests` does).
 An `[AssemblyInitialize]` replaces `WindowsTime.FuncSetSystemTimeUtc` with a fake that throws and the Event Log seams with no-ops before any
-test runs; a test that needs the seam puts its own fake in and restores the guard. 62 tests:
+test runs (both of them: `NTPv4.ActionWriteEventLog` and `WindowsTime.ActionWriteEventLog`); a test that needs a seam puts its own fake in
+and restores the guard. 62 tests:
 
 - `EhrSwitchTests` (7): the confirmation's content; checking asks once, Cancel unchecks without the restart message, OK keeps it and shows
   the message, unchecking asks nothing; both windows call `HandleEhrClick` and are wired to their handlers, no password; the refusal is gone
   and both windows still save `ShowFeatureEhr`; the wizard's explanation makes no certification claim.
-- `TimeSyncTests` (22): the setting (Off unless 1, not a `PrefName`, written with `UpsertRaw`, the Prefs signal and the Setup entry; Off
+- `TimeSyncTests` (22): the guard has replaced the clock seam and both Event Log seams before any test (none is its real method); the
+  setting (Off unless 1, not a `PrefName`, written with `UpsertRaw`, the Prefs signal and the Setup entry; Off
   without the cache); `ShouldStart` for every combination; `Decide` for every mode and kind of reply; `Next` (the alert text, failures,
   the day alert, the reset, kiss-o'-death); open alerts are not repeated; the thread starts only through `ShouldStart` and never reaches
   `WindowsTime`; the set button's rules and the Windows Time advice; the start type decides first; measuring never calls the clock seam;
@@ -138,7 +140,7 @@ test runs; a test that needs the seam puts its own fake in and restores the guar
   or negative, root distances from 1 second); kiss-o'-death with its code, and a forged one with another originate time; the all-zero
   reply; RFC 5905's known timestamps; the era placement; replies on both sides of the 2036 rollover and a rollover during the round trip;
   a later era; the version 4 request; the random low bits; the first IPv4 address (192.0.2.x and the IPv6 loopback only); no request without a
-  server name.
+  server name, with its one Event Log entry caught by the test's own fake.
 - `NoEhrDllTests` (6): the scan reads the program (more than 3000 files, more than 100 EHR files) and not the tests; the small C# reader
   separates comments from strings; no string names `EHR.dll`; no EHR file loads an assembly; `#if EHRTEST` only in `ControlChart.cs` and
   defined nowhere; the `EhrCodeList` case is gone and its value stays `[Obsolete]` with its number.
