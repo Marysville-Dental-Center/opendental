@@ -1,7 +1,8 @@
 # Port note: EHR-3 (CCD and CCR stylesheets)
 
 Package EHR-3 of `docs/specs/ehr-rebuild-plan.md` (section 7), on branch `ehr/ehr3-1` from `main` `81e701df5`; fix round 1 of the
-review on `ehr/ehr3-2` from `ehr/ehr3-1` `f56e94014` (section 10; the sections above describe the result). The owner answered E-1 to
+review on `ehr/ehr3-2` from `ehr/ehr3-1` `f56e94014` (section 10) and fix round 2 on `ehr/ehr3-3` from `ehr/ehr3-2` `6030d1a0f`
+(section 11); the sections above describe the result. The owner answered E-1 to
 E-19 as recommended on 2026-11-08; this package carries out E-11 (HL7 CDA-core-xsl v4.1.0-beta.2 and the AAFP `ccr.xsl` under Apache-2.0
 with notices, the licence text beside file exports, `ccr.xsl` as a copy marked as modified, a modified copy of upstream's `CCD-full.xml` in
 the tests), E-12 (XSLT runs only in a child process of the program's own exe, `/ehr-render`), E-13 (file exports write the stylesheets and a
@@ -142,6 +143,12 @@ nothing goes through the Middle Tier: the child runs on the computer that shows 
   (STATUS_STACK_OVERFLOW) are named; the first line of standard error is added. In a batch the document is recorded as failed and a new
   child takes the rest; a document the stylesheet refuses keeps the child. A child that cannot be started gives every document the same
   reason. The document never goes to disk.
+- Two forms of `RenderBatch` (fix round 2): `RenderBatch(kind,IEnumerable<string>,Action<int,EhrRenderResult>)` streams: it reads the
+  documents lazily, one at a time, and hands each result on as its reply arrives, before it reads the next, so one document and one page
+  are in memory at a time; one child serves the whole run. `RenderBatch(kind,IList<string>)`, which returns the list of results, and
+  `Render` are wrappers of it. An exception outside the exchange's own thread (no memory for a document's bytes or a page's text, for
+  example) gives that document the reason "The document could not be rendered: ..." and ends its child, whose state is not known; the next
+  document gets a new one. The streamed form throws only what the caller's reader or callback throws, after the child has been ended.
 
 ## 3. Display (`FormEhrSummaryOfCare.DisplayCCD`, `FormEhrSummaryCcdEdit`)
 
@@ -170,7 +177,7 @@ nothing goes through the Middle Tier: the child runs on the computer that shows 
 | `FormEhrClinicalSummary.cs`, export | `WriteCcdFiles` |
 | `FormEhrClinicalSummary.cs`, patient portal web mail | attachments `ccd.xsl`, `cda_l10n.xml`, `cda_narrativeblock.xml` (shown names; stored as `<base>_<name>`) |
 | `FormEhrElectronicCopy.cs`, export | `WriteCcdFiles` |
-| `FormEhrPatientExport.cs` | each written `<name>.xml` is collected; after the loop `WriteCcdPages` writes one `<name>.html` per XML through one batch child and one set of stylesheet files with the licence text. `ccd.xsl` replaces the former `CCD.xsl`, the name the documents' instruction uses |
+| `FormEhrPatientExport.cs` | the name of each written `<name>.xml` is collected (never the document, which is dropped once its file is written, as on `main`); after the loop `WriteCcdPages(folderPath,listFileNamesWritten)` writes one set of stylesheet files with the licence text, then streams: it reads each `<name>.xml` back from the folder just before it goes to the one batch child and writes its `<name>.html` as soon as the page arrives (fix round 2). `ccd.xsl` replaces the former `CCD.xsl`, the name the documents' instruction uses |
 | `FormEhrSummaryOfCare.cs`, export | `WriteCcdFiles` |
 | `FormEhrSummaryOfCare.cs`, e-mail | attachments `ccd.xsl` and the two companions |
 | `WpfControlsOD/Frms/FrmReferralsPatient.xaml.cs`, referral e-mail | attachments `ccd.xsl` and the two companions |
@@ -216,14 +223,15 @@ New in `tests/EhrTests` (every `.cs` file of the SDK-style project is compiled; 
 are not project items). Every page comes from a real `OpenPmsDental.exe /ehr-render` started by the starter from the test folder; no XSLT
 runs in the test process and no window is shown. `EHR_RECORD_GOLDEN=1` records the golden pages again.
 
-- `CdaRenderTests` (7): CCD-full's golden page (no script, no `javascript:`, nothing loaded from a file, share or the web); the fixture has
+- `CdaRenderTests` (8): CCD-full's golden page (no script, no `javascript:`, nothing loaded from a file, share or the web); the fixture has
   no licensed code anywhere, comments included (fix round 1, section 1); the CCR with dates (golden page, every date readable, a year and
   month as `Aug 2010`, a year as `2011`, a vital sign's date without a time as `May 06, 2015`, never `Aug 01, 2010`, `Jan 01, 2011` or a
-  made-up `12:00 AM`; the accents kept, the derived work's footer); a batch of three in one child, each page equal to a single render; a
-  batch with a document CDA.xsl refuses (a `javascript:` link) keeps the child, and a malformed one in it is refused before the child; a
+  made-up `12:00 AM`; the accents kept, the derived work's footer); a batch of three in one child, each page equal to a single render; the
+  streamed batch reads its documents through a counting enumerable in the order read 0, page 0, read 1, page 1, read 2, page 2, once, with
+  one child, a refused document among them (fix round 2); a batch with a document CDA.xsl refuses (a `javascript:` link) keeps the child, and a malformed one in it is refused before the child; a
   broken frame ends the real child with 4 and a new child takes the next document; an `xml-stylesheet` instruction pointing to the web is
   never followed.
-- `CdaHostileTests` (17): 100,000 levels refused before any child (no child started) and shown as plain text; 200 levels pass, 201 do
+- `CdaHostileTests` (18): 100,000 levels refused before any child (no child started) and shown as plain text; 200 levels pass, 201 do
   not; `&#0;` before 100,000 levels refused as not well-formed by `GetLimitError`, `Render` and `RenderBatch` with no child started, shown
   as plain text, and refused by `LoadXmlDocument` although `LoadXml` accepts it (fix round 1); 33 MB and 17 M two-byte characters refused
   before any child; a billion-laughs DTD and external entities to a file, a share and the web refused before any child; a malformed
@@ -236,14 +244,19 @@ runs in the test process and no window is shown. `EHR_RECORD_GOLDEN=1` records t
   (raw text escaped for a CCR, kept for a CCD; sources dropped except `data:` images; links kept only to `#`, `http://`, `https://` and
   `mailto:`, thirteen others dropped); `ccr.xsl` has no `disable-output-escaping`; through the seam: a child that stalls is killed at 15
   seconds (the test takes about 15 s) and the next document gets a new child, children ending with `0x800703E9`, `0xC00000FD` and 5 give the
-  reason with the code and standard error's first line, a child that cannot start; frames round trip and broken frames throw.
+  reason with the code and standard error's first line, a child that cannot start, an exception outside the exchange's thread (a fake
+  child's `WaitForExit` throws `OutOfMemoryException`) gives the document a reason and the next one a new child while the caller's own
+  reader or callback exceptions leave the streamed batch after its child was ended (fix round 2); frames round trip and broken frames throw.
   `AssertHarmless`, which every hostile page passes, now also requires every link to go to `#`, `http(s)://` or `mailto:`.
 - `CdaResourceTests` (5): each resource's UTF-8 text and file have the pinned SHA-256; the `.resx` entries with `;utf-8` and the
   `.gitattributes` line; `GetEhrResource`'s names and `GetCcdStylesheetFiles`; the copy of `ccr.xsl` marked as modified (with the partial
   date patterns); the notices' entries and hashes, and the licence file is the notices' Apache-2.0 text, ASCII.
-- `CdaExportTests` (5): a single export writes exactly the six files, each equal to its resource or render; without a page the older
+- `CdaExportTests` (6): a single export writes exactly the six files, each equal to its resource or render; without a page the older
   `ccd.html` goes and the message says why; Patient Export of three documents: three pages, one child, one set of stylesheet files; a
-  document without a page is named; the eight lines of the six files use the helpers and none writes `ccd.xsl` alone.
+  document without a page is named, and the page after it keeps its own name; Patient Export streams: a counting enumerable of four names
+  sees, as the document of name i is read, exactly the pages of names 0 to i-1 written, with one child (fix round 2); the eight lines of the
+  six files use the helpers and none writes `ccd.xsl` alone, and Patient Export's loop collects only the names (one list, one `.Add(`, no
+  `listCcdsWritten`).
 - `CdaGeneratedCcdTests` (4): a summary of care, a clinical summary (with instructions) and a patient export of a patient named
   "Zoë Ångström-Núñez" in "Søndre Exampleton", built by `EhrCCD` on a scratch database `ehr3_<UTC start>_<process>_<random>_ccd` (from
   `db/init/new-database.sql` and the fork migrations, dropped at the end, stale `ehr3_` leftovers older than 12 hours dropped first;
@@ -297,6 +310,9 @@ Targeted runs (`run-tests.ps1 -Mode Targeted`, NoHqTests always included), after
   - Chart > CCD export: the folder has `ccd.xml`, `ccd.xsl`, `cda_l10n.xml`, `cda_narrativeblock.xml`, `ccd.html` and
     `stylesheets-license.txt`; `ccd.html` opens readable in a browser, with no script.
   - Patient Export of three patients: three XML files, three HTML files, one set of stylesheet files.
+  - Patient Export with many patients (fix round 2; a test database with a few thousand synthetic patients, Select All, Export): the export
+    finishes with one HTML file per XML file, the program's memory (Task Manager) stays about flat while the pages are written, and one
+    `/ehr-render` process at a time serves the whole export.
   - A received CCD in e-mail shows rendered, with no note. One with its own `.xsl` shows rendered, with the note that its stylesheet was
     not run and the program's own was used.
   - A CCR with dates shows rendered, with readable dates (a date of birth on its own day; a year-only onset as the year, not January 1),
@@ -373,3 +389,35 @@ Files changed in this round: `OpenPmsDentalBusiness/Data Interface/EhrSummaryCcd
 `tests/EhrTests/Golden/CCD-full.modified.xml`, `CCR-dates.xml`, `CCR-dates.html`, `tests/LibWebTests/HtmlGenerationTests.cs`, the CCD
 window's row of `docs/port-notes/LIB-WEB.md` and this note. No project item and no schema changed; the baseline lines of section 8 are
 unchanged.
+
+## 11. Fix round 2 (`ehr/ehr3-3`)
+
+One finding of the review, real: Patient Export held every generated CCD (`listCcdsWritten`) until its loop ended, and `RenderBatch`
+held every page (`listEhrRenderResults`) until the whole batch was done, before `WriteCcdPages` wrote any. On `main` the loop wrote each
+XML and dropped it, so its memory stayed flat. The release build is x86 (`tools/Build-Release.ps1`) and nothing in the repository sets
+LARGEADDRESSAWARE, so an office exporting several thousand patients (Select All, Export) could run out of memory: in the generation loop
+(the export stops partway with no stylesheet files and no pages), in `RenderBatch` or `WriteCcdPages` (no page written), or in the
+decoding of a reply (`UTF8Encoding.GetString` in `Exchange`), which was outside any catch, against `RenderBatch`'s "Never throws".
+
+The fix:
+
+- `EhrStylesheetStarter.RenderBatch(kind,IEnumerable<string>,Action<int,EhrRenderResult>)` streams (section 2): the documents are read
+  lazily, each result is handed on as its reply arrives and before the next document is read, and one child serves the whole run, so
+  CDA.xsl is still compiled once. The list form and `Render` are wrappers of it.
+- An exception outside the exchange's own thread gives that document a reason and ends its child; the next document gets a new one. Only
+  the caller's own reader or callback can throw out of the streamed form, after the child has been ended.
+- `FormEhrSummaryOfCare.WriteCcdPages(folder,enumerableFileNames)` writes the stylesheet files, then reads each `<name>.xml` back from the
+  folder just before it is sent and writes `<name>.html` as soon as its page arrives. It keeps only the names it has read.
+- `FormEhrPatientExport` keeps only `listFileNamesWritten`; `listCcdsWritten` is gone.
+
+Tests (section 7): `ExportLines_UseTheHelpers` pins `WriteCcdPages(folderPath,listFileNamesWritten)`, one list and one `.Add(` in the
+export's loop and no `listCcdsWritten`; new `CdaExportTests.PatientExport_WritesEachPage_BeforeReadingTheNextDocument`,
+`CdaRenderTests.Batch_Streamed_HandsEachPageOn_BeforeReadingTheNextDocument` (counting enumerables; one child through `CountingStarter`)
+and `CdaHostileTests.Seam_ExceptionOutsideTheExchange_GivesTheReason_AndTheBatchGoesOn`; `PatientExport_OnePagePerDocument_OneChild` and
+`PatientExport_DocumentWithoutPage_IsNamed` write their documents to the folder first, as the export does. `CountingEnumerable` sits beside
+`CountingStarter` in `CdaRenderTests.cs`; `FakeChild` gained `ExceptionWaitForExit`.
+
+Files changed in this round: `OpenPmsDentalBusiness/Data Interface/EhrSummaryCcds.cs`, `OpenPmsDental/Forms/FormEhrSummaryOfCare.cs`,
+`OpenPmsDental/Forms/FormEhrPatientExport.cs`, `tests/EhrTests/CdaExportTests.cs`, `CdaRenderTests.cs`, `CdaHostileTests.cs` and this
+note (sections 2, 4, 7, 8 and 11). No project item, resource or schema changed; the baseline lines of section 8 are unchanged, and so is
+the Release dry run's staged list (no file added; the dry run was not run again).
