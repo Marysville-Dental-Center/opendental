@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project>
   <!-- PdfSharp-gdi 6.5.0 (the GDI+ build of PDFsharp) from empira's source in the submodule third-party\PDFsharp, as upstream's
        src\foundation\src\PDFsharp\src\PdfSharp-gdi\PdfSharp-gdi.csproj builds it for net462: the shared PdfSharp source folder without the
        files that project leaves out, and the -gdi folder's own forms.
