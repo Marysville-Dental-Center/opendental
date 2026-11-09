@@ -91,11 +91,21 @@ namespace OpenPmsDentalBusiness {
 		public List<DirectCertificateDetails> ListDetails=new List<DirectCertificateDetails>();
 		///<summary>The certificates of the file that the store already holds (with their private keys, for the private store): not added again.</summary>
 		public List<DirectCertificateDetails> ListDetailsInStore=new List<DirectCertificateDetails>();
-		///<summary>The older certificates of the private store for the same address or domain that the import replaces (a check) or replaced
-		///(an import).</summary>
+		///<summary>The certificates of the private store of the same kind (address or domain) and name that the import replaces (a check) or
+		///replaced (an import), whatever their dates: one may be valid longer than the file's (IsReplacedValidLonger).</summary>
 		public List<DirectCertificateDetails> ListDetailsReplaced=new List<DirectCertificateDetails>();
 		///<summary>True once an import has added the certificates to the store.</summary>
 		public bool IsImported;
+
+		///<summary>True when a certificate of the store that the import replaces is valid longer than every certificate of the file: last year's
+		///file picked by mistake, while the store holds the renewed certificate.</summary>
+		public bool IsReplacedValidLonger() {
+			if(ListDetails.Count==0) {
+				return false;
+			}
+			DateTime dateTimeNotAfterFile=ListDetails.Max(x => x.DateTimeNotAfter);
+			return ListDetailsReplaced.Any(x => x.DateTimeNotAfter>dateTimeNotAfterFile);
+		}
 	}
 
 	///<summary>The import of the certificate window (FormEmailCertRegister, the Certificate button of Edit Email Address). The office's Direct
@@ -118,8 +128,8 @@ namespace OpenPmsDentalBusiness {
 
 		#region The address's certificate
 		///<summary>Reads the .pfx or .p12 file with its password, without storing any key (EphemeralKeySet), and checks it for the address
-		///(docs/port-notes/DIRECT-CERT.md): ListDetails are the certificates an import adds, ListDetailsReplaced the older ones of the store it
-		///replaces. Error says why the file can't be imported. Never throws.</summary>
+		///(docs/port-notes/DIRECT-CERT.md): ListDetails are the certificates an import adds, ListDetailsReplaced the ones of the store it replaces
+		///(of the same kind and name, whatever their dates). Error says why the file can't be imported. Never throws.</summary>
 		public static DirectCertificateResult CheckPrivateFile(string emailAddress,string filePath,string password,DateTime dateTimeUtcNow) {
 			Meth.NoCheckMiddleTierRole();
 			DirectCertificateResult directCertificateResult=new DirectCertificateResult();
@@ -133,9 +143,9 @@ namespace OpenPmsDentalBusiness {
 		}
 
 		///<summary>Checks the file again (CheckPrivateFile) and imports its certificates for the address into the store of private certificates,
-		///their private keys never exportable, then removes the older certificates of the address or domain. listThumbprintsReplaceAllowed: the
-		///older certificates the user agreed to replace (the window asks first); when the store holds an older one not in it, nothing is imported
-		///and Error says so. In production (the Local Computer store) the computer's users get read access to the new private keys; Warning says so
+		///their private keys never exportable, then removes the certificates of the store it replaces (ListDetailsReplaced: the address's or the
+		///domain's, whatever their dates). listThumbprintsReplaceAllowed: the certificates the user agreed to replace (the window asks first,
+		///GetReplaceQuestion); when the store holds one to replace that is not in it, nothing is imported and Error says so. In production (the Local Computer store) the computer's users get read access to the new private keys; Warning says so
 		///if that failed. Never throws.</summary>
 		public static DirectCertificateResult ImportPrivateFile(string emailAddress,string filePath,string password,List<string> listThumbprintsReplaceAllowed,
 			DateTime dateTimeUtcNow)
@@ -153,8 +163,8 @@ namespace OpenPmsDentalBusiness {
 			}
 			listThumbprintsReplaceAllowed=listThumbprintsReplaceAllowed??new List<string>();
 			if(directCertificateResult.ListDetailsReplaced.Any(x => !listThumbprintsReplaceAllowed.Contains(x.Thumbprint,StringComparer.OrdinalIgnoreCase))) {
-				directCertificateResult.Error=Lans.g("DirectCertificateImport","The store has an older certificate for this address or its domain that "
-					+"was not agreed to be replaced. Nothing was imported. Check the file again.");
+				directCertificateResult.Error=Lans.g("DirectCertificateImport","The store has a certificate for this address or its domain that was not "
+					+"agreed to be replaced. Nothing was imported. Check the file again.");
 				return directCertificateResult;
 			}
 			X509Store x509Store=new X509Store(EmailMessages.CertStoreNamePrivate,EmailMessages.CertStoreLocation);
@@ -202,6 +212,51 @@ namespace OpenPmsDentalBusiness {
 				return DirectCertificateBinding.Domain;
 			}
 			return DirectCertificateBinding.None;
+		}
+
+		///<summary>The window's question before an import replaces certificates of the store (a check's ListDetailsReplaced), "" when it replaces
+		///none. It names no age: it lists both sides, the file's certificates and the store's (subject, last day, thumbprint), and warns before
+		///the Yes or No when the store's is valid longer (GetReplaceWarning).</summary>
+		public static string GetReplaceQuestion(DirectCertificateResult directCertificateResult) {
+			Meth.NoCheckMiddleTierRole();
+			if(directCertificateResult.ListDetailsReplaced.Count==0) {
+				return "";
+			}
+			bool isOne=(directCertificateResult.ListDetailsReplaced.Count==1);
+			StringBuilder stringBuilder=new StringBuilder();
+			stringBuilder.Append(Lans.g("DirectCertificateImport","This computer's Direct certificate store already has a certificate for this address or its "
+				+"domain."));
+			stringBuilder.Append("\r\n\r\n"+Lans.g("DirectCertificateImport","In the file")+":\r\n"
+				+string.Join("\r\n",directCertificateResult.ListDetails.Select(x => x.DescribeShort())));
+			stringBuilder.Append("\r\n\r\n"+Lans.g("DirectCertificateImport","On this computer now")+":\r\n"
+				+string.Join("\r\n",directCertificateResult.ListDetailsReplaced.Select(x => x.DescribeShort())));
+			string warning=GetReplaceWarning(directCertificateResult);
+			if(warning!="") {
+				stringBuilder.Append("\r\n\r\n"+warning);
+			}
+			stringBuilder.Append("\r\n\r\n");
+			if(isOne) {
+				stringBuilder.Append(Lans.g("DirectCertificateImport","Replace the certificate on this computer with the one in the file? It is removed from the "
+					+"store, and so is its private key if this window imported it. Messages encrypted to it can then be read here only after importing its .pfx "
+					+"or .p12 file again. No imports nothing."));
+			}
+			else {
+				stringBuilder.Append(Lans.g("DirectCertificateImport","Replace the certificates on this computer with the one in the file? They are removed from "
+					+"the store, and so are their private keys if this window imported them. Messages encrypted to them can then be read here only after "
+					+"importing their .pfx or .p12 files again. No imports nothing."));
+			}
+			return stringBuilder.ToString();
+		}
+
+		///<summary>The warning of the question and of the window's details when a certificate of the store that the import replaces is valid longer
+		///than the file's (DirectCertificateResult.IsReplacedValidLonger), else "".</summary>
+		public static string GetReplaceWarning(DirectCertificateResult directCertificateResult) {
+			Meth.NoCheckMiddleTierRole();
+			if(!directCertificateResult.IsReplacedValidLonger()) {
+				return "";
+			}
+			return Lans.g("DirectCertificateImport","The certificate on this computer is valid longer than the one in the file. Replace it only if your "
+				+"Direct provider told you to.");
 		}
 
 		///<summary>The checks of the file's bytes, which fill the result. The certificates of the file are disposed afterwards.</summary>
@@ -287,7 +342,8 @@ namespace OpenPmsDentalBusiness {
 					+"its private key. Nothing to import.");
 				return;
 			}
-			//The older certificates: the same kind (address or domain) and name as a certificate the import adds, not one of the file's.
+			//The certificates it replaces: the same kind (address or domain) and name as a certificate the import adds, not one of the file's, whatever
+			//their dates (the store's may be the newer one: the question says so, GetReplaceQuestion).
 			for(int i=0;i<listStore.Count;i++) {
 				if(listThumbprintsFile.Contains(listStore[i].Thumbprint) && listStore[i].HasPrivateKey) {
 					continue;//Already imported, the same certificate: stays.
@@ -301,8 +357,8 @@ namespace OpenPmsDentalBusiness {
 		}
 
 		///<summary>Imports the checked file into the open store: the keys are written to the key store now (never exportable), the certificates
-		///added with FRIENDLY_NAME_IMPORTED, then the older ones removed. A key of the file the import does not use is deleted again, and so are the
-		///new keys when adding fails.</summary>
+		///added with FRIENDLY_NAME_IMPORTED, then the replaced ones removed. A key of the file the import does not use is deleted again, and so are
+		///the new keys when adding fails.</summary>
 		private static void AddPrivate(X509Store x509Store,byte[] byteArrayFile,string password,DirectCertificateResult directCertificateResult) {
 			X509KeyStorageFlags x509KeyStorageFlags=X509KeyStorageFlags.PersistKeySet;
 			if(EmailMessages.CertStoreLocation==StoreLocation.LocalMachine) {
@@ -369,25 +425,25 @@ namespace OpenPmsDentalBusiness {
 			directCertificateResult.IsImported=true;
 			List<string> listWarnings=new List<string>();
 			List<string> listThumbprintsReplaced=directCertificateResult.ListDetailsReplaced.Select(x => x.Thumbprint).ToList();
-			foreach(X509Certificate2 x509Certificate2Old in x509Store.Certificates) {
-				if(!listThumbprintsReplaced.Contains(x509Certificate2Old.Thumbprint) || listThumbprintsAdding.Contains(x509Certificate2Old.Thumbprint)) {
+			foreach(X509Certificate2 x509Certificate2Replaced in x509Store.Certificates) {
+				if(!listThumbprintsReplaced.Contains(x509Certificate2Replaced.Thumbprint) || listThumbprintsAdding.Contains(x509Certificate2Replaced.Thumbprint)) {
 					continue;
 				}
 				try {
-					x509Store.Remove(x509Certificate2Old);
+					x509Store.Remove(x509Certificate2Replaced);
 				}
 				catch(Exception ex) when(IsStoreException(ex)) {
-					listWarnings.Add(Lans.g("DirectCertificateImport","The older certificate could not be removed from the store")+" ("
-						+x509Certificate2Old.Subject+", "+x509Certificate2Old.Thumbprint+"): "+ex.Message);
+					listWarnings.Add(Lans.g("DirectCertificateImport","The replaced certificate could not be removed from the store")+" ("
+						+x509Certificate2Replaced.Subject+", "+x509Certificate2Replaced.Thumbprint+"): "+ex.Message);
 					continue;
 				}
-				if(x509Certificate2Old.FriendlyName!=FRIENDLY_NAME_IMPORTED) {
+				if(x509Certificate2Replaced.FriendlyName!=FRIENDLY_NAME_IMPORTED) {
 					continue;//Put there another way: its key is not this import's to delete.
 				}
-				string errorKey=TryDeletePrivateKey(x509Certificate2Old);
+				string errorKey=TryDeletePrivateKey(x509Certificate2Replaced);
 				if(errorKey!="") {
-					listWarnings.Add(Lans.g("DirectCertificateImport","The private key of the older certificate could not be deleted")+" ("
-						+x509Certificate2Old.Thumbprint+"): "+errorKey);
+					listWarnings.Add(Lans.g("DirectCertificateImport","The private key of the replaced certificate could not be deleted")+" ("
+						+x509Certificate2Replaced.Thumbprint+"): "+errorKey);
 				}
 			}
 			if(EmailMessages.CertStoreLocation==StoreLocation.LocalMachine) {
@@ -535,7 +591,7 @@ namespace OpenPmsDentalBusiness {
 
 		#region Shared
 		///<summary>The Setup security log entry of an import: the e-mail address's number (0 for one not saved yet), the thumbprints and last days of
-		///the certificates added, and how many older ones were replaced. No address, password or key.</summary>
+		///the certificates added, and how many of the store's were replaced. No address, password or key.</summary>
 		public static string GetLogText(DirectCertificateResult directCertificateResult,long emailAddressNum,bool isAnchor) {
 			Meth.NoCheckMiddleTierRole();
 			string certificates=string.Join(", ",directCertificateResult.ListDetails.Select(x => x.Thumbprint+" ("+Lans.g("DirectCertificateImport","valid to")+" "
@@ -544,10 +600,12 @@ namespace OpenPmsDentalBusiness {
 				return "Direct trust anchor imported from a file: "+certificates+".";
 			}
 			return "Direct certificate imported from the provider's file for EmailAddressNum "+POut.Long(emailAddressNum)+": "+certificates
-				+"; older certificates replaced: "+directCertificateResult.ListDetailsReplaced.Count+".";
+				+"; certificates of the store replaced: "+directCertificateResult.ListDetailsReplaced.Count+".";
 		}
 
-		///<summary>"" for an e-mail address (a local part, "@" and a domain, no blank), else what to do.</summary>
+		///<summary>"" for an e-mail address (a local part, "@" and a domain, no blank), else what to do. The address is Edit Email Address's user
+		///name (Username or email address), which Direct sends from and the certificate is found by, so that is where it is fixed; the certificate
+		///window shows it read-only. Edit Email Address checks it before it opens the window.</summary>
 		public static string GetAddressError(string emailAddress) {
 			Meth.NoCheckMiddleTierRole();
 			string address=EmailMessages.GetAddressSimple(emailAddress);
@@ -556,7 +614,8 @@ namespace OpenPmsDentalBusiness {
 			}
 			int indexAt=address.LastIndexOf('@');
 			if(indexAt<=0 || indexAt==address.Length-1 || address.Any(x => char.IsWhiteSpace(x))) {
-				return address+" "+Lans.g("DirectCertificateImport","is not an email address. Enter the address the Direct certificate is for.");
+				return address+" "+Lans.g("DirectCertificateImport","is not an email address. The Direct certificate is found by the user name: in Edit Email "
+					+"Address, enter the Direct address (name@domain) in Username or email address.");
 			}
 			return "";
 		}
