@@ -337,4 +337,33 @@ private keys.
 Not changed, noticed on the way: the program's own search of the signing certificate (`EmailMessages.GetCertFromPrivateStore`) and the
 Direct agent's resolver take the valid certificates for the address in store order, whatever their purpose; with a separate signing and
 encryption certificate for one address, signing may pick the encryption one. The import now keeps both, so the search is where a purpose
-would be chosen.
+would be chosen. (Done in the third fix round, item 2.)
+
+## Third fix round (branch `dev/directcert-2`, 2026-11-09)
+
+The second round's review passed; the lead decided these before the merge, each with a test. The plan (this section, filled in with the
+commits and tests when they are done):
+
+1. **Key safety.** One `.pfx` can give two of its certificates one key (a renewal with the same key): Windows stores the key once, in one
+   key container, for both. The import deleted the key of a certificate of the file it does not use (and the key of a replaced
+   certificate, and in `Undo` every key it stored) without looking whether another certificate still uses that container, so the imported
+   certificate could lose its key. Before a container is deleted, its unique name (`CngKey.UniqueName`, `CspKeyContainerInfo.UniqueKeyContainerName`)
+   is compared with those of every certificate the import adds, keeps or leaves in the store; only a container none of them uses is
+   deleted, and each container once.
+2. **The lookup chooses by purpose** (the owner question, decided by the lead). Signing (`GetCertFromPrivateStore`, and the Direct agent's
+   sender certificate) prefers a valid certificate for signing, encryption (a recipient's certificate the agent encrypts to) and decryption
+   (the office's own certificates the agent decrypts with) one for encryption; of several of that purpose, the one valid longest; without
+   one, any valid certificate for the address, as before. Nothing else of S0-3D's send and receive changes.
+3. **The warnings after a stop.** When anything throws after the certificates were added, the warnings already collected (a key not
+   deleted, a replaced certificate not removed) still reach the result's Warning.
+4. **"Never throws".** `IsKeyUsable` and `TryDeletePrivateKey` catch every exception except the critical ones (`OutOfMemoryException`,
+   `StackOverflowException`, `ThreadAbortException`) and say not usable or not deleted.
+5. **A test of `Undo`** putting back the store's copy without a key that an added certificate took the place of.
+6. **A failed `PersistKeySet` import** says that Windows may have left a private key of the file behind, and the release notes say so.
+7. **The documents.** The launch checks' recipe makes its certificates with `-Type Custom`; checks 3 and 9 remove the certificates with
+   `Remove-Item Cert:\LocalMachine\NHINDPrivate\<thumbprint> -DeleteKey`; the test count matches the tests; the .NET 10 note on
+   `RSACng.Key` and `ECDsaCng.Key` says to verify it at the switch.
+8. **The source check of the key flags** also finds an `Import` with more than one argument and `DefaultKeySet` or no flags.
+
+Left as they are (owner questions): `ICustomerUpdates` and `CustomerUpdatesProxy`, and the read access of `BUILTIN\Users` to the imported
+private keys.
