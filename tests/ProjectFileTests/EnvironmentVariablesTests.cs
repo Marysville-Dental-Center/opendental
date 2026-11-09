@@ -222,7 +222,7 @@ namespace ProjectFileTests {
 				});
 				With("TargetFrameworkVersion","v4.8",() => {
 					ProjectFile projectFile=LoadClassic(fixtureFolder,"<TargetRuntime>Native</TargetRuntime><TargetFrameworkIdentifier>.NETFramework</TargetFrameworkIdentifier>",
-						"<TargetFrameworkVersion>v4.8</TargetFrameworkVersion>","");
+						ANCHOR_CLASSIC_TARGETS,COMMON_ONLY,"<TargetFrameworkVersion>v4.8</TargetFrameworkVersion>","");
 					AssertNotKnown(projectFile,"TargetFrameworkMoniker","$(TargetFrameworkVersion)","C2 TargetFrameworkVersion");
 					AssertNotKnown(projectFile,"SubsystemVersion","TargetFrameworkVersion","C3 TargetFrameworkVersion");
 				});
@@ -394,7 +394,8 @@ namespace ProjectFileTests {
 		public void TheTargetFramework_FromEnvironmentVariables_IsNotInferredAgain() {
 			//Microsoft.NET.TargetFrameworkInference.targets lines 52-59: the identifier and version are inferred from TargetFramework unless both
 			//are set, environment variables among them; MSBuild keeps them then. The reader inferred them again (old: .NETFramework, v4.8, 4.8,
-			//bin\x86\Debug\net48\, Windows, ;NU1605, 4, CopyLocalLockFileAssemblies true, and the PackageReference items).
+			//bin\x86\Debug\net48\, Windows, ;NU1605, 4, CopyLocalLockFileAssemblies true, ProduceReferenceAssembly false, and the PackageReference
+			//items).
 			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
 				With("TargetFrameworkIdentifier",".NETCoreApp",() => With("TargetFrameworkVersion","v10.0",() => {
 					ProjectFile projectFile=LoadTestsSdk(fixtureFolder,"");
@@ -406,6 +407,7 @@ namespace ProjectFileTests {
 					AssertNotKnown(projectFile,"WarningsAsErrors","_BinaryFormatterObsoleteAsError","T6");
 					AssertNotKnown(projectFile,"WarningLevel","from TargetFrameworkIdentifier","T7");
 					AssertNotKnown(projectFile,"CopyLocalLockFileAssemblies","$(TargetFrameworkIdentifier)","T8");
+					AssertNotKnown(projectFile,"ProduceReferenceAssembly","$(TargetFrameworkIdentifier)","T12");
 					AssertThrows<NotSupportedException>(() => projectFile.GetItems("PackageReference"),"$(TargetFrameworkIdentifier)","T9");
 					Assert.AreEqual(1,projectFile.GetItems("Compile").Count,"The other items still answer.");
 				}));
@@ -460,13 +462,18 @@ namespace ProjectFileTests {
 					"ProduceReferenceAssembly","from ProduceOnlyReferenceAssembly","E7"));
 				With("ProduceReferenceAssembly","false",() => AssertNotKnown(LoadTestsSdk(fixtureFolder,"<TargetFramework>net10.0</TargetFramework>"),
 					"ProduceReferenceAssembly","$(ProduceReferenceAssembly)","E8"));
-				//DefaultOutputPaths lines 25-28 and 101-114: the output paths are in DefaultItemExcludes (lines 125-127), so the default items are not
-				//known either and Load throws (old: bin\Debug\net48\ where MSBuild has bin\x86\Debug\net48\; AppendPlatformToOutputPath true;
-				//bin\Debug\net48\ without the variable's folder).
-				With("AppendPlatformToOutputPath","true",() => AssertThrows<NotSupportedException>(() => LoadSdkLinks(fixtureFolder,""),"from AppendPlatformToOutputPath","E9"));
-				With("PlatformName","AnyCPU",() => AssertThrows<NotSupportedException>(() => LoadSdkLinks(fixtureFolder,""),"from PlatformName","E10"));
-				With("_PlatformToAppendToOutputPath",@"Env\",() => AssertThrows<NotSupportedException>(() => LoadSdkLinks(fixtureFolder,
-					"<AppendPlatformToOutputPath>false</AppendPlatformToOutputPath>"),"$(_PlatformToAppendToOutputPath)","E11"));
+				//DefaultOutputPaths lines 25-28 and 101-114 (old: bin\Debug\net48\ where MSBuild has bin\x86\Debug\net48\; AppendPlatformToOutputPath
+				//true; bin\Debug\net48\ without the variable's folder). The output paths are in DefaultItemExcludes (lines 125-127), so with the default
+				//items on, Load throws: the items are not known either. With them off, the properties say it.
+				const string NO_DEFAULT_ITEMS="<EnableDefaultItems>false</EnableDefaultItems>";
+				With("AppendPlatformToOutputPath","true",() => {
+					AssertThrows<NotSupportedException>(() => LoadSdkLinks(fixtureFolder,""),"from AppendPlatformToOutputPath","E9");
+					AssertNotKnown(LoadSdkLinks(fixtureFolder,NO_DEFAULT_ITEMS),"OutputPath","from AppendPlatformToOutputPath","E9");
+				});
+				With("PlatformName","AnyCPU",() => AssertNotKnown(LoadSdkLinks(fixtureFolder,NO_DEFAULT_ITEMS),"AppendPlatformToOutputPath","from PlatformName","E10"));
+				With("_PlatformToAppendToOutputPath",@"Env\",() => AssertNotKnown(LoadSdkLinks(fixtureFolder,"<AppendPlatformToOutputPath>false</AppendPlatformToOutputPath>"
+					+NO_DEFAULT_ITEMS),"OutputPath","$(_PlatformToAppendToOutputPath)","E11"));
+				Assert.AreEqual(@"bin\x86\Debug\net48\",LoadSdkLinks(fixtureFolder,NO_DEFAULT_ITEMS).GetProperty("OutputPath"),"Without a variable.");
 				//Lines 140-147, after DefaultItemExcludes (old: bin\x86\Debug\).
 				With("AppendTargetFrameworkToOutputPath","true",() => AssertNotKnown(LoadSdkLinks(fixtureFolder,""),"OutputPath","AppendTargetFrameworkToOutputPath","E13"));
 				//RuntimeIdentifierInference (old: bin\x86\Debug\net48\).
