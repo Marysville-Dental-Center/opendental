@@ -115,7 +115,7 @@ namespace SparksToothChart.Wpf3D {
 				if(!group.Visible || group.GroupType==ToothGroupType.Buildup || group.Faces.Count==0) {
 					continue;
 				}
-				building.ListItems3D.Add(new ToothSceneItem3D("implant",g,group.GroupType,toothGraphic.colorImplant,SpecularNormal,world,source));
+				building.ListItems3D.Add(new ToothSceneItem3D("implant",g,group.GroupType,GetImplantColor(toothGraphic),SpecularNormal,world,source));
 			}
 		}
 
@@ -192,6 +192,11 @@ namespace SparksToothChart.Wpf3D {
 				return Color.FromArgb(255,colorPaint.R/2,colorPaint.G/2,colorPaint.B/2);
 			}
 			return Color.FromArgb(255,colorPaint);
+		}
+
+		///<summary>The colour of a tooth's implant: its implant colour, opaque, as DirectX draws it with blending off.</summary>
+		public static Color GetImplantColor(ToothGraphic toothGraphic) {
+			return Color.FromArgb(255,toothGraphic.colorImplant);
 		}
 
 		///<summary>DirectX's GetGroupMaterial: cementum 0.1; a near-white paint colour (R over 245, G over 245, B over 235; the enamel colour is

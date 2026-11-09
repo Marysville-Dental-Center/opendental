@@ -17,24 +17,26 @@ namespace ToothChartImageTests {
 	[TestClass]
 	public class WpfTransformTests {
 		///<summary>The scenes of the transform test: the normal chart with movements in all four quadrants and implants, at the module size and at a
-		///wide size, and the perio chart with implants. Each with its data.</summary>
+		///wide size, and the perio chart with implants. Each with its data, which outlives its wrapper (disposing a wrapper leaves its data alone).</summary>
 		private static List<KeyValuePair<ToothChartData,ToothScene>> BuildTransformScenes() {
 			List<KeyValuePair<ToothChartData,ToothScene>> listScenes=new List<KeyValuePair<ToothChartData,ToothScene>>();
 			foreach(Size size in new[] { ChartScenes.SizeModule.Size,ChartScenes.SizeSheetWide.Size,ChartScenes.SizeSheetTall.Size }) {
-				ToothChartWrapper wrapper=new ToothChartWrapper();
-				wrapper.Size=size;
-				WpfMeshTests.ApplyMovementsAndImplants(WpfCharts.CreateRelay(wrapper));
-				listScenes.Add(new KeyValuePair<ToothChartData,ToothScene>(wrapper.TcData,ToothSceneBuilder.Build(wrapper.TcData)));
+				using(ToothChartWrapper wrapper=new ToothChartWrapper()) {
+					wrapper.Size=size;
+					WpfMeshTests.ApplyMovementsAndImplants(WpfCharts.CreateRelay(wrapper));
+					listScenes.Add(new KeyValuePair<ToothChartData,ToothScene>(wrapper.TcData,ToothSceneBuilder.Build(wrapper.TcData)));
+				}
 			}
-			ToothChartWrapper wrapperPerio=new ToothChartWrapper();
-			wrapperPerio.Size=ChartScenes.SizePerio.Size;
-			ToothChartRelay relayPerio=WpfCharts.CreateRelay(wrapperPerio);
-			relayPerio.SetMissing("3");
-			relayPerio.SetImplant("3",Color.Gainsboro);
-			relayPerio.SetMissing("30");
-			relayPerio.SetImplant("30",Color.Gainsboro);
-			wrapperPerio.TcData.PerioMode=true;
-			listScenes.Add(new KeyValuePair<ToothChartData,ToothScene>(wrapperPerio.TcData,ToothSceneBuilder.Build(wrapperPerio.TcData)));
+			using(ToothChartWrapper wrapperPerio=new ToothChartWrapper()) {
+				wrapperPerio.Size=ChartScenes.SizePerio.Size;
+				ToothChartRelay relayPerio=WpfCharts.CreateRelay(wrapperPerio);
+				relayPerio.SetMissing("3");
+				relayPerio.SetImplant("3",Color.Gainsboro);
+				relayPerio.SetMissing("30");
+				relayPerio.SetImplant("30",Color.Gainsboro);
+				wrapperPerio.TcData.PerioMode=true;
+				listScenes.Add(new KeyValuePair<ToothChartData,ToothScene>(wrapperPerio.TcData,ToothSceneBuilder.Build(wrapperPerio.TcData)));
+			}
 			return listScenes;
 		}
 
@@ -92,7 +94,7 @@ namespace ToothChartImageTests {
 		[TestMethod]
 		public void MarkerVertex_LandsOnTheSamePixel_InThe3DLayerAndThe2DLayer() {
 			StaRunner.Run(() => {
-				ToothChartWrapper wrapper=new ToothChartWrapper();
+				using ToothChartWrapper wrapper=new ToothChartWrapper();
 				wrapper.Size=ChartScenes.SizeModule.Size;
 				ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
 				WpfMeshTests.ApplyMovementsAndImplants(relay);

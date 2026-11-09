@@ -47,19 +47,21 @@ namespace ToothChartImageTests {
 			}
 			List<string> listFailures=new List<string>();
 			List<string> listWritten=new List<string>();
-			int countCompared=0;
+			List<string> listIdentical=new List<string>();
+			List<string> listCompared=new List<string>();
 			string windows=GetWindowsBuild();
 			StaRunner.Run(() => {
 				foreach(ChartSize chartSize in WpfCharts.GetChartSizes()) {
 					using ToothChartWrapper wrapper=WpfCharts.CreateWrapper(chartSize.Size);
 					ToothChartRelay relay=WpfCharts.CreateRelay(wrapper);
 					foreach(ChartScene scene in WpfCharts.GetChartScenes().Where(x => ChartScenes.GetSizes(x).Contains(chartSize))) {
-						WpfSceneOutcome wpfSceneOutcome=CheckScene(wrapper,relay,scene,chartSize,isRecording,folderBaseline,folderFailures,windows,listFailures);
+						WpfSceneOutcome wpfSceneOutcome=CheckScene(wrapper,relay,scene,chartSize,isRecording,folderBaseline,folderFailures,windows,listFailures,
+							listIdentical);
 						if(wpfSceneOutcome==WpfSceneOutcome.Recorded) {
 							listWritten.Add(chartSize.FolderName+"/"+scene.Name);
 						}
 						else if(wpfSceneOutcome==WpfSceneOutcome.Compared) {
-							countCompared++;
+							listCompared.Add(chartSize.FolderName+"/"+scene.Name);
 						}
 					}
 				}
@@ -70,7 +72,11 @@ namespace ToothChartImageTests {
 				Assert.AreEqual(0,listFailures.Count,string.Join("\r\n",listFailures));
 				return;
 			}
-			Console.WriteLine(countCompared+" WPF pictures compared with "+folderBaseline+".");
+			int countCompared=listCompared.Count;
+			//Section 7: identical bytes before any tolerance is trusted. Every run counts the pictures whose pixels are exactly their .txt's.
+			List<string> listNotIdentical=listCompared.Except(listIdentical).ToList();
+			Console.WriteLine(countCompared+" WPF pictures compared with "+folderBaseline+"; "+listIdentical.Count+" of them have exactly the pixels of their "
+				+".txt's Pixels SHA-256"+(listNotIdentical.Count==0?".":", these not: "+string.Join(", ",listNotIdentical.Take(40))+(listNotIdentical.Count>40?", ...":"")+"."));
 			Assert.AreEqual(0,listFailures.Count,listFailures.Count+" scenes differ from the WPF baselines:\r\n"+string.Join("\r\n",listFailures));
 			Assert.IsTrue(countCompared>=250,"Compared "+countCompared);
 		}
@@ -79,9 +85,10 @@ namespace ToothChartImageTests {
 		///recorded into folderBaseline (isRecording) or compared with its baseline there; what went wrong is added to listFailures. A picture the
 		///WPF chart did not draw is a failure and is neither recorded nor compared: the engine did not start (Engine is not Wpf3D), or a render
 		///failed and GetBitmap returned the Simple 2D chart's image (Engine stays Wpf3D; a fallback message tells). Otherwise the recorder would
-		///write a 2D picture as the WPF baseline, and every later 2D picture would match it.</summary>
+		///write a 2D picture as the WPF baseline, and every later 2D picture would match it. listIdentical, when given, gets the name of a compared
+		///scene whose pixels are exactly those of its baseline .txt's Pixels SHA-256.</summary>
 		public static WpfSceneOutcome CheckScene(ToothChartWrapper wrapper,ToothChartRelay relay,ChartScene scene,ChartSize chartSize,bool isRecording,
-			string folderBaseline,string folderFailures,string windows,List<string> listFailures)
+			string folderBaseline,string folderFailures,string windows,List<string> listFailures,List<string> listIdentical=null)
 		{
 			string pathPng=WpfCharts.GetPicturePath(folderBaseline,chartSize,scene);
 			string name=chartSize.FolderName+"/"+scene.Name;
@@ -97,7 +104,7 @@ namespace ToothChartImageTests {
 				return WpfSceneOutcome.Skipped;
 			}
 			if(isRecording) {
-				if(!WriteBaseline(relay,bitmap,scene,chartSize,pathPng,windows,listFailures)) {
+				if(!WriteBaseline(wrapper,relay,bitmap,scene,chartSize,pathPng,windows,listFailures)) {
 					return WpfSceneOutcome.Skipped;
 				}
 				return WpfSceneOutcome.Recorded;
@@ -105,6 +112,10 @@ namespace ToothChartImageTests {
 			if(!File.Exists(pathPng)) {
 				listFailures.Add(name+": no baseline (record with "+EnvRecord+"=1).");
 				return WpfSceneOutcome.Skipped;
+			}
+			string hashBaseline=LegacyComparison.ReadPixelsSha256(Path.ChangeExtension(pathPng,".txt"));
+			if(listIdentical!=null && hashBaseline!=null && hashBaseline==ChartImageCompare.Sha256(ChartImageCompare.GetPixelsArgb(bitmap))) {
+				listIdentical.Add(name);
 			}
 			using Bitmap bitmapBaseline=LoadBitmap(pathPng);
 			ChartImageCompareResult result=ChartImageCompare.Compare(bitmapBaseline,bitmap);
@@ -115,26 +126,43 @@ namespace ToothChartImageTests {
 			return WpfSceneOutcome.Compared;
 		}
 
-		///<summary>The baseline PNG and its .txt. The state is drawn a second time first: a baseline is only worth comparing with if the same state
-		///gives the same pixels. False, with nothing written, when that second render fell back to the 2D chart.</summary>
-		private static bool WriteBaseline(ToothChartRelay relay,Bitmap bitmap,ChartScene scene,ChartSize chartSize,string pathPng,string windows,List<string> listFailures) {
+		///<summary>The baseline PNG and its .txt. The state is drawn twice more first, because a baseline is only worth comparing with if the same
+		///state gives the same pixels: by a second GetBitmap (which reuses the wrapper's 3D layer: only the 2D composite is drawn again), and by a
+		///fresh render of both layers without the layer cache, so a recording on another platform (x64, .NET 10) checks the 3D rasterization of every
+		///scene too. False, with nothing written, when the second GetBitmap fell back to the 2D chart.</summary>
+		private static bool WriteBaseline(ToothChartWrapper wrapper,ToothChartRelay relay,Bitmap bitmap,ChartScene scene,ChartSize chartSize,string pathPng,
+			string windows,List<string> listFailures)
+		{
+			string name=chartSize.FolderName+"/"+scene.Name;
 			BitmapFacts bitmapFacts=ChartImageCompare.DescribeBitmap(bitmap);
 			string pixelsSecond;
 			int countFallbacks=ToothChartWrapper.GetCountFallbackMessages();
 			using(Bitmap bitmapSecond=relay.GetBitmap()) {
 				pixelsSecond=ChartImageCompare.DescribeBitmap(bitmapSecond).PixelsSha256;
 			}
-			string failureFallback=WpfCharts.GetFallbackFailure(chartSize.FolderName+"/"+scene.Name,countFallbacks);
+			string failureFallback=WpfCharts.GetFallbackFailure(name,countFallbacks);
 			if(failureFallback!=null) {
 				listFailures.Add(failureFallback);
 				return false;
 			}
+			string pixelsFresh=null;
+			try {
+				using(Bitmap bitmapFresh=ToothChartRenderer.Instance.Render(ToothSceneBuilder.Build(wrapper.TcData),null).ToBitmap()) {
+					pixelsFresh=ChartImageCompare.DescribeBitmap(bitmapFresh).PixelsSha256;
+				}
+			}
+			catch(Exception ex) {
+				listFailures.Add(name+": the fresh render of both layers failed ("+ex.GetType().Name+": "+ex.Message+").");
+			}
 			Directory.CreateDirectory(Path.GetDirectoryName(pathPng));
 			if(pixelsSecond!=bitmapFacts.PixelsSha256) {
-				listFailures.Add(chartSize.FolderName+"/"+scene.Name+": a second render of the same state gave other pixels.");
+				listFailures.Add(name+": a second render of the same state gave other pixels.");
+			}
+			if(pixelsFresh!=null && pixelsFresh!=bitmapFacts.PixelsSha256) {
+				listFailures.Add(name+": a fresh render of both layers (no layer cache) gave other pixels.");
 			}
 			if(bitmapFacts.IsBlank) {
-				listFailures.Add(chartSize.FolderName+"/"+scene.Name+": blank.");
+				listFailures.Add(name+": blank.");
 			}
 			PngWriter.Save(bitmap,pathPng);
 			List<string> listLines=new List<string>();
@@ -150,18 +178,37 @@ namespace ToothChartImageTests {
 			listLines.Add("Colours in the picture: "+bitmapFacts.CountColors);
 			listLines.Add("Pixels SHA-256: "+bitmapFacts.PixelsSha256);
 			listLines.Add("Repeatable: "+(pixelsSecond==bitmapFacts.PixelsSha256?"yes (a second GetBitmap gave the same pixels)":"no"));
-			listLines.Add("Framework: .NET Framework 4.8, "+(Environment.Is64BitProcess?"x64":"x86"));
+			listLines.Add("Framework: "+GetFramework()+", "+GetBitness());
 			listLines.Add("Windows: "+windows);
+			listLines.Add("Fresh render: "+(pixelsFresh==bitmapFacts.PixelsSha256?"yes (both layers drawn again without the layer cache gave the same pixels)":"no"));
+			listLines.Add("Screen DPI seen by the test host: "+WpfRendererTests.GetScreenDpi());
 			File.WriteAllLines(Path.ChangeExtension(pathPng,".txt"),listLines,new UTF8Encoding(false));
 			return true;
 		}
 
-		///<summary>manifest.txt: one tab-separated line per baseline, from the .txt files.</summary>
+		///<summary>The framework this test assembly runs on, from its TargetFrameworkAttribute (".NET Framework 4.8"; ".NET 10.0" after S3b), or the
+		///runtime's own description.</summary>
+		public static string GetFramework() {
+			System.Runtime.Versioning.TargetFrameworkAttribute targetFrameworkAttribute=(System.Runtime.Versioning.TargetFrameworkAttribute)Attribute.GetCustomAttribute(
+				typeof(WpfImageTests).Assembly,typeof(System.Runtime.Versioning.TargetFrameworkAttribute));
+			if(targetFrameworkAttribute!=null && !string.IsNullOrWhiteSpace(targetFrameworkAttribute.FrameworkDisplayName)) {
+				return targetFrameworkAttribute.FrameworkDisplayName;
+			}
+			return System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription;
+		}
+
+		///<summary>"x64" or "x86", from the process.</summary>
+		public static string GetBitness() {
+			return Environment.Is64BitProcess?"x64":"x86";
+		}
+
+		///<summary>manifest.txt: one tab-separated line per baseline, from the .txt files. Its header names the framework and bitness of the process
+		///that wrote it.</summary>
 		private static void WriteManifest(string folder) {
 			string[] arrayColumns={ "Scene","Group","Size","Colours","Bitmap","Alpha","Colours in the picture","Pixels SHA-256","Repeatable" };
 			List<string> listLines=new List<string>();
-			listLines.Add("# The WPF tooth chart's baselines on .NET Framework 4.8 x86, recorded by ToothChartImageTests.WpfImageTests (TC-1 and later; "
-				+"docs/specs/wpf-tooth-chart-plan.md, section 7).");
+			listLines.Add("# The WPF tooth chart's baselines on "+GetFramework()+" "+GetBitness()+", recorded by ToothChartImageTests.WpfImageTests (TC-1 and "
+				+"later; docs/specs/wpf-tooth-chart-plan.md, section 7).");
 			listLines.Add("File\t"+string.Join("\t",arrayColumns));
 			foreach(string pathText in Directory.GetFiles(folder,"*.txt",SearchOption.AllDirectories).OrderBy(x => x,StringComparer.Ordinal)) {
 				if(Path.GetFileName(pathText)=="manifest.txt") {

@@ -107,12 +107,15 @@ namespace ToothChartImageTests {
 				foreach(string toothId in GetModelIds()) {
 					ToothGraphic toothGraphic=new ToothGraphic(toothId);
 					ToothMeshSet toothMeshSet=ToothMeshCache.BuildMeshSet(toothGraphic);
-					Assert.AreEqual(toothGraphic.VertexNormals.Count,toothMeshSet.CountVertexNormals,toothId+": the positions are the VertexNormals, one for one.");
 					Assert.AreEqual(toothGraphic.Groups.Count,toothMeshSet.ArrayGroups.Length);
 					HashSet<int> hashSetUsed=new HashSet<int>();
 					for(int g=0;g<toothGraphic.Groups.Count;g++) {
 						ToothGroupMesh toothGroupMesh=toothMeshSet.ArrayGroups[g];
 						Assert.AreEqual(toothGraphic.Groups[g].GroupType,toothGroupMesh.GroupType);
+						//Each group's mesh holds the vertices its triangles use, each once: counted here from the DirectX chart's fan triangles,
+						//independently of the mesh cache.
+						int countPositionsExpected=toothGraphic.Groups[g].GetTriangleIndices().Distinct().Count();
+						Assert.AreEqual(countPositionsExpected,toothGroupMesh.Mesh.Positions.Count,toothId+" group "+g+": one position per vertex its triangles use.");
 						Assert.IsTrue(toothGroupMesh.Mesh.IsFrozen && toothGroupMesh.MeshReversed.IsFrozen,toothId+": frozen, usable from any thread.");
 						Assert.AreSame(toothGroupMesh.Mesh.Positions,toothGroupMesh.MeshReversed.Positions,"Both windings share the positions.");
 						Assert.AreEqual(toothGroupMesh.ArraySourceIndices.Length,toothGroupMesh.Mesh.Positions.Count);
@@ -131,8 +134,11 @@ namespace ToothChartImageTests {
 						int[] arrayMappedReversed=toothGroupMesh.MeshReversed.TriangleIndices.Select(x => toothGroupMesh.ArraySourceIndices[x]).ToArray();
 						CollectionAssert.AreEqual(ToothMeshWinding.GetReversedTriangles(arrayWound),arrayMappedReversed);
 					}
-					//Every VertexNormal belongs to a face, so the groups' meshes together hold every one of them.
+					//Every VertexNormal belongs to a face, so the groups' meshes together hold every one of them: the union, counted from the fan
+					//triangles of every group, is all of VertexNormals.
 					Assert.AreEqual(toothGraphic.VertexNormals.Count,hashSetUsed.Count,toothId+": every VertexNormal is in a mesh.");
+					Assert.AreEqual(toothGraphic.VertexNormals.Count,Enumerable.Range(0,toothGraphic.Groups.Count).SelectMany(x => toothGraphic.Groups[x].GetTriangleIndices())
+						.Distinct().Count(),toothId+": the triangles use every VertexNormal.");
 				}
 			});
 		}

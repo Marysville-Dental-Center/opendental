@@ -1,12 +1,14 @@
-// Renderer tests of the WPF chart (package TC-1, docs/specs/wpf-tooth-chart-plan.md sections 5.4 to 5.6 and 7): an MTA caller, a render loop,
-// process exit with the render thread alive, the DPI settings, the on-screen refresh after a GetBitmap, a host disposed during its render, and
-// determinism in one process and across two.
+// Renderer tests of the WPF chart (package TC-1, docs/specs/wpf-tooth-chart-plan.md sections 5.4 to 5.6 and 7): an MTA caller, a render loop with
+// bounded memory, process exit with the render thread alive, the DPI settings, the on-screen refresh after a GetBitmap, a host disposed during its
+// render, and determinism in one process, across two and against the committed baseline; and the review's latent cases: a hidden refill, a handle
+// that goes, a pixel-exact paint, a restart after a shutdown, aborted jobs, the cold start's locks, failures in a row, and the start and log lines.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Windows.Forms;
@@ -62,8 +64,15 @@ namespace ToothChartImageTests {
 					ChartScenes.Prepare(listRelays[w],ChartScenes.Get("treatment-plan"),arraySizes[w].ColorSet);
 				}
 				Stopwatch stopwatch=Stopwatch.StartNew();
+				long bytesPrivateWarm=0;
+				long bytesManagedWarm=0;
 				for(int i=0;i<500;i++) {
-					//Mostly the module and printout sizes, now and then the two sheet sizes: four sizes, one more than the renderer keeps.
+					if(i==50) {
+						//Warm: every size has been drawn (the sheet sizes at 24 and 49), and every glyph and mesh is made.
+						bytesManagedWarm=GetMemoryAfterCollect(out bytesPrivateWarm);
+					}
+					//Mostly the module and printout sizes, now and then the two sheet sizes: four sizes, one more than the renderer keeps, so the
+					//sheet sizes' targets are freed and made again about twenty times.
 					int w=i%25==24?2+(i/25)%2:i%2;
 					ToothChartRelay relay=listRelays[w];
 					if(i%50==0) {
@@ -79,6 +88,17 @@ namespace ToothChartImageTests {
 				}
 				Console.WriteLine("500 images in "+stopwatch.ElapsedMilliseconds+" ms.");
 				Assert.IsTrue(ToothChartRenderer.Instance.GetCountSizesKept()<=ToothChartRenderer.MaxSizesKept,"At most three sizes keep render targets.");
+				//Bounded memory over the 450 warm images (an x86 process): a leak of the freed sizes' targets (about 8 MB a time at 640x320) or of a
+				//composite per image (0.5 MB) would pass these limits several times over.
+				long bytesPrivateEnd;
+				long bytesManagedEnd=GetMemoryAfterCollect(out bytesPrivateEnd);
+				double mbPrivateGrowth=(bytesPrivateEnd-bytesPrivateWarm)/1048576.0;
+				double mbManagedGrowth=(bytesManagedEnd-bytesManagedWarm)/1048576.0;
+				Console.WriteLine("Memory after image 50 and after image 500: private bytes "+(bytesPrivateWarm/1048576.0).ToString("0.0")+" MB and "
+					+(bytesPrivateEnd/1048576.0).ToString("0.0")+" MB ("+mbPrivateGrowth.ToString("+0.0;-0.0")+" MB), managed heap "
+					+(bytesManagedWarm/1048576.0).ToString("0.0")+" MB and "+(bytesManagedEnd/1048576.0).ToString("0.0")+" MB ("+mbManagedGrowth.ToString("+0.0;-0.0")+" MB).");
+				Assert.IsTrue(mbPrivateGrowth<48,"Private bytes grew by "+mbPrivateGrowth.ToString("0.0")+" MB over 450 warm images.");
+				Assert.IsTrue(mbManagedGrowth<16,"The managed heap grew by "+mbManagedGrowth.ToString("0.0")+" MB over 450 warm images.");
 			}
 			finally {
 				listWrappers.ForEach(x => x.Dispose());
@@ -263,6 +283,7 @@ namespace ToothChartImageTests {
 				ToothChartRenderer.Instance.WaitIdle();//the render has run
 				PumpUntil(() => false,500);//and anything it posted has had its chance
 				Assert.IsTrue(layerCache.HasImage,"The render did finish.");
+				Assert.AreEqual(0,toothChartImageHost.CountReceiveCalls,"The disposed host got no call: nothing reached its UI thread.");
 				Assert.AreEqual(0,toothChartImageHost.CountImagesReceived,"The disposed host got no image.");
 			});
 			Assert.AreEqual(0,ToothChartWrapper.GetFallbackMessagesSince(countMessages).Count,"Nothing was logged: "
@@ -289,6 +310,22 @@ namespace ToothChartImageTests {
 			SecondProcessResult result=SecondProcess.Run(120000,"hash","restored-adult");
 			Assert.AreEqual(0,result.ExitCode,result.Output);
 			StringAssert.Contains(result.Output,"SHA256 "+hashFirst,"A second process gives the same bytes.");
+			//And the bytes of the committed baseline (the same scene, size and colours, the same hash of GetPixelsArgb), whose .txt names the screen
+			//DPI it was recorded at (100%): a run with the desktop at 150% (launch check L-2) that passes has the bytes of the 100% run.
+			string pathBaselineText=Path.ChangeExtension(WpfCharts.GetPicturePath(WpfCharts.BaselinesWpf,ChartScenes.SizeModule,ChartScenes.Get("restored-adult")),".txt");
+			string hashBaseline=LegacyComparison.ReadPixelsSha256(pathBaselineText);
+			int dpiScreen=GetScreenDpi();
+			Console.WriteLine("restored-adult at "+ChartScenes.SizeModule.FolderName+", module colours: pixels SHA-256 "+hashFirst+" in this process and in a second "
+				+"one; the committed baseline's is "+hashBaseline+"; the screen DPI seen by the test host is "+dpiScreen+" ("+(dpiScreen*100/96)+"%).");
+			Assert.IsNotNull(hashBaseline,"No Pixels SHA-256 in "+pathBaselineText);
+			Assert.AreEqual(hashBaseline,hashFirst,"The same bytes as the committed baseline, here at "+dpiScreen+" dpi.");
+		}
+
+		///<summary>The screen DPI the test host sees, as the recordings write it.</summary>
+		public static int GetScreenDpi() {
+			using(Graphics g=Graphics.FromHwnd(IntPtr.Zero)) {
+				return (int)Math.Round(g.DpiX);
+			}
 		}
 
 		[TestMethod]
@@ -638,6 +675,19 @@ namespace ToothChartImageTests {
 			StringAssert.Contains(result.Output,"log lines after a DirectX fallback: 1");
 			StringAssert.Contains(result.Output,"log lines after a WPF render failure: 2","The WPF render failure has its own logged-once line.");
 			StringAssert.Contains(result.Output,"log lines after a second WPF render failure: 2","And only one.");
+		}
+
+		///<summary>The managed heap after a full collection with the finalizers run (WPF's render targets free their native memory in theirs), and
+		///the process's private bytes then.</summary>
+		private static long GetMemoryAfterCollect(out long bytesPrivate) {
+			GC.Collect();
+			GC.WaitForPendingFinalizers();
+			GC.Collect();
+			long bytesManaged=GC.GetTotalMemory(true);
+			using(Process process=Process.GetCurrentProcess()) {
+				bytesPrivate=process.PrivateMemorySize64;
+			}
+			return bytesManaged;
 		}
 
 		///<summary>Waits on the calling thread, without pumping, until the condition holds or the time is up.</summary>
