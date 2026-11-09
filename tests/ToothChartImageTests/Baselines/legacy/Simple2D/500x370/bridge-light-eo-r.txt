@@ -1,0 +1,17 @@
+Scene: bridge-light-eo-r
+Group: paint
+Description: Light bridges in the two statuses bridge-light leaves out: 3-4-5 EO and 12-13-14 R with 4 and 13 missing, 19-20-21 EO and 28-29-30 R with 20 and 29 missing.
+Size: 500x370
+Colours: printout (Chart Graphic Colors 14 and 15)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 500x370 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 15139
+Pixels SHA-256: ddd30cac197765f8e3030a52026cb16bd8d0095b7412c5d045933a1fb28e1e36
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96
