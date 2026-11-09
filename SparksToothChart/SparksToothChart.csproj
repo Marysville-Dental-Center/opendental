@@ -133,6 +133,7 @@
       <DependentUpon>ToothChart2D.cs</DependentUpon>
     </Compile>
     <Compile Include="ToothChartData.cs" />
+    <Compile Include="ToothChartEngine.cs" />
     <Compile Include="ToothChartDirectX.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -213,6 +214,14 @@
     <Compile Include="ToothGraphicCollection.cs" />
     <Compile Include="ToothGroup.cs" />
     <Compile Include="VertexNormal.cs" />
+    <Compile Include="Wpf3D\ChartLayer2D.cs" />
+    <Compile Include="Wpf3D\ToothChartImageHost.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Wpf3D\ToothChartRenderer.cs" />
+    <Compile Include="Wpf3D\ToothMeshCache.cs" />
+    <Compile Include="Wpf3D\ToothScene.cs" />
+    <Compile Include="Wpf3D\ToothSceneBuilder.cs" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Client.3.5">

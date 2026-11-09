@@ -9,9 +9,11 @@ using System.Text;
 using System.Windows.Forms;
 using CodeBase;
 using OpenPmsDentalBusiness;
+using SparksToothChart.Wpf3D;
 
 namespace SparksToothChart {
-	///<summary>This is the old tooth chart control.  It "wraps" three different old tooth charts: OpenGL, DirectX9, and 2D.</summary>
+	///<summary>This is the old tooth chart control.  It "wraps" three different old tooth charts: OpenGL, DirectX9, and 2D, and the WPF 3D chart
+	///(Engine, docs/specs/wpf-tooth-chart-plan.md), which no caller chooses yet.</summary>
 	public partial class ToothChartWrapper:UserControl {
 		private string[] selectedTeeth;
 		///<summary>True for hardware graphics, false for software graphics.</summary>
@@ -22,6 +24,18 @@ namespace SparksToothChart {
 		private ToothChartDirectX.DirectXDeviceFormat deviceFormat=null;
 		private DrawingMode drawMode;
 		private ToothChartData tcData;
+		///<summary>The engine that draws: the three DrawingMode engines, or Wpf3D. drawMode is its stored view (Wpf3D reads as DirectX).</summary>
+		private ToothChartEngine _engine;
+		///<summary>Wpf3D: the engine control, which shows the renderer's image.</summary>
+		private ToothChartImageHost toothChartImageHost;
+		///<summary>Wpf3D: this wrapper's last 3D layer image, released on Dispose and when the engine changes.</summary>
+		private ToothChartLayerCache _layerCacheWpf;
+		///<summary>Wpf3D: set by every Invalidate (OnInvalidated), cleared when a scene is built (section 5.5).</summary>
+		private bool _isWpfSceneDirty;
+		///<summary>Wpf3D: set when the first mark of a burst posts the on-screen rebuild; only that rebuild clears it.</summary>
+		private bool _isWpfRebuildPosted;
+		private static List<string> _listFallbackMessages=new List<string>();
+		private static readonly object _lockFallback=new object();
 
 		///<summary></summary>
 		[Category("Action"),Description("Occurs when the mouse goes up ending a drawing segment.")]
@@ -32,13 +46,18 @@ namespace SparksToothChart {
 		
 		public ToothChartWrapper() {
 			drawMode=DrawingMode.Simple2D;
+			_engine=ToothChartEngine.Simple2D;
 			tcData=new ToothChartData();
 			InitializeComponent();
 			ResetControls();
+			Disposed+=ToothChartWrapper_Disposed;
 		}
 
 		#region Properties
 
+		///<summary>The stored kind of the engine (computerpref.GraphicsSimple). Setting it starts that engine, falling back as GetFallbackDrawMode
+		///says. While Engine is Wpf3D this reads DirectX: the stored value that the WPF chart replaces (TC-8 maps 0 and 2 to it), so a caller that
+		///saves DrawMode never turns a computer to the 2D chart.</summary>
 		public DrawingMode DrawMode{
 			get{
 				return drawMode;
@@ -48,15 +67,60 @@ namespace SparksToothChart {
 					return;//disallow changing from simpleMode if platform is Unix
 				}
 				//do not break out if not changing mode.  ContrChart.InitializeOnStartup assumes this code will always run.
-				if(drawMode==DrawingMode.DirectX && value!=DrawingMode.DirectX){
+				if(_engine==ToothChartEngine.DirectX && value!=DrawingMode.DirectX){
 					//If switching from from DirectX to another drawing mode,
 					//then we need to cleanup DirectX resources in case the
 					//chart is never switched back to DirectX mode.
 					DisposeDirectX();//Calls CleanupDirectX() and device.Dispose().
 				}
+				if(_engine==ToothChartEngine.Wpf3D) {
+					DisposeWpf3D();
+				}
 				//A mode that cannot start falls back to the next one (DirectX, OpenGL, Simple 2D) without an error dialog, logged once per process.
 				//Read DrawMode afterwards to learn which mode started.
 				drawMode=StartFirstWorkingMode(value,IsDirectXRuntimeAvailable(),TryStartDrawMode,LogFallbackOnce);
+				_engine=(ToothChartEngine)drawMode;
+			}
+		}
+
+		///<summary>The engine that draws the chart. Setting DirectX, Simple2D or OpenGL is the same as setting DrawMode. Setting Wpf3D starts the WPF
+		///chart (docs/specs/wpf-tooth-chart-plan.md, section 5): its render thread and a check image the first time in the process, then its engine
+		///control. When it cannot start, the chart falls back to Simple2D with one log line (LogFallbackOnce). Read Engine afterwards to learn which
+		///engine started. In memory only: no caller chooses Wpf3D yet (TC-8 maps the stored values to it).</summary>
+		[Browsable(false)]
+		[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+		public ToothChartEngine Engine {
+			get {
+				return _engine;
+			}
+			set {
+				if(Environment.OSVersion.Platform==PlatformID.Unix) {
+					return;//as DrawMode: Unix keeps the 2D chart
+				}
+				if(value!=ToothChartEngine.Wpf3D) {
+					DrawMode=(DrawingMode)value;
+					return;
+				}
+				if(_engine==ToothChartEngine.DirectX) {
+					DisposeDirectX();
+				}
+				if(_engine==ToothChartEngine.Wpf3D) {
+					DisposeWpf3D();
+				}
+				try {
+					ToothChartRenderer.Instance.EnsureStarted();
+					_engine=ToothChartEngine.Wpf3D;
+					drawMode=DrawingMode.DirectX;
+					ResetControls();
+				}
+				catch(Exception ex) {
+					DisposeWpf3D();
+					LogFallbackOnce("The "+ToothChartEngine.Wpf3D+" tooth chart could not start ("+ex.GetType().Name+": "+ex.Message+"). Using "
+						+ToothChartEngine.Simple2D+".");
+					_engine=ToothChartEngine.Simple2D;
+					drawMode=DrawingMode.Simple2D;
+					ResetControls();
+				}
 			}
 		}
 
@@ -68,16 +132,22 @@ namespace SparksToothChart {
 				return tcData;
 			}
 			set {
-				if(drawMode==DrawingMode.Simple2D) {
+				if(_engine==ToothChartEngine.Simple2D) {
 					toothChart2D.TcData=value;
 				}
-				else if(drawMode==DrawingMode.DirectX) {
+				else if(_engine==ToothChartEngine.DirectX) {
 					toothChartDirectX.SetTcData(value);//Frees the old models' buffers in video memory and makes the new ones'.
 				}
-				else if(drawMode==DrawingMode.OpenGL) {
+				else if(_engine==ToothChartEngine.OpenGL) {
 					toothChartOpenGL.TcData=value;
 				}
+				else if(_engine==ToothChartEngine.Wpf3D) {
+					toothChartImageHost.TcData=value;
+				}
 				tcData=value;//Must set last so old tcdata can be cleaned up first.
+				if(_engine==ToothChartEngine.Wpf3D) {
+					MarkWpfSceneDirty();
+				}
 			}
 		}
 
@@ -214,8 +284,8 @@ namespace SparksToothChart {
 				return tcData.PerioMode;
 			}
 			set {
-				if(drawMode!=DrawingMode.DirectX && value==true) {
-					throw new Exception("Only allowed in DirectX");
+				if(_engine!=ToothChartEngine.DirectX && value==true) {
+					throw new Exception("Only allowed in DirectX");//the WPF chart draws perio from TC-7
 				}
 				tcData.PerioMode=value;
 				Invalidate();
@@ -314,21 +384,45 @@ namespace SparksToothChart {
 
 		protected override void OnInvalidated(InvalidateEventArgs e) {
 			base.OnInvalidated(e);
-			if(drawMode==DrawingMode.Simple2D) {
+			if(_engine==ToothChartEngine.Simple2D) {
 				toothChart2D.Invalidate();
 			}
-			else if(drawMode==DrawingMode.DirectX) {
+			else if(_engine==ToothChartEngine.DirectX) {
 				toothChartDirectX.Invalidate();
 			}
-			else if(drawMode==DrawingMode.OpenGL) {
+			else if(_engine==ToothChartEngine.OpenGL) {
 				toothChartOpenGL.Invalidate();
 				//toothChartOpenGL.TaoDraw();
+			}
+			else if(_engine==ToothChartEngine.Wpf3D) {
+				MarkWpfSceneDirty();
 			}
 		}
 
 		private void ResetControls(){
 			selectedTeeth=new string[0];
 			this.Controls.Clear();
+			if(_engine==ToothChartEngine.Wpf3D) {
+				//The image host is a plain WinForms control, and no WPF object is made here: a wrapper made on any thread (the dashboard's MTA worker
+				//included) gets the WPF chart. The renderer makes the images on its own thread.
+				_layerCacheWpf=new ToothChartLayerCache();
+				toothChartImageHost=new ToothChartImageHost();
+				toothChartImageHost.Dock=System.Windows.Forms.DockStyle.Fill;
+				toothChartImageHost.Location=new System.Drawing.Point(0,0);
+				toothChartImageHost.Name="toothChartImageHost";
+				toothChartImageHost.SegmentDrawn+=new ToothChartDrawEventHandler(toothChart_SegmentDrawn);
+				toothChartImageHost.ToothSelectionsChanged+=new ToothChartSelectionEventHandler(toothChart_ToothSelectionsChanged);
+				toothChartImageHost.TcData=tcData;
+				toothChartImageHost.LayerCache=_layerCacheWpf;
+				toothChartImageHost.ActionChartChanged=Invalidate;
+				toothChartImageHost.FuncGetFallbackBitmap=GetSimple2DBitmap;
+				toothChartImageHost.SuspendLayout();
+				this.Controls.Add(toothChartImageHost);
+				ResetTeeth();
+				toothChartImageHost.ResumeLayout();
+				_isWpfSceneDirty=true;
+				return;
+			}
 			if(drawMode==DrawingMode.Simple2D){
 				//this.Invalidate();
 				toothChart2D=new ToothChart2D();
@@ -457,6 +551,7 @@ namespace SparksToothChart {
 		///DirectX starts clean.</summary>
 		private bool TryStartDrawMode(DrawingMode drawingMode) {
 			drawMode=drawingMode;
+			_engine=(ToothChartEngine)drawingMode;
 			try {
 				ResetControls();
 			}
@@ -484,17 +579,32 @@ namespace SparksToothChart {
 		}
 
 		///<summary>Writes the first fallback of this process to the ToothChart log and ignores the rest, so a computer without DirectX does not fill
-		///the log every time a chart is drawn.</summary>
-		private static void LogFallbackOnce(string message) {
-			if(_isFallbackLogged) {
-				return;
+		///the log every time a chart is drawn. Every message, written or not, is kept for GetFallbackMessages. The WPF chart's renderer and image
+		///host log through here too.</summary>
+		internal static void LogFallbackOnce(string message) {
+			lock(_lockFallback) {
+				if(_listFallbackMessages.Count>=1000) {
+					_listFallbackMessages.RemoveAt(0);//a computer without DirectX adds one for every chart; the list stays small
+				}
+				_listFallbackMessages.Add(message);
+				if(_isFallbackLogged) {
+					return;
+				}
+				_isFallbackLogged=true;
 			}
-			_isFallbackLogged=true;
 			try {
 				CodeBase.Logger.WriteLine(message,"ToothChart");
 			}
 			catch(Exception ex) {
 				ex.DoNothing();
+			}
+		}
+
+		///<summary>Every fallback message of this process so far, in order, including those LogFallbackOnce did not write because one was written
+		///already: for tests that check a chart started or drew without falling back.</summary>
+		public static List<string> GetFallbackMessages() {
+			lock(_lockFallback) {
+				return new List<string>(_listFallbackMessages);
 			}
 		}
 
@@ -526,6 +636,121 @@ namespace SparksToothChart {
 		[System.Runtime.InteropServices.DllImport("kernel32.dll",SetLastError=true)]
 		private static extern bool FreeLibrary(IntPtr hModule);
 		#endregion Draw mode fallback
+
+		#region Wpf3D
+		///<summary>Marks the WPF chart's scene dirty (every Invalidate comes here, section 5.5). On a wrapper that is shown, the first mark of a burst
+		///posts one rebuild to the UI thread's message queue, and later marks post nothing; a refill's hundreds of Set calls give one image. A wrapper
+		///that is not shown (the hidden forms of prints, sheets and the dashboard) posts nothing: GetBitmap builds its scene. The rebuild is posted
+		///rather than tied to the next paint, because the engine control covers the whole wrapper, which may then get no paint of its own.</summary>
+		private void MarkWpfSceneDirty() {
+			_isWpfSceneDirty=true;
+			if(_isWpfRebuildPosted || toothChartImageHost==null || !IsShownForWpf()) {
+				return;
+			}
+			_isWpfRebuildPosted=true;
+			try {
+				BeginInvoke(new Action(RebuildWpfOnScreen));
+			}
+			catch(InvalidOperationException ex) {
+				ex.DoNothing();//the handle went away; nothing is shown, so nothing needs posting
+				_isWpfRebuildPosted=false;
+			}
+		}
+
+		///<summary>True when the wrapper is on screen: it has a handle and it and its parents are visible.</summary>
+		private bool IsShownForWpf() {
+			return !IsDisposed && !Disposing && IsHandleCreated && Visible;
+		}
+
+		///<summary>The posted rebuild: always renders the on-screen image from the current data, even when a GetBitmap in between has built the scene
+		///and cleared the dirty mark (a refill that ends in the dashboard's GetBitmap still updates the screen). Only this clears the posted mark.</summary>
+		private void RebuildWpfOnScreen() {
+			_isWpfRebuildPosted=false;
+			if(_engine!=ToothChartEngine.Wpf3D || toothChartImageHost==null || IsDisposed) {
+				return;
+			}
+			ToothScene toothScene=BuildWpfScene();
+			toothChartImageHost.ShowScene(toothScene);
+		}
+
+		///<summary>The scene of the current data; clears the dirty mark.</summary>
+		private ToothScene BuildWpfScene() {
+			ToothScene toothScene=ToothSceneBuilder.Build(tcData);
+			_isWpfSceneDirty=false;
+			return toothScene;
+		}
+
+		///<summary>True while the WPF chart's data has changed since its last scene, for tests.</summary>
+		[Browsable(false)]
+		public bool IsWpfSceneDirty {
+			get {
+				return _isWpfSceneDirty;
+			}
+		}
+
+		///<summary>The WPF chart's engine control, or null in the other engines, for tests.</summary>
+		[Browsable(false)]
+		public ToothChartImageHost ImageHostWpf {
+			get {
+				return toothChartImageHost;
+			}
+		}
+
+		///<summary>GetBitmap of the WPF chart: the renderer's image of a scene built now from TcData, as the DirectX chart's GetBitmap draws TcData
+		///as it is (so a change that skipped Invalidate is in it too). On any thread: the wrapper builds only the scene. A render that fails twice
+		///gives the 2D chart's image of the same data, logged once, so a print never comes out without a chart.</summary>
+		private Bitmap GetWpf3DBitmap() {
+			ToothScene toothScene=BuildWpfScene();
+			try {
+				return ToothChartRenderer.Instance.Render(toothScene,_layerCacheWpf).ToBitmap();
+			}
+			catch(Exception ex) {
+				LogFallbackOnce("The "+ToothChartEngine.Wpf3D+" tooth chart could not draw its image ("+ex.GetType().Name+": "+ex.Message+"). Using "
+					+ToothChartEngine.Simple2D+" for this image.");
+				return GetSimple2DBitmap();
+			}
+		}
+
+		///<summary>The 2D chart's image of TcData at the wrapper's size, in the WPF chart's pixel format (Format24bppRgb).</summary>
+		private Bitmap GetSimple2DBitmap() {
+			using(ToothChart2D toothChart2DFallback=new ToothChart2D()) {
+				toothChart2DFallback.Size=Size;
+				toothChart2DFallback.TcData=tcData;
+				toothChart2DFallback.InitializeGraphics();
+				using(Bitmap bitmap2D=toothChart2DFallback.GetBitmap()) {
+					Bitmap bitmap=new Bitmap(bitmap2D.Width,bitmap2D.Height,System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+					using(Graphics g=Graphics.FromImage(bitmap)) {
+						g.DrawImageUnscaled(bitmap2D,0,0);
+					}
+					return bitmap;
+				}
+			}
+		}
+
+		///<summary>Releases the WPF chart's engine control and its 3D layer image.</summary>
+		private void DisposeWpf3D() {
+			if(_layerCacheWpf!=null) {
+				_layerCacheWpf.Dispose();
+				_layerCacheWpf=null;
+			}
+			if(toothChartImageHost!=null) {
+				try {
+					Controls.Remove(toothChartImageHost);
+					toothChartImageHost.Dispose();
+				}
+				catch(Exception ex) {
+					ex.DoNothing();
+				}
+				toothChartImageHost=null;
+			}
+			_isWpfSceneDirty=false;
+			_isWpfRebuildPosted=false;
+		}
+
+		private void ToothChartWrapper_Disposed(object sender,EventArgs e) {
+			DisposeWpf3D();
+		}
+		#endregion Wpf3D
 
 		//This step usually happens when the DrawMode property is set on the tooth chart wrapper, by way of the ResetControls() function.
 		///<summary>Not normally used unless we are just trying to make a copy of an existing directX control.</summary>
@@ -797,6 +1022,9 @@ namespace SparksToothChart {
 			g.Dispose();
 			return result;
 			return null;*/
+			if(_engine==ToothChartEngine.Wpf3D) {
+				return GetWpf3DBitmap();
+			}
 			if(drawMode==DrawingMode.Simple2D) {
 				return toothChart2D.GetBitmap();
 			}
@@ -845,8 +1073,8 @@ namespace SparksToothChart {
 		protected override void OnResize(EventArgs e) {
 			base.OnResize(e);
 			tcData.SizeControl=this.Size;
-			Invalidate();
-			if(drawMode==DrawingMode.DirectX){
+			Invalidate();//Wpf3D: marks the scene dirty, and the next image has the new size
+			if(_engine==ToothChartEngine.DirectX){
 				//Fire the resize event for the DirectX tooth chart.
 				//For some reason the Resize() and Size() events don't fire on the DirectX control
 				//if you create them through the designer. Perhaps there is something wrong, but this
