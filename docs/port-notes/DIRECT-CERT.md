@@ -187,3 +187,32 @@ exported with `Export-PfxCertificate` and a throwaway password, then removed fro
 - **A user name that is not an e-mail address** opened the window, which then refused at Check with a message to enter the address, in a
   box the window shows read-only. Edit Email Address now checks the user name first and names its box, and the import's message points
   there too.
+
+## Second fix round (branch `dev/directcert-2`, 2026-11-09)
+
+The reviews passed after the first fix round; the lead had these review notes fixed before the merge, each with a test where one can
+be written. `main` (S1-6's SDK-style test projects, TC-2, EHR-1 and the others) was merged in first.
+
+1. **Which certificates an import replaces.** Before, every certificate of the store of the same kind (address or domain) and name, even
+   one valid at the same time or longer. Some Direct providers issue separate signing and encryption certificates for one address, so
+   importing one replaced the other. Now a certificate of the store is offered for replacement only when it has the same purpose as a
+   certificate of the file of the same kind (signing or encryption, from the Key Usage and Extended Key Usage extensions; one with both
+   counts as both) and it expires before that certificate does. The question lists exactly those, with both sides' subject, purpose,
+   valid from and valid to; the others stay and are listed as kept, with why.
+2. **The trust anchor's PEM path** read each PEM block with the default key flags, so a PKCS#12 hidden in a PEM block could write a key to
+   the user's key store for a moment. It reads them with `EphemeralKeySet`, as the private file's check does.
+3. **Failure paths that could leave a key behind.** The keys of the file's certificates that are not imported, and an import that fails
+   partway after some keys were written: the import deletes what it wrote and reports what it could not remove.
+4. **"Already in the store with its key"** is true only when the key can be used (it opens and signs or decrypts a test value), not when
+   the certificate only says it has one; otherwise the window offers to import again instead of refusing.
+5. **Disposal.** The key objects of `GetRSAPrivateKey` and `GetECDsaPrivateKey` and the certificates read from a store are disposed.
+6. **The security log text** is plain English with invariant dates (no translation).
+7. **The window.** The replace question ends "Choose No to import nothing."; the file dialogs' filter texts are translated; a failed
+   re-check at Import clears the details as Check does; the details also list the file's certificates already in the store with their
+   key; the window says that the certificate is stored for the user name as typed, which takes effect for sending once the address is
+   saved; a wait cursor while the window reads the store and the trust anchors.
+8. **The documents.** The .NET 10 notes for the switch package, the launch checks' capture server and certificate recipe, and the plan's
+   O-13 and spot-check (section 9.1) lines.
+
+Left as they are (owner questions): `ICustomerUpdates` and `CustomerUpdatesProxy`, and the read access of `BUILTIN\Users` to the imported
+private keys.
