@@ -449,6 +449,7 @@ namespace SparksToothChart {
 				toothChartImageHost.ResumeLayout();
 				_isWpfSceneDirty=true;
 				_isWpfScreenStale=true;
+				StartWpfLiveViewIfShown();//a wrapper that is already shown when it starts Wpf3D
 				return;
 			}
 			if(drawMode==DrawingMode.Simple2D){
