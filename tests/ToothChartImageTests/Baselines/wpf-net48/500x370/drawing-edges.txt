@@ -1,0 +1,13 @@
+Scene: drawing-edges
+Group: interaction
+Description: Pen strokes along the edges and through the corners of the 410x307 drawing space, and one that runs past them.
+Size: 500x370
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 3862
+Pixels SHA-256: 3a07e9b6088d5b6660eebcf5e1e7167f9409c3c81f1fcf4e46185d64f025b1a2
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

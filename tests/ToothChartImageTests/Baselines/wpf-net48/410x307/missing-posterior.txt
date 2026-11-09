@@ -1,0 +1,13 @@
+Scene: missing-posterior
+Group: states
+Description: First molars 3, 14, 19 and 30 missing.
+Size: 410x307
+Colours: Module
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 410x307 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 3269
+Pixels SHA-256: 0d6f3f69fe4fc927bbe2f1953482afd4c643dc61f2e900f0605f71c7980a7af3
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

@@ -1,0 +1,13 @@
+Scene: missing-anterior
+Group: states
+Description: Central incisors 8, 9, 24 and 25 missing.
+Size: 500x370
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 3033
+Pixels SHA-256: b2fb8a524800a3ccccf87d4981f6fd4ed142573b59a108e64f98b1522fd89d8c
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

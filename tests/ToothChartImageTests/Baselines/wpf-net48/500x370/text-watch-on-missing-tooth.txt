@@ -1,0 +1,13 @@
+Scene: text-watch-on-missing-tooth
+Group: paint
+Description: Watch marks on missing teeth 3 and 30 (the mark still shows) and on present tooth 19.
+Size: 500x370
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 3018
+Pixels SHA-256: 558b33ba89deb25bad75830b079fe79040b541292f19609b12abfe8728dd7465
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

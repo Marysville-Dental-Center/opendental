@@ -1,0 +1,13 @@
+Scene: empty-haderup
+Group: empty
+Description: An adult chart with all 32 teeth and no work, in Haderup numbering.
+Size: 500x370
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 3102
+Pixels SHA-256: bd9ad03b22eea810f9a248b1d3c4983f72de1f40d2b0c11774748f1622f8cff8
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

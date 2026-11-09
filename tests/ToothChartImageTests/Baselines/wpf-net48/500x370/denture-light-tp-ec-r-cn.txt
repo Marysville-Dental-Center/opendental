@@ -1,0 +1,13 @@
+Scene: denture-light-tp-ec-r-cn
+Group: paint
+Description: Light dentures in the statuses the other light denture scenes leave out: an upper complete denture (surface U) in TP with teeth 1-16 missing, and lower partial dentures over the ranges 18, 19 in EC, 24, 25 in R and 30, 31 in Cn (missing).
+Size: 500x370
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 5174
+Pixels SHA-256: d36aad8deaf92ec883612e6541fab495a89cdf70b9b5f99bf1fd49383b2dbc66
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

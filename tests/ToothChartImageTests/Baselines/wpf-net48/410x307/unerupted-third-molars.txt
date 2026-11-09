@@ -1,0 +1,13 @@
+Scene: unerupted-third-molars
+Group: empty
+Description: Third molars 1, 16, 17 and 32 unerupted (shifted 12 mm toward the root), drawn at half colour.
+Size: 410x307
+Colours: Module
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 410x307 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 4123
+Pixels SHA-256: 27ba48926efcf505c61f1259245dcbbffbf222271df5df32f4e7689c5f5e2be8
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

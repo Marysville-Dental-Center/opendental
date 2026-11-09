@@ -1,0 +1,13 @@
+Scene: drawing-segments
+Group: interaction
+Description: Pen drawings in black, red and blue: a line across the maxillary teeth, a zig-zag over the mandibular teeth and a short stroke near the centre line.
+Size: 500x370
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 3702
+Pixels SHA-256: 5ef022c7d60e422eac73f49c2a957dcd4701531df388dbeda57eff44235cc3d4
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

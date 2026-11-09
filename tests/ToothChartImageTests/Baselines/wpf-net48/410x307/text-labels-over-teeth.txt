@@ -1,0 +1,13 @@
+Scene: text-labels-over-teeth
+Group: free-text
+Description: Free-text labels over teeth: "cracked" on 3, "watch" on 14, "mobile" on 24 and "sore" on 30, in four colours. Today's chart draws no free text.
+Size: 410x307
+Colours: Module
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 410x307 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 3551
+Pixels SHA-256: ae74290caee6a4c47723123213700ead570cbac93ba83e8b0563d693b680e839
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

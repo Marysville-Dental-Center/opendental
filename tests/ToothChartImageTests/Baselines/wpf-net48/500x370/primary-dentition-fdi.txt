@@ -1,0 +1,13 @@
+Scene: primary-dentition-fdi
+Group: empty
+Description: All 20 primary teeth, in FDI numbering.
+Size: 500x370
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 3940
+Pixels SHA-256: 16ac62d81748c4c0f58073e66520ded0a3b95a9cd94c31efd938f97be0b822cf
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

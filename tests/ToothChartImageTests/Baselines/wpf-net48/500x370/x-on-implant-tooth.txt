@@ -1,0 +1,13 @@
+Scene: x-on-implant-tooth
+Group: known-difference
+Description: TP X and TP implant on present tooth 19, and on missing tooth 14: DirectX draws the implant after the X with depth testing on (plan 5.1).
+Size: 500x370
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 3528
+Pixels SHA-256: 40ac9935c94cae0070e36d687cd9c2980e5383b732e12c56152a15bbc50696c9
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

@@ -1,0 +1,13 @@
+Scene: size-sheet-wide
+Group: sizes
+Description: The restored-adult work, also drawn at 640x320 (a wide sheet field) with the printout colours.
+Size: 640x320
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 640x320 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 4111
+Pixels SHA-256: 92d17ad68c9b9a0b9998f565655b510ba012ecf859c05a5b26bda303d352f1d8
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

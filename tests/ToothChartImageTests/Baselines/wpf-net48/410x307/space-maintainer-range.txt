@@ -1,0 +1,13 @@
+Scene: space-maintainer-range
+Group: paint
+Description: Space maintainers over the ranges 19-21 (C, 20 missing) and 28-30 (TP, 29 missing).
+Size: 410x307
+Colours: Module
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 410x307 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 3470
+Pixels SHA-256: 1d6b864c84874fe2844ad0f3dc9b0a7e7b7f7de0c1b0da20b0c59f34c720e2b5
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

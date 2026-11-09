@@ -1,0 +1,13 @@
+Scene: veneer-posterior
+Group: paint
+Description: Veneers on premolars 4, 5, 12 and 13 (TP), which colour only the facial surface.
+Size: 500x370
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 4130
+Pixels SHA-256: e326e61b0f2ceed015f4855cfec87aaa96285d45cefd17bac3be052e6a8c3ff3
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

@@ -1,0 +1,13 @@
+Scene: filling-dark-anterior-single
+Group: paint
+Description: Dark TP fillings, one surface per tooth: 6 M, 7 D, 8 F, 9 I, 10 L, 11 V, 22 M, 23 D, 24 F, 25 I, 26 L, 27 V.
+Size: 410x307
+Colours: Module
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 410x307 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 4451
+Pixels SHA-256: 0306f54f9d5380f7740af638cb72df31e4b993c1d5042a1612e217fe98b33a74
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

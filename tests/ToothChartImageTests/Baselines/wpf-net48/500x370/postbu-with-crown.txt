@@ -1,0 +1,13 @@
+Scene: postbu-with-crown
+Group: paint
+Description: Dark TP build-ups with dark TP crowns on 4, 5, 12, 13, 20, 21, 28 and 29.
+Size: 500x370
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 4986
+Pixels SHA-256: f5404f39746b81f14c4a4fa31547018f10d01b50338a49190db0a49e02fd6e75
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

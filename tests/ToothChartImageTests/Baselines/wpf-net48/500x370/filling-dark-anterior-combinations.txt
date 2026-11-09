@@ -1,0 +1,13 @@
+Scene: filling-dark-anterior-combinations
+Group: paint
+Description: Dark C fillings on several surfaces: 6 MI, 7 DI, 8 MIF, 9 DFL, 10 FV, 11 MDFIL, 22 ML, 23 MDI, 24 FIL, 25 MF, 26 DLV, 27 MDF.
+Size: 500x370
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 5094
+Pixels SHA-256: 4587742c14051a583063947693807994c68378788b224b443bba9826aab0b913
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

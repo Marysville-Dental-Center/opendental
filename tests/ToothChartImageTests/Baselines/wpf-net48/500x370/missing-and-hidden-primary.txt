@@ -1,0 +1,13 @@
+Scene: missing-and-hidden-primary
+Group: states
+Description: Primary dentition with D and G missing and the letters of K and T hidden.
+Size: 500x370
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 3898
+Pixels SHA-256: 2e49bba404cb18328b9ac88ce89465b99ab4845562a5b09b96b1733f226e4710
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

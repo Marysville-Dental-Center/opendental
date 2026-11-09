@@ -1,0 +1,13 @@
+Scene: extraction-statuses
+Group: paint
+Description: The big X: TP on 1, 16, 17 and 32, R on 4, Cn on 29. Completed extractions draw no X (the tooth is missing instead).
+Size: 500x370
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 4366
+Pixels SHA-256: 926b9e297da428569aa3a47494fc63212c674fcb4e2ea7bce255e08ad3831c7f
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

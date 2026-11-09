@@ -1,0 +1,13 @@
+Scene: select-range
+Group: interaction
+Description: Teeth 6-11 selected, as a drag across them gives.
+Size: 500x370
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 3118
+Pixels SHA-256: 2cb745935a9b11fd09ca5d58feea202f074b6dd0367179cbe94347000d772d72
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

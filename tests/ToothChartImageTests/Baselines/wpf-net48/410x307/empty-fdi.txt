@@ -1,0 +1,13 @@
+Scene: empty-fdi
+Group: empty
+Description: An adult chart with all 32 teeth and no work, in FDI numbering.
+Size: 410x307
+Colours: Module
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 410x307 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 3551
+Pixels SHA-256: 8a52fe7860397377a8580d835b99b849790fe93f6bb4e5c1c9d36572a07b2464
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

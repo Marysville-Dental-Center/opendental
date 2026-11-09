@@ -1,0 +1,13 @@
+Scene: mixed-dentition-haderup
+Group: empty
+Description: The mixed dentition scene in Haderup numbering.
+Size: 500x370
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 3509
+Pixels SHA-256: ec1980d6f90eead2ad7b5f51688385de7efa5a173bc52d3c6bb2134b607d3f5f
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

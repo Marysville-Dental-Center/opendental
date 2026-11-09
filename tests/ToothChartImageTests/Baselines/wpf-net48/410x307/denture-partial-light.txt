@@ -1,0 +1,13 @@
+Scene: denture-partial-light
+Group: paint
+Description: Lower partial denture over the range 19, 20, 29, 30 (missing), light C.
+Size: 410x307
+Colours: Module
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 410x307 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 4069
+Pixels SHA-256: 59b603dd0f4577e50e451b9c25d50220862b1c49f1bc5de59a3d567aa0caa073
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

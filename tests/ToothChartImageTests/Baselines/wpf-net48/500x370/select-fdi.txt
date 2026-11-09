@@ -1,0 +1,13 @@
+Scene: select-fdi
+Group: interaction
+Description: Teeth 3, 14, 19 and 30 selected in FDI numbering.
+Size: 500x370
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 3121
+Pixels SHA-256: cd2dc702c236a917f4b57635a5b9c2883ba849a48c0e3d584846ebe5ecd61c46
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

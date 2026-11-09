@@ -1,0 +1,13 @@
+Scene: implant-with-crown
+Group: paint
+Description: Completed implants with dark C crowns on missing teeth 3, 14, 19 and 30.
+Size: 500x370
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 4624
+Pixels SHA-256: b6103efd3e6fb9728e613a663b7c7aa5be87c980278c0b34e2d90928109eb5b9
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

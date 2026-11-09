@@ -1,0 +1,13 @@
+Scene: select-primary-letter
+Group: interaction
+Description: Mixed dentition with the primary letters C, D and K selected (the primary band) and permanent tooth 3 selected.
+Size: 410x307
+Colours: Module
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 410x307 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 4033
+Pixels SHA-256: 6a8f93280e0116722eaa66cc6edddb689a3190242c6ad9de0ef9d6715990ca44
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)

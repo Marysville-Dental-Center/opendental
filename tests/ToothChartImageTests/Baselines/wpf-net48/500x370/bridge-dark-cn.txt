@@ -1,0 +1,13 @@
+Scene: bridge-dark-cn
+Group: paint
+Description: Dark Cn bridges, the status the other dark bridge scenes leave out: 3-4-5 with 4 missing and 19-20-21 with 20 missing.
+Size: 500x370
+Colours: Printout
+Engine: Wpf3D (RenderTargetBitmap in software, 3D layer at 3x reduced with WIC's Fant scaler)
+Bitmap: 500x370 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 4942
+Pixels SHA-256: 95017b860e8b66864962b2b1a7e224ac3cfaa746608e9e594d1838a0f2468415
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Framework: .NET Framework 4.8, x86
+Windows: build 26300.9711 (26H2)
