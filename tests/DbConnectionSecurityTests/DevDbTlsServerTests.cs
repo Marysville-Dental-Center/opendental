@@ -166,9 +166,10 @@ namespace DbConnectionSecurityTests {
 		[TestMethod]
 		public void ClientCertificateForS22_ChainsToTheServersCa() {
 			string sslCa=RequireCa();
-			string pathClient=Path.Combine(Path.GetDirectoryName(DevDbTls.GetDefaultCaPath()),"client-cert.pem");
+			string pathClient=Path.Combine(DevDbTls.GetDefaultClientFolder(),"client-cert.pem");
 			if(!File.Exists(pathClient)) {
-				Assert.Inconclusive("No client certificate (the script ran with -NoClientCertificate, or the CA comes from OPMS_DB_TLS_CA).");
+				Assert.Inconclusive("No client certificate (the script ran without -WithClientCertificate, which waits for the owner's yes, or the CA "
+					+"comes from OPMS_DB_TLS_CA).");
 			}
 			X509Certificate2 x509Certificate2Ca=new X509Certificate2(sslCa);
 			X509Certificate2 x509Certificate2Client=new X509Certificate2(pathClient);

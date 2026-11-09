@@ -11,6 +11,7 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Security.Principal;
 using System.Text;
+using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace DbConnectionSecurityTests {
@@ -147,9 +148,9 @@ namespace DbConnectionSecurityTests {
 		}
 
 		[TestMethod]
-		public void Script_TestCertificates_ACa_AServerCertificateForLocalhostAnd127001_AndAClientCertificate() {
+		public void Script_TestCertificates_ACa_AServerCertificateForLocalhostAnd127001_AndAClientCertificateOnlyWhenAskedFor() {
 			string folder=Path.Combine(_folder,"certs");
-			int exitCode=RunPowerShell(GetScriptPath(),"-TestCertificatesFolder \""+folder+"\"",out string output);
+			int exitCode=RunPowerShell(GetScriptPath(),"-TestCertificatesFolder \""+folder+"\" -WithClientCertificate",out string output);
 			Assert.AreEqual(0,exitCode,output);
 			CollectionAssert.AreEquivalent(new[] { "ca.pem","client-cert.pem","client-key.pem","server-cert.pem","server-key.pem" },
 				Directory.GetFiles(folder).Select(x => Path.GetFileName(x)).ToArray(),"No file with the CA's private key.");
@@ -185,11 +186,25 @@ namespace DbConnectionSecurityTests {
 			AssertKeyMatches(Path.Combine(folder,"server-key.pem"),x509Certificate2Server);
 			AssertKeyMatches(Path.Combine(folder,"client-key.pem"),x509Certificate2Client);
 			Assert.IsFalse(File.ReadAllText(Path.Combine(folder,"ca.pem")).Contains("PRIVATE KEY"),"The CA file is its certificate only.");
-			//A second run makes a new CA: nothing is reused.
+			//A second run makes a new CA: nothing is reused. Without -WithClientCertificate (the default, until the owner agrees to a client
+			//certificate) there is no client certificate and no client key.
 			string folder2=Path.Combine(_folder,"certs2");
-			Assert.AreEqual(0,RunPowerShell(GetScriptPath(),"-TestCertificatesFolder \""+folder2+"\" -NoClientCertificate",out string output2),output2);
+			Assert.AreEqual(0,RunPowerShell(GetScriptPath(),"-TestCertificatesFolder \""+folder2+"\"",out string output2),output2);
 			Assert.AreNotEqual(x509Certificate2Ca.Thumbprint,new X509Certificate2(ReadPem(Path.Combine(folder2,"ca.pem"),"CERTIFICATE")).Thumbprint);
-			Assert.IsFalse(File.Exists(Path.Combine(folder2,"client-key.pem")),"-NoClientCertificate");
+			CollectionAssert.AreEquivalent(new[] { "ca.pem","server-cert.pem","server-key.pem" },
+				Directory.GetFiles(folder2).Select(x => Path.GetFileName(x)).ToArray(),"No client certificate by default.");
+		}
+
+		[TestMethod]
+		public void Script_ClientCertificateSwitches_OnlyWithTheEnableRun() {
+			//Refused before anything else (elevation, the service), so these run anywhere and change nothing.
+			Assert.AreEqual(1,RunPowerShell(GetScriptPath(),"-Revert -WithClientCertificate",out string outputRevert),outputRevert);
+			StringAssert.Contains(outputRevert,"-WithClientCertificate goes with the enable run");
+			Assert.AreEqual(1,RunPowerShell(GetScriptPath(),"-RequireSecureTransport -WithClientCertificate",out string outputRequire),outputRequire);
+			StringAssert.Contains(outputRequire,"-WithClientCertificate goes with the enable run");
+			Assert.AreEqual(1,RunPowerShell(GetScriptPath(),"-ClientFolder \""+Path.Combine(_folder,"client")+"\"",out string outputClient),outputClient);
+			StringAssert.Contains(outputClient,"-ClientFolder needs -WithClientCertificate");
+			Assert.IsFalse(Directory.Exists(Path.Combine(_folder,"client")));
 		}
 
 		[TestMethod]
@@ -238,6 +253,18 @@ namespace DbConnectionSecurityTests {
 				Assert.IsFalse(output.Contains("require_secure_transport=ON"),"Enabling never sets require_secure_transport.");
 				StringAssert.Contains(output,"Dry run: nothing was changed.");
 				Assert.IsFalse(File.Exists(pathIni+".before-opms-dev-tls"),"No backup was made.");
+				//By default no client certificate and no key anywhere; the block records the dev folder for -Revert.
+				Assert.IsFalse(output.Contains("client-key.pem"),"No client key without -WithClientCertificate.");
+				StringAssert.Contains(output,"No private key goes to this folder.");
+				StringAssert.Contains(output,"# dev-folder="+Path.GetDirectoryName(DevDbTls.GetDefaultCaPath()).Replace('\\','/'));
+				Assert.IsFalse(output.Contains("# client-folder="));
+				//With -WithClientCertificate the client key goes to a folder of its own, never the CA's folder.
+				Assert.AreEqual(0,RunPowerShell(GetScriptPath(),"-DryRun -WithClientCertificate",out string outputClient),outputClient);
+				string folderClient=DevDbTls.GetDefaultClientFolder();
+				StringAssert.Contains(outputClient,Path.Combine(folderClient,"client-key.pem"));
+				StringAssert.Contains(outputClient,"# client-folder="+folderClient.Replace('\\','/'));
+				Assert.IsFalse(outputClient.Contains(Path.Combine(Path.GetDirectoryName(DevDbTls.GetDefaultCaPath()),"client-key.pem")),
+					"Never next to the CA copy.");
 			}
 			//The dry runs of the other modes change nothing either.
 			byte[] arrayIniBefore=File.ReadAllBytes(pathIni);
@@ -293,6 +320,76 @@ namespace DbConnectionSecurityTests {
 					name+": removing the block gives the original back.");
 			}
 			StringAssert.StartsWith(File.ReadAllText(Path.Combine(_folder,"noend.ini.new")),"[mysqld]\nport=3306\n# BEGIN");
+		}
+
+		[TestMethod]
+		public void Script_TheBlockRecordsTheFolders_RevertAndRequireSecureTransportUseThem_AndRefuseAnotherFolder() {
+			//As the option-file test: the script's own functions on synthetic text. The enable run wrote the CA copy and the client pair for
+			//another account (-DevUser, -DevFolder); the later modes must find them there, not in the folders of the account that runs them.
+			string driver=Path.Combine(_folder,"driver.ps1");
+			File.WriteAllText(driver,string.Join("\r\n",new[] {
+				"param([string]$Script, [string]$Folder)",
+				"$ErrorActionPreference = 'Stop'",
+				"$ast = [System.Management.Automation.Language.Parser]::ParseFile($Script, [ref]$null, [ref]$null)",
+				"$names = @('Resolve-FullPath', 'Read-OptionFile', 'Get-ServerOptions', 'Remove-Block', 'Add-ToMysqldSection', 'Get-NormalPath',",
+				"  'Get-DefaultClientFolder', 'Test-FolderOverlap', 'Get-RecordedFolders', 'Resolve-RecordedFolders', 'Get-BlockLines', 'Get-DevFiles')",
+				"foreach ($f in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $names -contains $a.Name }, $true)) {",
+				"  . ([scriptblock]::Create($f.Extent.Text))",
+				"}",
+				"foreach ($v in $ast.FindAll({ param($a) $a -is [System.Management.Automation.Language.AssignmentStatementAst] -and $a.Left.Extent.Text -match '^\\$(Marker(Begin|End)|Record(Dev|Client)Prefix|ClientFolderName)$' }, $false)) {",
+				"  . ([scriptblock]::Create($v.Extent.Text))",
+				"}",
+				"function Stop-Refused([string]$Message) { throw ('REFUSED: ' + $Message) }",
+				"$dev = Join-Path $Folder 'other-account\\OpenPmsDental\\DevDbTls'",
+				"$client = Get-DefaultClientFolder $dev",
+				"'DEFAULTCLIENT ' + $client",
+				"'OVERLAP ' + (Test-FolderOverlap $dev (Join-Path $dev 'client')) + ' ' + (Test-FolderOverlap (Join-Path $dev 'client') $dev) + ' ' + (Test-FolderOverlap $dev $client)",
+				"$paths = [pscustomobject]@{ DevFolder = $dev; ClientFolder = $client; DevCa = (Join-Path $dev 'ca.pem'); ClientCert = (Join-Path $client 'client-cert.pem');",
+				"  ClientKey = (Join-Path $client 'client-key.pem'); Ca = 'C:\\x\\ca.pem'; ServerCert = 'C:\\x\\server-cert.pem'; ServerKey = 'C:\\x\\server-key.pem' }",
+				"$file = Read-OptionFile (Join-Path $Folder 'my.ini')",
+				"$new = Add-ToMysqldSection $file.Text (Get-BlockLines $paths $false) $file.Newline",
+				"[System.IO.File]::WriteAllText((Join-Path $Folder 'my.ini.new'), $new, (New-Object System.Text.UTF8Encoding($false)))",
+				"'OPTIONS ' + (@((Get-ServerOptions $new).Keys | Sort-Object) -join ',')",
+				"$recorded = Get-RecordedFolders $new",
+				"'RECORDED ' + $recorded.DevFolder + '|' + $recorded.ClientFolder",
+				"$resolved = Resolve-RecordedFolders $recorded '' '' (Join-Path $Folder 'this-account\\DevDbTls')",
+				"'RESOLVED ' + $resolved.DevFolder + '|' + $resolved.ClientFolder + '|' + $resolved.IsRecorded",
+				"'FILES ' + ((Get-DevFiles $paths) -join '|')",
+				"'SAME ' + (Resolve-RecordedFolders $recorded ($dev.ToUpperInvariant() + '\\') ($client + '\\') 'x').DevFolder",
+				"try { [void](Resolve-RecordedFolders $recorded (Join-Path $Folder 'this-account\\DevDbTls') '' 'x'); 'DEV not refused' } catch { 'DEV ' + $_.Exception.Message }",
+				"try { [void](Resolve-RecordedFolders $recorded '' (Join-Path $Folder 'elsewhere') 'x'); 'CLIENT not refused' } catch { 'CLIENT ' + $_.Exception.Message }",
+				"$paths.ClientFolder = ''",
+				"$recordedNoClient = Get-RecordedFolders (Add-ToMysqldSection $file.Text (Get-BlockLines $paths $true) $file.Newline)",
+				"'NOCLIENT ' + $recordedNoClient.DevFolder + '|' + ($null -eq $recordedNoClient.ClientFolder) + '|' + (Resolve-RecordedFolders $recordedNoClient '' '' 'x').ClientFolder",
+				"try { [void](Resolve-RecordedFolders $recordedNoClient '' (Join-Path $Folder 'elsewhere') 'x'); 'CLIENT2 not refused' } catch { 'CLIENT2 ' + $_.Exception.Message }",
+				"$none = Resolve-RecordedFolders (Get-RecordedFolders $file.Text) '' '' (Join-Path $Folder 'this-account\\DevDbTls')",
+				"'NORECORD ' + $none.DevFolder + '|' + $none.ClientFolder + '|' + $none.IsRecorded",
+				"'REMOVED ' + ($null -eq (Get-RecordedFolders (Remove-Block $new)).DevFolder) + ' ' + ((Remove-Block $new) -eq $file.Text)",
+			}),Encoding.ASCII);
+			string ini="[mysqld]\ndatadir=C:/Program Files/MariaDB 10.11/data\nport=3306\nbind-address=127.0.0.1\n\n[client]\nport=3306\n";
+			File.WriteAllText(Path.Combine(_folder,"my.ini"),ini,new UTF8Encoding(false));
+			int exitCode=RunPowerShell(driver,"-Script \""+GetScriptPath()+"\" -Folder \""+_folder+"\"",out string output);
+			Assert.AreEqual(0,exitCode,output);
+			string dev=Path.Combine(_folder,"other-account","OpenPmsDental","DevDbTls");
+			string client=Path.Combine(_folder,"other-account","OpenPmsDental","DevDbTlsClient");
+			StringAssert.Contains(output,"DEFAULTCLIENT "+client+"\r\n","DevDbTlsClient beside the dev folder.");
+			Assert.AreEqual(Path.GetFileName(DevDbTls.GetDefaultClientFolder()),Path.GetFileName(client),"The script's default and DevDbTls agree.");
+			StringAssert.Contains(output,"OVERLAP True True False");
+			//The block: the record as comment lines (no options of the server), then the TLS options.
+			string textNew=File.ReadAllText(Path.Combine(_folder,"my.ini.new"));
+			StringAssert.Contains(textNew,"# BEGIN Open PMS - Dental local test TLS (tools/Enable-LocalDbTls.ps1; undo with -Revert)\n# dev-folder="
+				+dev.Replace('\\','/')+"\n# client-folder="+client.Replace('\\','/')+"\nssl_ca=C:/x/ca.pem\n");
+			StringAssert.Contains(output,"OPTIONS bind_address,datadir,port,ssl_ca,ssl_cert,ssl_key,tls_version\r\n");
+			StringAssert.Contains(output,"RECORDED "+dev+"|"+client+"\r\n");
+			StringAssert.Contains(output,"RESOLVED "+dev+"|"+client+"|True\r\n","The recorded folders, not this account's.");
+			StringAssert.Contains(output,"FILES "+Path.Combine(dev,"ca.pem")+"|"+Path.Combine(client,"client-cert.pem")+"|"+Path.Combine(client,"client-key.pem")+"\r\n");
+			StringAssert.Contains(output,"SAME "+dev+"\r\n","The same folder, written another way, is accepted.");
+			StringAssert.Contains(output,"DEV REFUSED: my.ini records the dev folder "+dev);
+			StringAssert.Contains(output,"CLIENT REFUSED: my.ini records the client folder "+client);
+			StringAssert.Contains(output,"NOCLIENT "+dev+"|True|\r\n");
+			StringAssert.Contains(output,"CLIENT2 REFUSED: my.ini records no client folder");
+			StringAssert.Contains(output,"NORECORD "+Path.Combine(_folder,"this-account","DevDbTls")+"||False\r\n","No block: the fallback, marked as such.");
+			StringAssert.Contains(output,"REMOVED True True");
 		}
 	}
 }

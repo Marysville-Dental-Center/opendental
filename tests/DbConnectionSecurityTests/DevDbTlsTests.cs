@@ -76,6 +76,22 @@ namespace DbConnectionSecurityTests {
 		}
 
 		[TestMethod]
+		public void TheCaFolder_NeverHoldsAPrivateKey_TheClientCertificateHasAFolderOfItsOwn() {
+			string folderCa=Path.GetDirectoryName(DevDbTls.GetDefaultCaPath());
+			string folderClient=DevDbTls.GetDefaultClientFolder();
+			Assert.AreEqual(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"OpenPmsDental","DevDbTlsClient"),
+				folderClient);
+			Assert.IsFalse((folderClient+"\\").StartsWith(folderCa+"\\",StringComparison.OrdinalIgnoreCase),"Not inside the CA's folder.");
+			Assert.IsFalse((folderCa+"\\").StartsWith(folderClient+"\\",StringComparison.OrdinalIgnoreCase));
+			//On a computer where the script ran: the folder every dev tool reads the CA from has no private key in it.
+			if(Directory.Exists(folderCa)) {
+				foreach(string path in Directory.GetFiles(folderCa,"*",SearchOption.AllDirectories)) {
+					Assert.IsFalse(File.ReadAllText(path).Contains("PRIVATE KEY"),path+" holds a private key.");
+				}
+			}
+		}
+
+		[TestMethod]
 		public void IsLocalTestServer_ThisComputerOnPort3306_OrARelayPort_NothingElse() {
 			foreach(string host in new[] { "127.0.0.1","localhost","LOCALHOST","::1","[::1]","127.0.0.2" }) {
 				Assert.IsTrue(DevDbTls.IsLocalTestServer(host,3306,""),host);
@@ -252,8 +268,10 @@ namespace DbConnectionSecurityTests {
 			StringAssert.Contains(sourceLocalTls,"\"OpenPmsDental\",\"DevDbTls\",\"ca.pem\"");
 			StringAssert.Contains(sourceScripts,"'OpenPmsDental\\DevDbTls\\ca.pem'");
 			StringAssert.Contains(sourceScripts,"$Port -eq "+DevDbTls.PORT);
-			StringAssert.Contains(TestHelpers.ReadRepoFile("tools","Enable-LocalDbTls.ps1"),"'OpenPmsDental\\DevDbTls'",
-				"The script writes the CA where DevDbTls looks.");
+			string sourceEnable=TestHelpers.ReadRepoFile("tools","Enable-LocalDbTls.ps1");
+			StringAssert.Contains(sourceEnable,"'OpenPmsDental\\DevDbTls'","The script writes the CA where DevDbTls looks.");
+			StringAssert.Contains(sourceEnable,"$ClientFolderName = '"+Path.GetFileName(DevDbTls.GetDefaultClientFolder())+"'",
+				"The script writes the client certificate where DevDbTls.GetDefaultClientFolder says.");
 		}
 
 		///<summary>Marks the characters of C# source that are code, not a comment, a string or a character literal.</summary>

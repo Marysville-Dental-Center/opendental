@@ -10,33 +10,44 @@ Without a mode switch (enable):
   1. Checks: the session is elevated; the service (-ServiceName, default MariaDB) runs mysqld.exe or mariadbd.exe with
      --defaults-file=<my.ini>; that my.ini says port 3306 (or no port) and bind-address=127.0.0.1; the server that answers on
      127.0.0.1:3306 reports that port, that bind address and that my.ini's datadir, so it is this service; my.ini has no TLS line yet.
-  2. Makes, in memory, a test CA (RSA 3072, 10 years), a server certificate for localhost and 127.0.0.1 (RSA 2048, 5 years, serverAuth)
-     and a client certificate for the certificate-login test of S2-2 (RSA 2048, 5 years, clientAuth; -NoClientCertificate leaves it out).
-     The CA's private key is never written anywhere, so nothing else can ever be signed with it.
+  2. Makes, in memory, a test CA (RSA 3072, 10 years) and a server certificate for localhost and 127.0.0.1 (RSA 2048, 5 years,
+     serverAuth). Only with -WithClientCertificate also a client certificate for the certificate-login test of S2-2 (RSA 2048, 5 years,
+     clientAuth); without it (the default, until the owner has agreed to it) none. The CA's private key is never written anywhere, so
+     nothing else can ever be signed with it: a client certificate can only be made in the same run as the CA.
   3. Writes ca.pem, server-cert.pem and server-key.pem to <MariaDB folder>\opms-dev-tls (next to bin and data, not inside data, where
      MariaDB would take the folder for a database), with a protected ACL: SYSTEM and Administrators full control, the service account
      read, nobody else.
-  4. Writes the CA certificate (public part only) as ca.pem, and the client certificate and key, to -DevFolder (default
-     %LOCALAPPDATA%\OpenPmsDental\DevDbTls), where the dev tools and tests look (DataConnectionBase.DevDbTls), with a protected ACL:
-     -DevUser, SYSTEM and Administrators. Nothing is written to the repository.
-  5. Copies my.ini to my.ini.before-opms-dev-tls and adds ssl_ca, ssl_cert, ssl_key and tls_version=TLSv1.2,TLSv1.3 at the end of its
-     [mysqld] section, between marker comments.
-  6. Restarts the service and verifies a TLS session (have_ssl=YES, Ssl_cipher not empty) and the server certificate against the CA
+  4. Writes the CA certificate (public part only) as ca.pem to -DevFolder (default %LOCALAPPDATA%\OpenPmsDental\DevDbTls), where the dev
+     tools and tests look (DataConnectionBase.DevDbTls), with a protected ACL: -DevUser, SYSTEM and Administrators. That folder never
+     holds a private key.
+  5. With -WithClientCertificate: writes client-cert.pem and client-key.pem to -ClientFolder (default DevDbTlsClient beside -DevFolder,
+     %LOCALAPPDATA%\OpenPmsDental\DevDbTlsClient), a folder of its own, never -DevFolder or inside it, with a protected ACL: -DevUser read,
+     SYSTEM and Administrators full control. Nothing is written to the repository.
+  6. Copies my.ini to my.ini.before-opms-dev-tls and adds, at the end of its [mysqld] section between marker comments, comment lines that
+     record -DevFolder (and -ClientFolder) for -Revert and -RequireSecureTransport, then ssl_ca, ssl_cert, ssl_key and
+     tls_version=TLSv1.2,TLSv1.3.
+  7. Restarts the service and verifies a TLS session (have_ssl=YES, Ssl_cipher not empty) and the server certificate against the CA
      (--ssl-ca with --ssl-verify-server-cert). When the server does not come back with TLS, the backup is restored, the service restarted
      and the new files removed.
   It does NOT set require_secure_transport: unencrypted connections still work until -RequireSecureTransport.
 
--RequireSecureTransport: the lead's later step, once every session connects with TLS. Adds require_secure_transport=ON inside the
-script's block, restarts, and verifies that a TLS connection works and an unencrypted one is refused (else it removes the line again).
+-RequireSecureTransport: the lead's later step, once every session connects with TLS. Checks the CA copy in the dev folder that my.ini
+records, adds require_secure_transport=ON inside the script's block, restarts, and verifies that a TLS connection works and an
+unencrypted one is refused (else it removes the line again).
 
 -Revert: restores my.ini from the backup (it shows what would be lost when my.ini changed since), restarts, verifies an unencrypted
-connection, then removes the opms-dev-tls folder, the files the script wrote to -DevFolder and the backup.
+connection, then removes the opms-dev-tls folder, the files the script wrote to the dev folder and the client folder that my.ini
+records (whichever account's they are), and the backup.
+
+-RequireSecureTransport and -Revert never recompute the folders from the account that runs them: they take them from the record in
+my.ini and refuse a -DevFolder or -ClientFolder that names another folder. Only when my.ini has no block of this script do they fall back
+to -DevFolder or this account's default (the plan then says that a copy in another account's folder is not touched).
 
 -DryRun: with any mode, shows the checks and the plan and changes nothing. It does not need elevation.
 
--TestCertificatesFolder <folder>: writes only the certificate set of step 2 (with the CA certificate, the server and the client
-certificate and keys) to an empty folder outside the repository, and nothing else; no elevation, no service. The tests use it to check
-the certificates offline (tests/DbConnectionSecurityTests/DevDbTlsScriptTests.cs).
+-TestCertificatesFolder <folder>: writes only the certificate set of step 2 (the CA certificate, the server certificate and key, and
+with -WithClientCertificate the client certificate and key) to an empty folder outside the repository, and nothing else; no elevation,
+no service. The tests use it to check the certificates offline (tests/DbConnectionSecurityTests/DevDbTlsScriptTests.cs).
 
 The client is the MariaDB service's own mariadb.exe (or mysql.exe), always on 127.0.0.1:3306 over TCP, as -User (default root); the
 password comes from the MYSQL_PWD environment variable when it is set, otherwise none (the dev server's root has a blank password).
@@ -48,7 +59,7 @@ was undone; 4 the change failed and could not be undone (the message says what t
 Adds require_secure_transport=ON (the lead's step after every session connects with TLS).
 
 .PARAMETER Revert
-Undoes everything the script did: restores the backup of my.ini, restarts, removes the certificate files.
+Undoes everything the script did: restores the backup of my.ini, restarts, removes the certificate files (in the folders my.ini records).
 
 .PARAMETER DryRun
 Shows the checks and the plan of the chosen mode and changes nothing.
@@ -60,17 +71,25 @@ Writes a certificate set to this empty folder and does nothing else (for the tes
 The MariaDB service. Default: MariaDB.
 
 .PARAMETER DevFolder
-Where the CA certificate and the client certificate and key go for the dev tools and tests.
-Default: %LOCALAPPDATA%\OpenPmsDental\DevDbTls of the account that runs the script.
+Where the CA certificate (public part only) goes for the dev tools and tests; never a private key.
+Default: %LOCALAPPDATA%\OpenPmsDental\DevDbTls of the account that runs the script. With -RequireSecureTransport and -Revert it must
+be the folder my.ini records (leave it out).
 
 .PARAMETER DevUser
-The account that runs the dev tools and tests and gets read access to -DevFolder. Default: the account that runs the script.
+The account that runs the dev tools and tests and gets access to -DevFolder (and read access to -ClientFolder). Default: the account that
+runs the script.
 
 .PARAMETER User
 The database account for the checks. Default: root.
 
-.PARAMETER NoClientCertificate
-Leaves the client certificate for S2-2's certificate-login test out.
+.PARAMETER WithClientCertificate
+Also makes the client certificate for S2-2's certificate-login test and writes it with its key to -ClientFolder. Off by default: only
+once the owner has agreed to a client certificate. Later it means -Revert and this script again (a new CA), because the CA's key is gone.
+
+.PARAMETER ClientFolder
+With -WithClientCertificate: where client-cert.pem and client-key.pem go, a folder of its own (never -DevFolder or inside it).
+Default: DevDbTlsClient beside -DevFolder (%LOCALAPPDATA%\OpenPmsDental\DevDbTlsClient). With -RequireSecureTransport and -Revert it must
+be the folder my.ini records (leave it out).
 
 .EXAMPLE
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\Enable-LocalDbTls.ps1 -DryRun
@@ -82,7 +101,7 @@ From a PowerShell started with "Run as administrator": turns on TLS after you ty
 
 .EXAMPLE
 powershell -NoProfile -ExecutionPolicy Bypass -File tools\Enable-LocalDbTls.ps1 -Revert
-Undoes it.
+Undoes it, in the folders the enable run recorded in my.ini.
 #>
 [CmdletBinding(PositionalBinding = $false)]
 param(
@@ -96,7 +115,8 @@ param(
 	[string]$DevUser = '',
 	[ValidatePattern('^[A-Za-z0-9_.-]{1,64}$')]
 	[string]$User = 'root',
-	[switch]$NoClientCertificate
+	[switch]$WithClientCertificate,
+	[string]$ClientFolder = ''
 )
 
 Set-StrictMode -Version Latest
@@ -104,7 +124,11 @@ $ErrorActionPreference = 'Stop'
 
 $MarkerBegin = '# BEGIN Open PMS - Dental local test TLS (tools/Enable-LocalDbTls.ps1; undo with -Revert)'
 $MarkerEnd = '# END Open PMS - Dental local test TLS'
+# Comment lines inside the block: the folders the enable run wrote to, which -Revert and -RequireSecureTransport read back.
+$RecordDevPrefix = '# dev-folder='
+$RecordClientPrefix = '# client-folder='
 $TlsFolderName = 'opms-dev-tls'
+$ClientFolderName = 'DevDbTlsClient'
 $BackupSuffix = '.before-opms-dev-tls'
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 
@@ -613,29 +637,128 @@ function Assert-LocalServer {
 
 #region Modes
 
-function Get-Paths {
-	$tlsFolder = Join-Path $script:Facts.Home $TlsFolderName
-	$devFolder = $DevFolder
-	if ($devFolder -eq '') {
-		$devFolder = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'OpenPmsDental\DevDbTls'
+# The default client folder: DevDbTlsClient beside the dev folder (%LOCALAPPDATA%\OpenPmsDental\DevDbTlsClient for the default).
+function Get-DefaultClientFolder([string]$DevPath) {
+	$parent = Split-Path -Parent $DevPath
+	if ([string]::IsNullOrEmpty($parent)) {
+		Stop-Refused "-DevFolder $DevPath has no parent folder for the client folder. Pass -ClientFolder."
 	}
-	$devFolder = Resolve-FullPath $devFolder
+	return Join-Path $parent $ClientFolderName
+}
+
+# True when the two folders are the same or one is inside the other.
+function Test-FolderOverlap([string]$First, [string]$Second) {
+	$a = (Get-NormalPath $First) + '\'
+	$b = (Get-NormalPath $Second) + '\'
+	return $a.StartsWith($b) -or $b.StartsWith($a)
+}
+
+# The folders that the block of this script in my.ini records (the comment lines $RecordDevPrefix and $RecordClientPrefix), each $null when
+# the block does not record it or there is no block.
+function Get-RecordedFolders([string]$Text) {
+	$recorded = [pscustomobject]@{ DevFolder = $null; ClientFolder = $null }
+	$block = [regex]::Match($Text, '(?ms)^' + [regex]::Escape($MarkerBegin) + '.*?^' + [regex]::Escape($MarkerEnd))
+	if (-not $block.Success) {
+		return $recorded
+	}
+	foreach ($rawLine in ($block.Value -split "`n")) {
+		$line = $rawLine.Trim()
+		if ($line.StartsWith($RecordDevPrefix) -and $line.Length -gt $RecordDevPrefix.Length) {
+			$recorded.DevFolder = $line.Substring($RecordDevPrefix.Length).Trim().Replace('/', '\')
+		}
+		elseif ($line.StartsWith($RecordClientPrefix) -and $line.Length -gt $RecordClientPrefix.Length) {
+			$recorded.ClientFolder = $line.Substring($RecordClientPrefix.Length).Trim().Replace('/', '\')
+		}
+	}
+	return $recorded
+}
+
+# The dev folder and the client folder ('' for none) of a -Revert or -RequireSecureTransport run. The enable run recorded in my.ini where it
+# wrote them, for whichever account (-DevUser, -DevFolder); they are taken from there, never recomputed from the account that runs this, and
+# a -DevFolder or -ClientFolder that names another folder is refused. Only without a record (no block, or one without the line) the folder
+# is -DevFolder, else $DefaultDev, and the client folder -ClientFolder, else none; IsRecorded then says so.
+function Resolve-RecordedFolders($Recorded, [string]$GivenDev, [string]$GivenClient, [string]$DefaultDev) {
+	if ($null -eq $Recorded.DevFolder) {
+		$dev = $GivenDev
+		if ($dev -eq '') {
+			$dev = $DefaultDev
+		}
+		$client = ''
+		if ($GivenClient -ne '') {
+			$client = Resolve-FullPath $GivenClient
+		}
+		return [pscustomobject]@{ DevFolder = (Resolve-FullPath $dev); ClientFolder = $client; IsRecorded = $false }
+	}
+	if ($GivenDev -ne '' -and (Get-NormalPath (Resolve-FullPath $GivenDev)) -ne (Get-NormalPath $Recorded.DevFolder)) {
+		Stop-Refused "my.ini records the dev folder $($Recorded.DevFolder), where the enable run wrote ca.pem, but -DevFolder names $GivenDev. Leave -DevFolder out: this mode uses the recorded folder."
+	}
+	$client = ''
+	if ($null -ne $Recorded.ClientFolder) {
+		$client = $Recorded.ClientFolder
+	}
+	if ($GivenClient -ne '' -and (Get-NormalPath (Resolve-FullPath $GivenClient)) -ne (Get-NormalPath $client)) {
+		if ($client -eq '') {
+			Stop-Refused "my.ini records no client folder (the enable run wrote no client certificate), but -ClientFolder names $GivenClient. Leave -ClientFolder out."
+		}
+		Stop-Refused "my.ini records the client folder $client, but -ClientFolder names $GivenClient. Leave -ClientFolder out: this mode uses the recorded folder."
+	}
+	return [pscustomobject]@{ DevFolder = $Recorded.DevFolder; ClientFolder = $client; IsRecorded = $true }
+}
+
+# The paths of a run. The enable run takes -DevFolder and -ClientFolder (or their defaults); the other modes take what my.ini records.
+function Get-Paths([bool]$ForEnable) {
+	$tlsFolder = Join-Path $script:Facts.Home $TlsFolderName
+	$defaultDev = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'OpenPmsDental\DevDbTls'
+	if ($ForEnable) {
+		$dev = $DevFolder
+		if ($dev -eq '') {
+			$dev = $defaultDev
+		}
+		$dev = Resolve-FullPath $dev
+		$client = ''
+		if ($WithClientCertificate) {
+			$client = $ClientFolder
+			if ($client -eq '') {
+				$client = Get-DefaultClientFolder $dev
+			}
+			$client = Resolve-FullPath $client
+		}
+		$folders = [pscustomobject]@{ DevFolder = $dev; ClientFolder = $client; IsRecorded = $false }
+	}
+	else {
+		$folders = Resolve-RecordedFolders (Get-RecordedFolders $script:IniFile.Text) $DevFolder $ClientFolder $defaultDev
+	}
+	$clientCert = ''
+	$clientKey = ''
+	if ($folders.ClientFolder -ne '') {
+		$clientCert = Join-Path $folders.ClientFolder 'client-cert.pem'
+		$clientKey = Join-Path $folders.ClientFolder 'client-key.pem'
+	}
 	return [pscustomobject]@{
-		TlsFolder  = $tlsFolder
-		Ca         = Join-Path $tlsFolder 'ca.pem'
-		ServerCert = Join-Path $tlsFolder 'server-cert.pem'
-		ServerKey  = Join-Path $tlsFolder 'server-key.pem'
-		DevFolder  = $devFolder
-		DevCa      = Join-Path $devFolder 'ca.pem'
-		DevClientCert = Join-Path $devFolder 'client-cert.pem'
-		DevClientKey  = Join-Path $devFolder 'client-key.pem'
-		Backup     = $script:Facts.Ini + $BackupSuffix
+		TlsFolder    = $tlsFolder
+		Ca           = Join-Path $tlsFolder 'ca.pem'
+		ServerCert   = Join-Path $tlsFolder 'server-cert.pem'
+		ServerKey    = Join-Path $tlsFolder 'server-key.pem'
+		DevFolder    = $folders.DevFolder
+		DevCa        = Join-Path $folders.DevFolder 'ca.pem'
+		ClientFolder = $folders.ClientFolder
+		ClientCert   = $clientCert
+		ClientKey    = $clientKey
+		IsRecorded   = $folders.IsRecorded
+		Backup       = $script:Facts.Ini + $BackupSuffix
 	}
 }
 
+# The block of this script in my.ini: the record of the dev folder (and the client folder) as comment lines, then the TLS options.
 function Get-BlockLines($Paths, [bool]$WithRequire) {
 	$lines = @(
 		$MarkerBegin,
+		"$RecordDevPrefix$($Paths.DevFolder.Replace('\', '/'))"
+	)
+	if ($Paths.ClientFolder -ne '') {
+		$lines += "$RecordClientPrefix$($Paths.ClientFolder.Replace('\', '/'))"
+	}
+	$lines += @(
 		"ssl_ca=$($Paths.Ca.Replace('\', '/'))",
 		"ssl_cert=$($Paths.ServerCert.Replace('\', '/'))",
 		"ssl_key=$($Paths.ServerKey.Replace('\', '/'))",
@@ -648,14 +771,21 @@ function Get-BlockLines($Paths, [bool]$WithRequire) {
 	return $lines
 }
 
+# The files the script writes outside the opms-dev-tls folder, as $Paths names them.
+function Get-DevFiles($Paths) {
+	return @(@($Paths.DevCa, $Paths.ClientCert, $Paths.ClientKey) | Where-Object { $_ -ne '' })
+}
+
 function Remove-NewFiles($Paths) {
-	foreach ($path in @($Paths.DevCa, $Paths.DevClientCert, $Paths.DevClientKey)) {
+	foreach ($path in (Get-DevFiles $Paths)) {
 		if (Test-Path -LiteralPath $path) {
 			Remove-Item -LiteralPath $path -Force
 		}
 	}
-	if ((Test-Path -LiteralPath $Paths.DevFolder) -and @(Get-ChildItem -LiteralPath $Paths.DevFolder -Force).Count -eq 0) {
-		Remove-Item -LiteralPath $Paths.DevFolder -Force
+	foreach ($folder in @(@($Paths.DevFolder, $Paths.ClientFolder) | Where-Object { $_ -ne '' })) {
+		if ((Test-Path -LiteralPath $folder) -and @(Get-ChildItem -LiteralPath $folder -Force).Count -eq 0) {
+			Remove-Item -LiteralPath $folder -Force
+		}
 	}
 	if (Test-Path -LiteralPath $Paths.TlsFolder) {
 		Remove-Item -LiteralPath $Paths.TlsFolder -Recurse -Force
@@ -664,7 +794,7 @@ function Remove-NewFiles($Paths) {
 
 function Invoke-Enable {
 	$state = Assert-LocalServer
-	$paths = Get-Paths
+	$paths = Get-Paths $true
 	$text = $script:IniFile.Text
 	if (Test-HasBlock $text) {
 		Write-Host ''
@@ -690,6 +820,14 @@ function Invoke-Enable {
 	if (Test-InsideRepository $paths.DevFolder) {
 		Stop-Refused "-DevFolder $($paths.DevFolder) is inside the repository; certificates and keys never go there."
 	}
+	if ($paths.ClientFolder -ne '') {
+		if (Test-InsideRepository $paths.ClientFolder) {
+			Stop-Refused "-ClientFolder $($paths.ClientFolder) is inside the repository; certificates and keys never go there."
+		}
+		if (Test-FolderOverlap $paths.ClientFolder $paths.DevFolder) {
+			Stop-Refused "-ClientFolder $($paths.ClientFolder) and -DevFolder $($paths.DevFolder) overlap. The client key goes to a folder of its own, never where the dev tools read the CA."
+		}
+	}
 	$serviceSid = $null
 	if ($script:Facts.Account -ne '' -and $script:Facts.Account -ne 'LocalSystem') {
 		$serviceSid = Get-Sid $script:Facts.Account
@@ -703,38 +841,52 @@ function Invoke-Enable {
 	$block = Get-BlockLines $paths $false
 	$newText = Add-ToMysqldSection $text $block $script:IniFile.Newline
 
+	$withClient = $paths.ClientFolder -ne ''
+
 	Write-Host ''
 	Write-Host 'Plan:'
-	Write-Host "  1. Make a test CA (its private key stays in memory and is discarded), a server certificate for localhost and 127.0.0.1"
-	if (-not $NoClientCertificate) {
-		Write-Host '     and a client certificate for the certificate-login test of S2-2.'
+	$step = 1
+	Write-Host "  $step. Make a test CA (its private key stays in memory and is discarded) and a server certificate for localhost and 127.0.0.1."
+	if ($withClient) {
+		Write-Host '     With -WithClientCertificate also a client certificate (clientAuth) for the certificate-login test of S2-2.'
 	}
-	Write-Host "  2. Create $($paths.TlsFolder) (owner Administrators; SYSTEM and Administrators full control, $($script:Facts.Account) read) with"
+	else {
+		Write-Host '     No client certificate (-WithClientCertificate is not given): S2-2''s certificate login waits for the owner''s yes. It can only be'
+		Write-Host '     made in the same run as the CA, so it then means -Revert and this script again with -WithClientCertificate.'
+	}
+	$step++
+	Write-Host "  $step. Create $($paths.TlsFolder) (owner Administrators; SYSTEM and Administrators full control, $($script:Facts.Account) read) with"
 	Write-Host '     ca.pem, server-cert.pem and server-key.pem.'
-	Write-Host "  3. Write the CA certificate (public part only) to $($paths.DevCa)"
-	if (-not $NoClientCertificate) {
-		Write-Host "     and the client certificate and key to $($paths.DevClientCert) and $($paths.DevClientKey),"
+	$step++
+	Write-Host "  $step. Write the CA certificate (public part only) to $($paths.DevCa),"
+	Write-Host "     the folder readable by $devUserName, SYSTEM and Administrators only. No private key goes to this folder."
+	if ($withClient) {
+		$step++
+		Write-Host "  $step. Write the client certificate and key to $($paths.ClientCert) and $($paths.ClientKey):"
+		Write-Host "     a folder of its own, not the CA's, $devUserName read only, SYSTEM and Administrators full control."
 	}
-	Write-Host "     the folder readable by $devUserName, SYSTEM and Administrators only."
-	foreach ($existing in @($paths.DevCa, $paths.DevClientCert, $paths.DevClientKey)) {
+	foreach ($existing in (Get-DevFiles $paths)) {
 		if (Test-Path -LiteralPath $existing) {
 			Write-Host "     $existing exists and is replaced."
 		}
 	}
 	if ($consoleUser -ne '' -and $consoleUser -ne $devUserName) {
-		Write-Host "     NOTE: $consoleUser is signed in, but the files go to the folder of $devUserName. The dev tools and tests of"
+		Write-Host "     NOTE: $consoleUser is signed in, but the files go to the folders of $devUserName. The dev tools and tests of"
 		Write-Host "     $consoleUser look in their own %LOCALAPPDATA%: pass -DevUser and -DevFolder for that account, or set OPMS_DB_TLS_CA."
 	}
-	Write-Host "  4. Copy $($script:Facts.Ini) to $($paths.Backup), then add at the end of its [mysqld] section:"
+	$step++
+	Write-Host "  $step. Copy $($script:Facts.Ini) to $($paths.Backup), then add at the end of its [mysqld] section (the comment lines"
+	Write-Host '     record the folders above; -Revert and -RequireSecureTransport read them from there):'
 	foreach ($line in $block) {
 		Write-Host "       $line"
 	}
-	Write-Host "  5. Restart the service $ServiceName (connections drop for a few seconds) and check a TLS session and the server"
+	$step++
+	Write-Host "  $step. Restart the service $ServiceName (connections drop for a few seconds) and check a TLS session and the server"
 	Write-Host '     certificate against the CA. If the server does not come back with TLS, the backup is restored and the files removed.'
 	Write-Host '  require_secure_transport is not set: unencrypted connections keep working until -RequireSecureTransport.'
 	Confirm-Change 'Turn on TLS in the local MariaDB service?'
 
-	$set = New-CertificateSet (-not $NoClientCertificate)
+	$set = New-CertificateSet $withClient
 	$changedIni = $false
 	try {
 		New-Item -ItemType Directory -Path $paths.TlsFolder | Out-Null
@@ -750,14 +902,23 @@ function Invoke-Enable {
 		}
 		Set-ProtectedAcl $paths.DevFolder @($devSid) @()
 		Write-AsciiFile $paths.DevCa $set.CaCert
-		if (-not $NoClientCertificate) {
-			Write-AsciiFile $paths.DevClientCert $set.ClientCert
-			Write-AsciiFile $paths.DevClientKey $set.ClientKey
+		$written = "$($paths.TlsFolder), $($paths.DevCa)"
+		if ($withClient) {
+			if (-not (Test-Path -LiteralPath $paths.ClientFolder)) {
+				New-Item -ItemType Directory -Path $paths.ClientFolder | Out-Null
+			}
+			Set-ProtectedAcl $paths.ClientFolder @() @($devSid)
+			Write-AsciiFile $paths.ClientCert $set.ClientCert
+			Write-AsciiFile $paths.ClientKey $set.ClientKey
+			foreach ($file in @($paths.ClientCert, $paths.ClientKey)) {
+				Set-ProtectedAcl $file @() @($devSid)
+			}
+			$written += ", $($paths.ClientFolder)"
 		}
 		Copy-Item -LiteralPath $script:Facts.Ini -Destination $paths.Backup
 		$changedIni = $true
 		Write-OptionFile $script:IniFile $newText
-		Write-Host "Wrote $($paths.TlsFolder), $($paths.DevFolder) and the TLS lines of $($script:Facts.Ini)."
+		Write-Host "Wrote $written and the TLS lines of $($script:Facts.Ini)."
 		Restart-DbService
 		$after = Get-ServerState 'tls'
 		if (-not $after.Ok -or $after.Values['have_ssl'] -ne 'YES' -or $after.Values['ssl_cipher'] -eq '') {
@@ -783,7 +944,7 @@ function Invoke-Enable {
 		}
 		catch {
 			Write-Host "Undoing failed too: $($_.Exception.Message)"
-			Write-Host "Restore $($script:Facts.Ini) from $($paths.Backup) by hand, restart the service $ServiceName, and remove $($paths.TlsFolder)."
+			Write-Host "Restore $($script:Facts.Ini) from $($paths.Backup) by hand, restart the service $ServiceName, and remove $($paths.TlsFolder) and $((Get-DevFiles $paths) -join ', ')."
 			exit 4
 		}
 	}
@@ -804,18 +965,21 @@ function Invoke-Enable {
 
 function Invoke-RequireSecureTransport {
 	$state = Assert-LocalServer
-	$paths = Get-Paths
 	$text = $script:IniFile.Text
 	if (-not (Test-HasBlock $text)) {
 		Stop-Refused "my.ini has no block of this script: turn on TLS first (run the script without -RequireSecureTransport)."
 	}
+	$paths = Get-Paths $false
 	if ($state.Values['require_secure_transport'] -eq '1' -and $text.Contains('require_secure_transport=ON')) {
 		Write-Host ''
 		Write-Host 'require_secure_transport is already ON. Nothing to do.'
 		exit 0
 	}
 	if (-not (Test-Path -LiteralPath $paths.DevCa)) {
-		Stop-Refused "$($paths.DevCa) is missing; the dev tools and tests would have no CA. Pass -DevFolder, or run -Revert and turn TLS on again."
+		if ($paths.IsRecorded) {
+			Stop-Refused "$($paths.DevCa), the CA copy the enable run recorded in my.ini, is missing; the dev tools and tests would have no CA. Run -Revert and turn TLS on again."
+		}
+		Stop-Refused "$($paths.DevCa) is missing (my.ini records no dev folder); the dev tools and tests would have no CA. Pass -DevFolder, or run -Revert and turn TLS on again."
 	}
 	$verified = Get-ServerState $paths.DevCa
 	if (-not $verified.Ok -or $verified.Values['ssl_cipher'] -eq '') {
@@ -824,6 +988,12 @@ function Invoke-RequireSecureTransport {
 	$block = Get-BlockLines $paths $true
 	$newText = Add-ToMysqldSection (Remove-Block $text) $block $script:IniFile.Newline
 	Write-Host ''
+	if ($paths.IsRecorded) {
+		Write-Host "The CA copy of the dev tools and tests, as my.ini records it: $($paths.DevCa) (verified against the server)."
+	}
+	else {
+		Write-Host "my.ini records no dev folder; the CA copy checked is $($paths.DevCa) (verified against the server)."
+	}
 	Write-Host 'Plan:'
 	Write-Host "  1. Replace the block of this script in $($script:Facts.Ini) with:"
 	foreach ($line in $block) {
@@ -868,7 +1038,7 @@ function Invoke-RequireSecureTransport {
 
 function Invoke-Revert {
 	[void](Assert-LocalServer)
-	$paths = Get-Paths
+	$paths = Get-Paths $false
 	$text = $script:IniFile.Text
 	if (-not (Test-Path -LiteralPath $paths.Backup)) {
 		if (-not (Test-HasBlock $text) -and -not (Test-Path -LiteralPath $paths.TlsFolder)) {
@@ -896,7 +1066,15 @@ function Invoke-Revert {
 		}
 	}
 	Write-Host "  2. Restart the service $ServiceName and check an unencrypted connection."
-	Write-Host "  3. Remove $($paths.TlsFolder), $($paths.DevCa), $($paths.DevClientCert), $($paths.DevClientKey) and the backup."
+	Write-Host "  3. Remove $($paths.TlsFolder), $((Get-DevFiles $paths) -join ', ') and the backup."
+	if ($paths.IsRecorded) {
+		Write-Host '     These are the folders the enable run recorded in my.ini (whichever account they belong to).'
+	}
+	else {
+		Write-Host "     my.ini records no dev folder, so only $($paths.DevCa) is removed (-DevFolder, else this account's %LOCALAPPDATA%)."
+		Write-Host '     A ca.pem, client-cert.pem or client-key.pem in another account''s folder is not touched: pass -DevFolder (and'
+		Write-Host '     -ClientFolder) for it, or remove it by hand, or the dev tools there keep asking the server for TLS.'
+	}
 	Confirm-Change 'Turn TLS off again?'
 	try {
 		Copy-Item -LiteralPath $paths.Backup -Destination $script:Facts.Ini -Force
@@ -931,11 +1109,11 @@ function Invoke-TestCertificates {
 	else {
 		New-Item -ItemType Directory -Path $TestCertificatesFolder | Out-Null
 	}
-	$set = New-CertificateSet (-not $NoClientCertificate)
+	$set = New-CertificateSet $WithClientCertificate.IsPresent
 	Write-AsciiFile (Join-Path $TestCertificatesFolder 'ca.pem') $set.CaCert
 	Write-AsciiFile (Join-Path $TestCertificatesFolder 'server-cert.pem') $set.ServerCert
 	Write-AsciiFile (Join-Path $TestCertificatesFolder 'server-key.pem') $set.ServerKey
-	if (-not $NoClientCertificate) {
+	if ($WithClientCertificate) {
 		Write-AsciiFile (Join-Path $TestCertificatesFolder 'client-cert.pem') $set.ClientCert
 		Write-AsciiFile (Join-Path $TestCertificatesFolder 'client-key.pem') $set.ClientKey
 	}
@@ -949,6 +1127,12 @@ try {
 	$modes = @($RequireSecureTransport.IsPresent, $Revert.IsPresent, ($TestCertificatesFolder -ne '')) | Where-Object { $_ }
 	if (@($modes).Count -gt 1) {
 		Stop-Refused 'Use one of -RequireSecureTransport, -Revert and -TestCertificatesFolder at a time.'
+	}
+	if ($WithClientCertificate -and ($RequireSecureTransport -or $Revert)) {
+		Stop-Refused '-WithClientCertificate goes with the enable run (or -TestCertificatesFolder) only: the client certificate is made with the CA.'
+	}
+	if ($ClientFolder -ne '' -and ($TestCertificatesFolder -ne '' -or (-not $WithClientCertificate -and -not $RequireSecureTransport -and -not $Revert))) {
+		Stop-Refused '-ClientFolder needs -WithClientCertificate (the enable run), or names the recorded client folder for -Revert or -RequireSecureTransport.'
 	}
 	if ($TestCertificatesFolder -ne '') {
 		Invoke-TestCertificates

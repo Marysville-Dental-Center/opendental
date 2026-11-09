@@ -39,6 +39,13 @@ namespace DataConnectionBase {
 			return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"OpenPmsDental","DevDbTls","ca.pem");
 		}
 
+		///<summary>Where tools/Enable-LocalDbTls.ps1 -WithClientCertificate writes the client certificate and key for S2-2's certificate-login test
+		///(client-cert.pem, client-key.pem): %LOCALAPPDATA%\OpenPmsDental\DevDbTlsClient, a folder of its own beside the CA's, so the folder the
+		///dev tools read the CA from never holds a private key. The script writes no client certificate without that switch.</summary>
+		public static string GetDefaultClientFolder() {
+			return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"OpenPmsDental","DevDbTlsClient");
+		}
+
 		///<summary>True when OPMS_DB_REQUIRE_TLS asks for TLS (ParseRequireTls).</summary>
 		public static bool IsTlsRequired() {
 			return ParseRequireTls(Environment.GetEnvironmentVariable(REQUIRE_TLS_VARIABLE));
