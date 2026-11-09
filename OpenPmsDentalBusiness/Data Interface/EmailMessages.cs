@@ -4178,10 +4178,13 @@ b21wb25lbnQ+DQogICA8L2NvbXBvbmVudD4NCjwvQ2xpbmljYWxEb2N1bWVudD4=
 			return "";
 		}
 
+		///<summary>The subject alternative name extension (RFC 5280, 4.2.1.6).</summary>
+		private const string OID_SUBJECT_ALTERNATIVE_NAME="2.5.29.17";
+
 		///<summary>The RFC822 name is the fully quilified email address.</summary>
 		public static string GetCertRfc822Name(X509Certificate2 x509Certificate2) {
 			for(int i=0;i<x509Certificate2.Extensions.Count;i++) {
-				if(x509Certificate2.Extensions[i].Oid.FriendlyName.ToLower()!="subject alternative name") {
+				if(x509Certificate2.Extensions[i].Oid.Value!=OID_SUBJECT_ALTERNATIVE_NAME) {//By value: the friendly name is localized, and null for an OID Windows does not know.
 					continue;
 				}
 				AsnEncodedData asnEncodedData=new AsnEncodedData(x509Certificate2.Extensions[i].Oid,x509Certificate2.Extensions[i].RawData);
@@ -4200,7 +4203,7 @@ b21wb25lbnQ+DQogICA8L2NvbXBvbmVudD4NCjwvQ2xpbmljYWxEb2N1bWVudD4=
 		///<summary>The DNS name is the domain name part of the email address.</summary>
 		public static string GetCertDnsName(X509Certificate2 x509Certificate2) {
 			for(int i=0;i<x509Certificate2.Extensions.Count;i++) {
-				if(x509Certificate2.Extensions[i].Oid.FriendlyName.ToLower()!="subject alternative name") {
+				if(x509Certificate2.Extensions[i].Oid.Value!=OID_SUBJECT_ALTERNATIVE_NAME) {//By value: the friendly name is localized, and null for an OID Windows does not know.
 					continue;
 				}
 				AsnEncodedData asnEncodedData=new AsnEncodedData(x509Certificate2.Extensions[i].Oid,x509Certificate2.Extensions[i].RawData);

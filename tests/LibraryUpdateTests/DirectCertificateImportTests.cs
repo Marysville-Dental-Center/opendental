@@ -188,6 +188,27 @@ namespace LibraryUpdateTests {
 			}
 		}
 
+		///<summary>A provider's certificate with an extension Windows has no name for, before its subject alternative name: the name check reads the
+		///subject alternative name by its OID (before, the program's certificate search threw on the missing friendly name).</summary>
+		[TestMethod]
+		public void CheckPrivateFile_ReadsACertificateWithAnExtensionWindowsHasNoNameFor() {
+			using(DirectTestPki directTestPki=new DirectTestPki())
+			using(DirectTestStores directTestStores=new DirectTestStores()) {
+				DirectTestPki.Issued issued=directTestPki.Issue(ADDRESS,isPrivateExtensionFirst:true);
+				Assert.IsNull(issued.X509Certificate2WithKey.Extensions[0].Oid.FriendlyName,"Windows has no name for the private OID.");
+				Assert.AreEqual(DirectTestPki.PRIVATE_OID,issued.X509Certificate2WithKey.Extensions[0].Oid.Value);
+				Assert.AreEqual(ADDRESS,EmailCertificates.GetCertRfc822Name(issued.X509Certificate2WithKey));
+				Assert.AreEqual(DirectCertificateBinding.Address,DirectCertificateImport.GetBinding(issued.X509Certificate2WithKey,ADDRESS));
+				DirectCertificateResult directCertificateResult=DirectCertificateImport.CheckPrivateFile(ADDRESS,directTestPki.WritePfx("pat.pfx",issued,isCaIncluded:true),
+					directTestPki.Password,DateTime.UtcNow);
+				Assert.AreEqual("",directCertificateResult.Error);
+				Assert.AreEqual(issued.Thumbprint,directCertificateResult.ListDetails[0].Thumbprint);
+				DirectTestPki.Issued issuedDomain=directTestPki.Issue(null,dnsName:DOMAIN,isPrivateExtensionFirst:true);
+				Assert.AreEqual(DOMAIN,EmailCertificates.GetCertDnsName(issuedDomain.X509Certificate2WithKey));
+				Assert.IsTrue(directTestStores.AreStoresDeleted());
+			}
+		}
+
 		///<summary>An older certificate of the address is replaced only after the user agreed to replace it (the window's question): without the
 		///agreement nothing is imported; with it the new certificate is added and the older ones removed. The key of the older one this import put
 		///there is deleted with it; the key of one put there another way (certlm.msc) stays; another address's certificate is not touched.</summary>
@@ -555,6 +576,8 @@ namespace LibraryUpdateTests {
 		private readonly X509Certificate2 _x509Certificate2Ca;
 		private readonly List<Issued> _listIssued=new List<Issued>();
 		private int _serial=1;
+		///<summary>An OID under the IANA private enterprise arc that no one has: Windows has no friendly name for it.</summary>
+		public const string PRIVATE_OID="1.3.6.1.4.1.99999.4242.1";
 
 		public string CaSubject { get { return _x509Certificate2Ca.Subject; } }
 		public string CaThumbprint { get { return _x509Certificate2Ca.Thumbprint; } }
@@ -594,8 +617,11 @@ namespace LibraryUpdateTests {
 		}
 
 		///<summary>An address certificate (E= and the rfc822 name), or with dnsName a domain certificate (the DNS name), issued by the CA, valid from
-		///yesterday for 20 days unless the dates are given.</summary>
-		public Issued Issue(string emailAddress,string dnsName=null,DateTimeOffset? dateTimeOffsetNotBefore=null,DateTimeOffset? dateTimeOffsetNotAfter=null) {
+		///yesterday for 20 days unless the dates are given. isPrivateExtensionFirst: an extension of a private OID that Windows has no name for
+		///comes before the subject alternative name.</summary>
+		public Issued Issue(string emailAddress,string dnsName=null,DateTimeOffset? dateTimeOffsetNotBefore=null,DateTimeOffset? dateTimeOffsetNotAfter=null,
+			bool isPrivateExtensionFirst=false)
+		{
 			using(RSA rsa=RSA.Create(2048)) {
 				string subject=(dnsName==null) ? "CN=DIRECT-CERT Test Address, E="+emailAddress : "CN="+dnsName;
 				CertificateRequest certificateRequest=new CertificateRequest(subject,rsa,HashAlgorithmName.SHA256,RSASignaturePadding.Pkcs1);
@@ -605,6 +631,9 @@ namespace LibraryUpdateTests {
 				}
 				else {
 					subjectAlternativeNameBuilder.AddDnsName(dnsName);
+				}
+				if(isPrivateExtensionFirst) {
+					certificateRequest.CertificateExtensions.Add(new X509Extension(new Oid(PRIVATE_OID),new byte[] { 0x05,0x00 },false));//ASN.1 NULL
 				}
 				certificateRequest.CertificateExtensions.Add(subjectAlternativeNameBuilder.Build());
 				certificateRequest.CertificateExtensions.Add(new X509BasicConstraintsExtension(false,false,0,true));
