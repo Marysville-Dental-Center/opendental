@@ -404,6 +404,11 @@ figure (medians moved by 30 to 50 ms between rounds in 7 days). Minimum, median,
 |---|---|---|
 | `insv3-1-tests-on-insv2.txt` | INSV2's window function, the new tests | INSVERIFYTests 19 of 19, NoHqTests 50 of 58 (8 skipped: the program was not built yet in this worktree). |
 | `insv3-1-after-change.txt` | INSV3 | INSVERIFYTests 23 of 23, NoHqTests 50 of 58 (the same 8 skipped). |
+| `insv3-1-final.txt` | INSV3, after the full build | INSVERIFYTests 23 of 23, M2INSVTests 17 of 17, NoHqTests 58 of 58, UnitTests 1,728 of 1,731 (the 3 skipped Topaz signature tests); all 40 InsVerify tests of UnitTests pass. |
+
+Full lane build of `OpenDental.Local.slnf` (Debug, x86): 0 errors. No scratch database is left (`insv_` and `insv2_` checked after the
+runs). Not run: the window itself (no window is opened) and the Middle Tier (`GetVerifyGridList`'s shape did not change; the choice runs
+inside it, after its `Meth.GetObject` call).
 
 ### For the lead
 
