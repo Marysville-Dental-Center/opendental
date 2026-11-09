@@ -119,6 +119,38 @@ namespace ProjectFileTests {
 		}
 		#endregion What is not modelled throws
 
+		#region Exists
+		[TestMethod]
+		public void Exists_InAnImportedFile_IsRelativeToThatFileForGroupsAndImports_AndToTheProjectOtherwise() {
+			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
+				//MSBuild 18 (S1-T3's probe; Evaluator.GetCurrentDirectoryForConditionEvaluation): a PropertyGroup's, an Import's and an ImportGroup's
+				//Exists('relative') is relative to the folder of the file it is in, every other condition's (a property, an ItemGroup, an item) to the
+				//project's folder. Microsoft.WebApplication.targets relies on the second: AppConfig is Web.config when the project has one.
+				fixtureFolder.WriteFile(@"marker-at-root.txt","");
+				fixtureFolder.WriteFile(@"tests\Classic\marker-in-project.txt","");
+				fixtureFolder.WriteFile("Imported.props","<Project><PropertyGroup><FixtureFromImport>yes</FixtureFromImport></PropertyGroup></Project>");
+				fixtureFolder.EditFile("Directory.Build.props","</Project>",
+					"<PropertyGroup Condition=\"Exists('marker-at-root.txt')\"><FixtureGroupRoot>yes</FixtureGroupRoot></PropertyGroup>"
+					+"<PropertyGroup Condition=\"Exists('marker-in-project.txt')\"><FixtureGroupProject>yes</FixtureGroupProject></PropertyGroup>"
+					+"<PropertyGroup><FixturePropertyRoot Condition=\"Exists('marker-at-root.txt')\">yes</FixturePropertyRoot>"
+					+"<FixturePropertyProject Condition=\"Exists('marker-in-project.txt')\">yes</FixturePropertyProject></PropertyGroup>"
+					+"<ItemGroup Condition=\"Exists('marker-in-project.txt')\"><FixtureGroupItem Include=\"x\" /></ItemGroup>"
+					+"<ItemGroup><FixtureItemProject Include=\"x\" Condition=\"Exists('marker-in-project.txt')\" />"
+					+"<FixtureItemRoot Include=\"x\" Condition=\"Exists('marker-at-root.txt')\" /></ItemGroup>"
+					+"<Import Project=\"Imported.props\" Condition=\"Exists('marker-at-root.txt')\" /></Project>");
+				ProjectFile projectFile=fixtureFolder.Load("Classic");
+				Assert.AreEqual("yes",projectFile.GetProperty("FixtureGroupRoot"),"A PropertyGroup: the file's folder.");
+				Assert.AreEqual("",projectFile.GetProperty("FixtureGroupProject"));
+				Assert.AreEqual("",projectFile.GetProperty("FixturePropertyRoot"),"A property: the project's folder.");
+				Assert.AreEqual("yes",projectFile.GetProperty("FixturePropertyProject"));
+				Assert.AreEqual(1,projectFile.GetItems("FixtureGroupItem").Count,"An ItemGroup: the project's folder.");
+				Assert.AreEqual(1,projectFile.GetItems("FixtureItemProject").Count,"An item: the project's folder.");
+				Assert.AreEqual(0,projectFile.GetItems("FixtureItemRoot").Count);
+				Assert.AreEqual("yes",projectFile.GetProperty("FixtureFromImport"),"An Import: the file's folder.");
+			}
+		}
+		#endregion Exists
+
 		#region Update
 		[TestMethod]
 		public void Update_MatchesTheItemTypeIgnoringCase() {

@@ -289,6 +289,29 @@ namespace ProjectFileTests {
 		}
 
 		[TestMethod]
+		public void DelaySign_IsBlank_UnlessTheAssemblyIsSignedAndItIsTrue() {
+			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
+				//Microsoft.NET.Sdk.props sets DelaySign false, then Microsoft.Common.CurrentVersion.targets makes it false for an unsigned assembly
+				//and blanks anything but 'true': MSBuild 18 -getProperty gives '' for every SDK-style project of the repository (S1-T2's check).
+				Assert.AreEqual("",fixtureFolder.Load("SdkStyle").GetProperty("DelaySign"));
+				Assert.AreEqual("",fixtureFolder.Load("Classic").GetProperty("DelaySign"));
+				foreach(string[] arrayCase in new[] { new[] { "true","true","true" },new[] { "true","false","" },new[] { "false","true","" },
+					new[] { "","true","" },new[] { "true","","" } })
+				{
+					string text="<SignAssembly>"+arrayCase[0]+"</SignAssembly><DelaySign>"+arrayCase[1]+"</DelaySign>";
+					foreach(string name in new[] { "SdkStyle","Classic" }) {
+						string anchor=name=="SdkStyle" ? "<UseWPF>true</UseWPF>" : "<AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>";
+						string path=fixtureFolder.ProjectPath(name);
+						string textBefore=System.IO.File.ReadAllText(path);
+						fixtureFolder.EditProject(name,anchor,anchor+text);
+						Assert.AreEqual(arrayCase[2],fixtureFolder.Load(name).GetProperty("DelaySign"),name+": "+text);
+						System.IO.File.WriteAllText(path,textBefore);
+					}
+				}
+			}
+		}
+
+		[TestMethod]
 		public void Sdk_TheProjectsOwnDefinesAndNoWarn_KeepWhatTheSdkAdds() {
 			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
 				//$(DefineConstants) and $(NoWarn) in the project's own value: the SDK's TRACE and 1701;1702 come before it, DEBUG after it. MSBuild 18

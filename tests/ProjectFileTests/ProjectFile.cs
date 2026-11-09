@@ -63,6 +63,8 @@ namespace ProjectFileTests {
 		private const string VISUAL_STUDIO_VERSION="18.0";
 		private static readonly string[] _arrayReservedAttributes=new[] { "Include","Exclude","Remove","Update","Condition","KeepMetadata",
 			"RemoveMetadata","KeepDuplicates","MatchOnMetadata","MatchOnMetadataOptions","Label" };
+		///<summary>The characters MSBuild's EscapingUtilities.Escape writes as %XX.</summary>
+		private static readonly char[] _arrayEscapedChars=new[] { '%','*','?','@','$','(',')',';','\'' };
 		///<summary>Properties that MSBuild, its toolset (MSBuild.exe.config) or the solution build give every project and this reader does not
 		///compute: machine paths and versions, and the solution's global properties. One of them in a Condition, an Include or an Import throws
 		///(except the imports of MSBuild's and Visual Studio's own files, which are not read), as does GetProperty for it, unless a file this reader
@@ -183,19 +185,20 @@ namespace ProjectFileTests {
 		}
 
 		private void Evaluate(XDocument xDocument) {
-			_dictProperties["Configuration"]=Configuration;
-			_dictProperties["Platform"]=Platform;
-			_dictProperties["MSBuildProjectFullPath"]=FullPath;
-			_dictProperties["MSBuildProjectDirectory"]=Folder;
-			_dictProperties["MSBuildProjectFile"]=Path.GetFileName(FullPath);
-			_dictProperties["MSBuildProjectName"]=Path.GetFileNameWithoutExtension(FullPath);
-			_dictProperties["MSBuildProjectExtension"]=Path.GetExtension(FullPath);
+			//Every value is kept as MSBuild keeps it, escaped (Escape, Unescape): the reserved properties hold the escaped path.
+			_dictProperties["Configuration"]=Escape(Configuration);
+			_dictProperties["Platform"]=Escape(Platform);
+			_dictProperties["MSBuildProjectFullPath"]=Escape(FullPath);
+			_dictProperties["MSBuildProjectDirectory"]=Escape(Folder);
+			_dictProperties["MSBuildProjectFile"]=Escape(Path.GetFileName(FullPath));
+			_dictProperties["MSBuildProjectName"]=Escape(Path.GetFileNameWithoutExtension(FullPath));
+			_dictProperties["MSBuildProjectExtension"]=Escape(Path.GetExtension(FullPath));
 			//Microsoft.Common.CurrentVersion.targets defines these for every project; build events and copy targets use them.
-			_dictProperties["ProjectDir"]=Folder+@"\";
-			_dictProperties["ProjectPath"]=FullPath;
-			_dictProperties["ProjectFileName"]=Path.GetFileName(FullPath);
-			_dictProperties["ProjectName"]=Path.GetFileNameWithoutExtension(FullPath);
-			_dictProperties["MSBuildProjectDirectoryNoRoot"]=Folder.Substring(Path.GetPathRoot(Folder).Length);
+			_dictProperties["ProjectDir"]=Escape(Folder+@"\");
+			_dictProperties["ProjectPath"]=Escape(FullPath);
+			_dictProperties["ProjectFileName"]=Escape(Path.GetFileName(FullPath));
+			_dictProperties["ProjectName"]=Escape(Path.GetFileNameWithoutExtension(FullPath));
+			_dictProperties["MSBuildProjectDirectoryNoRoot"]=Escape(Folder.Substring(Path.GetPathRoot(Folder).Length));
 			//MSBuild 18's toolset: "Current" for every MSBuild since 16, and the sub-toolset version.
 			_dictProperties["MSBuildToolsVersion"]="Current";
 			_dictProperties["VisualStudioVersion"]=VISUAL_STUDIO_VERSION;
@@ -240,7 +243,7 @@ namespace ProjectFileTests {
 			foreach(XElement xElement in xElementProject.Elements()) {
 				switch(xElement.Name.LocalName) {
 					case "PropertyGroup":
-						if(!IsConditionTrue(xElement,fileContext)) {
+						if(!IsConditionTrueInFile(xElement,fileContext)) {
 							break;
 						}
 						foreach(XElement xElementProperty in xElement.Elements()) {
@@ -260,7 +263,7 @@ namespace ProjectFileTests {
 						ReadImport(xElement,fileContext);
 						break;
 					case "ImportGroup":
-						if(IsConditionTrue(xElement,fileContext)) {
+						if(IsConditionTrueInFile(xElement,fileContext)) {
 							foreach(XElement xElementImport in xElement.Elements().Where(x => x.Name.LocalName=="Import")) {
 								ReadImport(xElementImport,fileContext);
 							}
@@ -278,7 +281,7 @@ namespace ProjectFileTests {
 		private void ReadImport(XElement xElementImport,FileContext fileContext) {
 			string project=(string)xElementImport.Attribute("Project")??"";
 			if(xElementImport.Attribute("Sdk")!=null) {
-				if(!IsConditionTrue(xElementImport,fileContext)) {
+				if(!IsConditionTrueInFile(xElementImport,fileContext)) {
 					return;
 				}
 				if(project.EndsWith("Sdk.props",StringComparison.OrdinalIgnoreCase)) {
@@ -305,15 +308,16 @@ namespace ProjectFileTests {
 			{
 				return;
 			}
-			if(!IsConditionTrue(xElementImport,fileContext)) {
+			if(!IsConditionTrueInFile(xElementImport,fileContext)) {
 				return;
 			}
 			string expanded=Expand(project,fileContext);
 			ThrowIfUnresolved(expanded,fileContext.Path+": Import "+project);
+			//A '*' or '?' as written is a wildcard; an escaped one (%2a, %3f) is part of the file's name.
 			if(expanded.IndexOfAny(new[] { '*','?' })>=0) {
 				throw new NotSupportedException(fileContext.Path+": a wildcard Import is not modelled by ProjectFile: "+project);
 			}
-			string path=Path.GetFullPath(Path.Combine(fileContext.Directory,expanded));
+			string path=Path.GetFullPath(Path.Combine(fileContext.Directory,Unescape(expanded)));
 			if(!File.Exists(path)) {
 				throw new FileNotFoundException(fileContext.Path+" imports "+project+", which is not there ("+path+"). MSBuild fails the same way (MSB4019).",path);
 			}
@@ -359,8 +363,8 @@ namespace ProjectFileTests {
 			_dictProperties["_InitialBaseIntermediateOutputPath"]=GetValue("BaseIntermediateOutputPath");
 			SetIfEmpty("MSBuildProjectExtensionsPath",GetValue("BaseIntermediateOutputPath"));
 			string extensionsPath=GetValue("MSBuildProjectExtensionsPath");
-			if(!IsUnresolved(extensionsPath) && !Path.IsPathRooted(extensionsPath)) {
-				_dictProperties["MSBuildProjectExtensionsPath"]=Path.Combine(Folder,extensionsPath);
+			if(!IsUnresolved(extensionsPath) && !Path.IsPathRooted(Unescape(extensionsPath))) {
+				_dictProperties["MSBuildProjectExtensionsPath"]=Escape(Path.Combine(Folder,Unescape(extensionsPath)));
 			}
 			AppendTrailingSlash("MSBuildProjectExtensionsPath");
 			//Microsoft.Common.CurrentVersion.targets imports Microsoft.Common.props unless this is true.
@@ -469,18 +473,25 @@ namespace ProjectFileTests {
 			SetIfEmpty("TargetFileName",GetValue("TargetName")+GetValue("TargetExt"));
 			string outDir=GetValue("OutDir");
 			if(outDir!="") {
-				_dictProperties["TargetDir"]=IsUnresolved(outDir) ? outDir : Path.GetFullPath(Path.Combine(Folder,outDir));
+				_dictProperties["TargetDir"]=IsUnresolved(outDir) ? outDir : Escape(Path.GetFullPath(Path.Combine(Folder,Unescape(outDir))));
 			}
 			SetIfEmpty("TargetPath",GetValue("TargetDir")+GetValue("TargetFileName"));
-			SetIfEmpty("ProjectDir",EnsureTrailingSlash(Folder));
+			SetIfEmpty("ProjectDir",Escape(EnsureTrailingSlash(Folder)));
 			if(IsValue("OutputType","exe") || IsValue("OutputType","winexe")) {
 				_dictProperties["GenerateBindingRedirectsOutputType"]="true";
 			}
 			Version versionFramework;
 			if(GetValue("AutoGenerateBindingRedirects")=="" && IsValue("TargetFrameworkIdentifier",".NETFramework")
-				&& Version.TryParse(GetValue("TargetFrameworkVersion").TrimStart('v','V'),out versionFramework) && versionFramework>=new Version(4,7,2))
+				&& Version.TryParse(GetUnescaped("TargetFrameworkVersion").TrimStart('v','V'),out versionFramework) && versionFramework>=new Version(4,7,2))
 			{
 				_dictProperties["AutoGenerateBindingRedirects"]="true";
+			}
+			//Delay signing only for a signed assembly, and only when it is 'true': anything else is '' (the SDK's DelaySign false included).
+			if(!IsPropertyTrue("SignAssembly")) {
+				_dictProperties["DelaySign"]="false";
+			}
+			if(!IsPropertyTrue("DelaySign")) {
+				_dictProperties["DelaySign"]="";
 			}
 		}
 
@@ -502,7 +513,7 @@ namespace ProjectFileTests {
 			SetIfEmpty("FileAlignment","512");
 			SetIfEmpty("ErrorReport","prompt");
 			SetIfEmpty("AssemblyName",GetValue("MSBuildProjectName"));
-			SetIfEmpty("RootNamespace",GetValue("MSBuildProjectName").Replace(" ","_"));
+			SetIfEmpty("RootNamespace",Escape(GetUnescaped("MSBuildProjectName").Replace(" ","_")));
 			SetIfEmpty("Deterministic","true");
 			if(IsValue("Configuration","Debug")) {
 				SetIfEmpty("DebugSymbols","true");
@@ -567,7 +578,7 @@ namespace ProjectFileTests {
 			Version versionFramework;
 			bool isWindowsDesktopFramework=IsValue("TargetFrameworkIdentifier",".NETFramework")
 				|| (IsValue("TargetFrameworkIdentifier",".NETCoreApp") && IsValue("TargetPlatformIdentifier","Windows")
-				&& Version.TryParse(GetValue("_TargetFrameworkVersionWithoutV"),out versionFramework) && versionFramework>=new Version(3,0));
+				&& Version.TryParse(GetUnescaped("_TargetFrameworkVersionWithoutV"),out versionFramework) && versionFramework>=new Version(3,0));
 			if(GetValue("ImportWindowsDesktopTargets")=="" && (IsPropertyTrue("UseWPF") || IsPropertyTrue("UseWindowsForms")) && isWindowsDesktopFramework) {
 				_dictProperties["ImportWindowsDesktopTargets"]="true";
 			}
@@ -593,7 +604,7 @@ namespace ProjectFileTests {
 				_dictProperties["HasRuntimeOutput"]=isExecutable ? "true" : "";
 			}
 			SetIfEmpty("PlatformName",GetValue("Platform"));
-			string targetFramework=GetValue("TargetFramework");
+			string targetFramework=GetUnescaped("TargetFramework");
 			if(targetFramework=="" && GetValue("TargetFrameworks")!="") {
 				throw new NotSupportedException(FullPath+": TargetFrameworks (more than one target framework) is not modelled by ProjectFile.");
 			}
@@ -625,9 +636,9 @@ namespace ProjectFileTests {
 					}
 				}
 			}
-			_dictProperties["_TargetFrameworkVersionWithoutV"]=GetValue("TargetFrameworkVersion").TrimStart('v','V');
+			_dictProperties["_TargetFrameworkVersionWithoutV"]=Escape(GetUnescaped("TargetFrameworkVersion").TrimStart('v','V'));
 			Version versionFramework;
-			if(IsValue("TargetFrameworkIdentifier",".NETCoreApp") && Version.TryParse(GetValue("_TargetFrameworkVersionWithoutV"),out versionFramework)
+			if(IsValue("TargetFrameworkIdentifier",".NETCoreApp") && Version.TryParse(GetUnescaped("_TargetFrameworkVersionWithoutV"),out versionFramework)
 				&& versionFramework>=new Version(5,0))
 			{
 				_dictProperties["_EnableDefaultWindowsPlatform"]="false";
@@ -659,7 +670,7 @@ namespace ProjectFileTests {
 			_dictProperties["DefaultItemExcludes"]=GetValue("DefaultItemExcludes")+";"+GetValue("OutputPath")+"/**;"+GetValue("IntermediateOutputPath")+"/**";
 			if(IsPropertyTrue("AppendTargetFrameworkToOutputPath") && targetFramework!="") {
 				foreach(string name in new[] { "OutputPath","IntermediateOutputPath" }) {
-					_dictProperties[name]=isFrameworkKnown ? GetValue(name)+targetFramework.ToLowerInvariant()+@"\" : Unresolved("the "+name+" of TargetFramework "+targetFramework);
+					_dictProperties[name]=isFrameworkKnown ? GetValue(name)+Escape(targetFramework.ToLowerInvariant())+@"\" : Unresolved("the "+name+" of TargetFramework "+targetFramework);
 				}
 			}
 			//Microsoft.NET.RuntimeIdentifierInference.targets sets the platform target from the runtime identifier it infers when the project has
@@ -684,7 +695,7 @@ namespace ProjectFileTests {
 		private void ApplySdkLanguageProperties() {
 			string frameworkIdentifier=GetValue("TargetFrameworkIdentifier");
 			Version versionFramework;
-			bool hasFrameworkVersion=Version.TryParse(GetValue("_TargetFrameworkVersionWithoutV"),out versionFramework);
+			bool hasFrameworkVersion=Version.TryParse(GetUnescaped("_TargetFrameworkVersionWithoutV"),out versionFramework);
 			bool isNetCoreApp=IsValue("TargetFrameworkIdentifier",".NETCoreApp");
 			if(!IsPropertyTrue("EnableUnsafeBinaryFormatterSerialization") && isNetCoreApp && hasFrameworkVersion && versionFramework>=new Version(7,0)) {
 				//Windows Forms and WPF keep BinaryFormatter working at run time through .NET 8.
@@ -699,7 +710,7 @@ namespace ProjectFileTests {
 			//Microsoft.NET.Sdk.CSharp.targets
 			SetIfEmpty("AppDesignerFolder","Properties");
 			if(!IsPropertyTrue("DisableImplicitConfigurationDefines")) {
-				string define=GetValue("Configuration").ToUpperInvariant().Replace('-','_').Replace('.','_').Replace(' ','_');
+				string define=Escape(GetUnescaped("Configuration").ToUpperInvariant().Replace('-','_').Replace('.','_').Replace(' ','_'));
 				_dictProperties["ImplicitConfigurationDefine"]=define;
 				_dictProperties["DefineConstants"]=GetValue("DefineConstants")+";"+define;
 			}
@@ -721,7 +732,7 @@ namespace ProjectFileTests {
 					_dictProperties["WarningLevel"]="4";
 				}
 				else if(isNetCoreApp) {
-					_dictProperties["WarningLevel"]=GetValue("_TargetFrameworkVersionWithoutV").Split('.')[0];
+					_dictProperties["WarningLevel"]=Escape(GetUnescaped("_TargetFrameworkVersionWithoutV").Split('.')[0]);
 				}
 			}
 		}
@@ -794,9 +805,14 @@ namespace ProjectFileTests {
 			}
 		}
 
-		///<summary>The property's value equals the text, as an MSBuild condition compares them: ignoring case.</summary>
+		///<summary>The property's value equals the text, as an MSBuild condition compares them: unescaped and ignoring case.</summary>
 		private bool IsValue(string name,string value) {
-			return GetValue(name).Equals(value,StringComparison.OrdinalIgnoreCase);
+			return GetUnescaped(name).Equals(value,StringComparison.OrdinalIgnoreCase);
+		}
+
+		///<summary>The value as it stands at this point of the evaluation, unescaped, or "" when nothing set it; no check.</summary>
+		private string GetUnescaped(string name) {
+			return Unescape(GetValue(name));
 		}
 
 		private bool IsPropertyTrue(string name) {
@@ -861,7 +877,7 @@ namespace ProjectFileTests {
 		private bool IsWindowsDesktopGlobbing() {
 			Version versionFramework;
 			return IsPropertyTrue("EnableDefaultItems") && IsPropertyTrue("UseWPF")
-				&& Version.TryParse(GetValue("_TargetFrameworkVersionWithoutV"),out versionFramework) && versionFramework>=new Version(3,0);
+				&& Version.TryParse(GetUnescaped("_TargetFrameworkVersionWithoutV"),out versionFramework) && versionFramework>=new Version(3,0);
 		}
 
 		///<summary>The ItemDefinitionGroup of Microsoft.NET.Sdk.WindowsDesktop.props (SDK 10.0.114): with the WPF default globs on, every Page and
@@ -877,7 +893,7 @@ namespace ProjectFileTests {
 				return;
 			}
 			//Before the item's own metadata; an item copied from another item list (Include="@(Page)") keeps the metadata it brought.
-			foreach(string[] arrayDefinition in new[] { new[] { "Generator","MSBuild:Compile" },new[] { "XamlRuntime",GetValue("DefaultXamlRuntime") },
+			foreach(string[] arrayDefinition in new[] { new[] { "Generator","MSBuild:Compile" },new[] { "XamlRuntime",GetUnescaped("DefaultXamlRuntime") },
 				new[] { "SubType","Designer" } })
 			{
 				if(!projectItem.HasMetadata(arrayDefinition[0])) {
@@ -941,7 +957,7 @@ namespace ProjectFileTests {
 					//The item type ignoring case, as Include and Remove have it: MSBuild's item types are not case-sensitive.
 					foreach(ProjectItem projectItem in _listItems.Where(x => x.ItemType.Equals(itemType,StringComparison.OrdinalIgnoreCase) && listMatchers.Any(y => y(x)))) {
 						foreach(KeyValuePair<string,string> pair in dictMetadata) {
-							projectItem.SetMetadata(pair.Key,ExpandWellKnownMetadata(pair.Value,projectItem));
+							projectItem.SetMetadata(pair.Key,Unescape(ExpandWellKnownMetadata(pair.Value,projectItem)));
 						}
 					}
 				}
@@ -969,8 +985,9 @@ namespace ProjectFileTests {
 			return dictMetadata;
 		}
 
-		///<summary>Adds the items an Include names (already expanded): files, wildcards, item lists, separated by ';', less those its Exclude
-		///names.</summary>
+		///<summary>Adds the items an Include names (already expanded, so escaped): files, wildcards, item lists, separated by ';', less those its
+		///Exclude names. As MSBuild has it, the list is split and its wildcards are found in the escaped text (an escaped ';' or '*' is part of a
+		///name), then each entry is unescaped: the item's Include, its file and its metadata are unescaped, as -getItem prints them.</summary>
 		private void AddItems(string itemType,string include,string exclude,Dictionary<string,string> dictMetadata,FileContext fileContext) {
 			string where=fileContext==null ? "the .NET SDK's default "+itemType+" items" : fileContext.Path+": "+itemType+" Include=\""+include+"\"";
 			ThrowIfUnresolved(include,where);
@@ -993,14 +1010,16 @@ namespace ProjectFileTests {
 					throw new NotSupportedException(where+": item transforms and metadata references are not modelled by ProjectFile.");
 				}
 				if(spec.IndexOfAny(new[] { '*','?' })>=0) {
-					foreach(string[] arrayFile in ExpandWildcard(spec,listPrunedFolders)) {
+					//A spec with a wildcard is unescaped whole before the files are matched (MSBuild's EngineFileUtilities).
+					foreach(string[] arrayFile in ExpandWildcard(Unescape(spec),listPrunedFolders)) {
 						ProjectItem projectItem=new ProjectItem(itemType,arrayFile[0],arrayFile[1],true,fileContext?.Path);
 						projectItem.RecursiveDir=arrayFile[2];
 						listNew.Add(projectItem);
 					}
 					continue;
 				}
-				listNew.Add(new ProjectItem(itemType,NormalizeSlashes(spec),TryGetFullPath(spec),false,fileContext?.Path));
+				string specUnescaped=Unescape(spec);
+				listNew.Add(new ProjectItem(itemType,NormalizeSlashes(specUnescaped),TryGetFullPath(specUnescaped),false,fileContext?.Path));
 			}
 			foreach(ProjectItem projectItem in listNew) {
 				if(listExcludes.Any(x => x(projectItem))) {
@@ -1008,40 +1027,42 @@ namespace ProjectFileTests {
 				}
 				ApplyItemDefinitions(projectItem);
 				foreach(KeyValuePair<string,string> pair in dictMetadata) {
-					projectItem.SetMetadata(pair.Key,ExpandWellKnownMetadata(pair.Value,projectItem));
+					projectItem.SetMetadata(pair.Key,Unescape(ExpandWellKnownMetadata(pair.Value,projectItem)));
 				}
 				_listItems.Add(projectItem);
 			}
 		}
 
 		///<summary>%(Filename), %(Extension), %(RecursiveDir), %(Identity), %(FullPath) and %(RelativeDir) of the item itself in a metadata value,
-		///as in Link="%(RecursiveDir)%(Filename)%(Extension)" of the third-party source builds. Other metadata references stay as written.
-		///</summary>
+		///as in Link="%(RecursiveDir)%(Filename)%(Extension)" of the third-party source builds, escaped like the value they go into. Other metadata
+		///references stay as written.</summary>
 		private static string ExpandWellKnownMetadata(string value,ProjectItem projectItem) {
 			if(value==null || !value.Contains("%(")) {
 				return value;
 			}
-			return Regex.Replace(value,@"%\(\s*(\w+)\s*\)",match => {
-				string fullPath=projectItem.FullPath??"";
-				switch(match.Groups[1].Value.ToLowerInvariant()) {
-					case "filename":
-						return Path.GetFileNameWithoutExtension(projectItem.Include);
-					case "extension":
-						return Path.GetExtension(projectItem.Include);
-					case "recursivedir":
-						return projectItem.RecursiveDir;
-					case "identity":
-						return projectItem.Include;
-					case "fullpath":
-						return fullPath;
-					case "relativedir": {
-							int index=projectItem.Include.LastIndexOf('\\');
-							return index<0 ? "" : projectItem.Include.Substring(0,index+1);
-						}
-					default:
-						return match.Value;
-				}
-			});
+			return Regex.Replace(value,@"%\(\s*(\w+)\s*\)",match => Escape(GetWellKnownMetadata(match,projectItem)));
+		}
+
+		///<summary>The value of one %(Name) of the item itself, unescaped; another name stays as written.</summary>
+		private static string GetWellKnownMetadata(Match match,ProjectItem projectItem) {
+			switch(match.Groups[1].Value.ToLowerInvariant()) {
+				case "filename":
+					return Path.GetFileNameWithoutExtension(projectItem.Include);
+				case "extension":
+					return Path.GetExtension(projectItem.Include);
+				case "recursivedir":
+					return projectItem.RecursiveDir;
+				case "identity":
+					return projectItem.Include;
+				case "fullpath":
+					return projectItem.FullPath??"";
+				case "relativedir": {
+						int index=projectItem.Include.LastIndexOf('\\');
+						return index<0 ? "" : projectItem.Include.Substring(0,index+1);
+					}
+				default:
+					return match.Value;
+			}
 		}
 
 		private void RemoveItems(string itemType,string remove,FileContext fileContext) {
@@ -1067,13 +1088,14 @@ namespace ProjectFileTests {
 				if(spec.Contains("@(") || spec.Contains("%(")) {
 					throw new NotSupportedException("Item transforms and metadata references are not modelled by ProjectFile: "+spec);
 				}
+				//Wildcards found in the escaped text, then the entry unescaped, as AddItems has it.
 				if(spec.IndexOfAny(new[] { '*','?' })>=0) {
-					Regex regex=GetWildcardRegex(spec);
+					Regex regex=GetWildcardRegex(Unescape(spec));
 					listMatchers.Add(x => x.FullPath!=null && regex.IsMatch(x.FullPath));
 					continue;
 				}
-				string fullPath=TryGetFullPath(spec);
-				string include=NormalizeSlashes(spec);
+				string fullPath=TryGetFullPath(Unescape(spec));
+				string include=NormalizeSlashes(Unescape(spec));
 				listMatchers.Add(x => IsSameItemSpec(x,fullPath,include));
 			}
 			return listMatchers;
@@ -1137,7 +1159,7 @@ namespace ProjectFileTests {
 		private List<Regex> GetPrunedFolders(string list) {
 			List<Regex> listRegexes=new List<Regex>();
 			foreach(string spec in SplitList(list)) {
-				string normalized=NormalizeSlashes(spec);
+				string normalized=NormalizeSlashes(Unescape(spec));
 				if(!normalized.EndsWith(@"\**") || normalized.Contains("@(") || normalized.Contains("$(")) {
 					continue;
 				}
@@ -1225,7 +1247,8 @@ namespace ProjectFileTests {
 			}
 			string value=GetValue(name);
 			ThrowIfUnresolved(value,Describe()+": $("+name+")");
-			return value;
+			//Unescaped, as -getProperty prints it: ApplicationVersion 1.0.0.%2a is 1.0.0.*.
+			return Unescape(value);
 		}
 
 		///<summary>True when the reader knows the property's value (GetProperty does not throw for it).</summary>
@@ -1320,8 +1343,9 @@ namespace ProjectFileTests {
 				if(listArguments.Any(x => x.Contains(UNRESOLVED_START))) {
 					return Unresolved(expression);
 				}
+				//MSBuild hands a property function its arguments unescaped and escapes what it returns.
 				string result=EvaluateStaticFunction(matchStatic.Groups[1].Value,matchStatic.Groups[2].Value,listArguments,fileContext);
-				return result??Unresolved(expression);
+				return result==null ? Unresolved(expression) : Escape(result);
 			}
 			//$(Name.Method('argument')), a string method on a property's value
 			Match matchMethod=Regex.Match(expression,@"^([A-Za-z_][\w-]*)\.(\w+)\((.*)\)$",RegexOptions.Singleline);
@@ -1331,26 +1355,28 @@ namespace ProjectFileTests {
 				if(IsUnresolved(value) || listArguments.Any(x => IsUnresolved(x))) {
 					return Unresolved(expression);
 				}
-				string result=EvaluateStringMethod(value,matchMethod.Groups[2].Value,listArguments);
-				return result??Unresolved(expression);
+				//The method works on the value unescaped (a %2a is a '*' to EndsWith), and its result is escaped again.
+				string result=EvaluateStringMethod(Unescape(value),matchMethod.Groups[2].Value,listArguments);
+				return result==null ? Unresolved(expression) : Escape(result);
 			}
 			return Unresolved(expression);
 		}
 
 		private string GetPropertyInFile(string name,FileContext fileContext) {
 			switch(name.ToLowerInvariant()) {
+				//Escaped, as MSBuild keeps its reserved properties.
 				case "msbuildthisfile":
-					return Path.GetFileName(fileContext.Path);
+					return Escape(Path.GetFileName(fileContext.Path));
 				case "msbuildthisfiledirectory":
-					return fileContext.Directory;
+					return Escape(fileContext.Directory);
 				case "msbuildthisfilefullpath":
-					return fileContext.Path;
+					return Escape(fileContext.Path);
 				case "msbuildthisfilename":
-					return Path.GetFileNameWithoutExtension(fileContext.Path);
+					return Escape(Path.GetFileNameWithoutExtension(fileContext.Path));
 				case "msbuildthisfileextension":
-					return Path.GetExtension(fileContext.Path);
+					return Escape(Path.GetExtension(fileContext.Path));
 				case "msbuildthisfiledirectorynoroot":
-					return fileContext.Directory.Substring(Path.GetPathRoot(fileContext.Directory).Length);
+					return Escape(fileContext.Directory.Substring(Path.GetPathRoot(fileContext.Directory).Length));
 				default:
 					return GetValueForExpression(name);
 			}
@@ -1361,7 +1387,7 @@ namespace ProjectFileTests {
 			if(trimmed.Length>=2 && trimmed[0]=='\'' && trimmed[trimmed.Length-1]=='\'') {
 				trimmed=trimmed.Substring(1,trimmed.Length-2);
 			}
-			return Expand(trimmed,fileContext);
+			return Unescape(Expand(trimmed,fileContext));
 		}
 
 		private static List<string> SplitArguments(string text) {
@@ -1450,12 +1476,13 @@ namespace ProjectFileTests {
 
 		private static string EvaluateStringMethod(string value,string method,List<string> listArguments) {
 			switch(method.ToLowerInvariant()) {
+				//A bool result as MSBuild writes it: Boolean.ToString(), "True" or "False".
 				case "endswith":
-					return listArguments.Count==1 ? (value.EndsWith(listArguments[0],StringComparison.Ordinal) ? "true" : "false") : null;
+					return listArguments.Count==1 ? value.EndsWith(listArguments[0],StringComparison.Ordinal).ToString() : null;
 				case "startswith":
-					return listArguments.Count==1 ? (value.StartsWith(listArguments[0],StringComparison.Ordinal) ? "true" : "false") : null;
+					return listArguments.Count==1 ? value.StartsWith(listArguments[0],StringComparison.Ordinal).ToString() : null;
 				case "contains":
-					return listArguments.Count==1 ? (value.Contains(listArguments[0]) ? "true" : "false") : null;
+					return listArguments.Count==1 ? value.Contains(listArguments[0]).ToString() : null;
 				case "tolower":
 				case "tolowerinvariant":
 					return listArguments.Count==0 ? value.ToLowerInvariant() : null;
@@ -1475,6 +1502,44 @@ namespace ProjectFileTests {
 
 		private static string Unresolved(string expression) {
 			return UNRESOLVED_START+expression+UNRESOLVED_END;
+		}
+
+		///<summary>MSBuild's EscapingUtilities.UnescapeAll: every %XX with two hexadecimal digits becomes its character (%2a a '*', %3b a ';',
+		///%28 a '('). MSBuild keeps property values and metadata escaped while it evaluates and unescapes them where it uses them: a condition's
+		///operands, an Exists() path, an Import path, a file an item names, a property function's arguments, and what -getProperty and -getItem
+		///print.</summary>
+		private static string Unescape(string text) {
+			if(text==null || text.IndexOf('%')<0) {
+				return text;
+			}
+			StringBuilder stringBuilder=new StringBuilder(text.Length);
+			for(int i=0;i<text.Length;i++) {
+				if(text[i]=='%' && i+2<text.Length && Uri.IsHexDigit(text[i+1]) && Uri.IsHexDigit(text[i+2])) {
+					stringBuilder.Append((char)Convert.ToInt32(text.Substring(i+1,2),16));
+					i+=2;
+					continue;
+				}
+				stringBuilder.Append(text[i]);
+			}
+			return stringBuilder.ToString();
+		}
+
+		///<summary>MSBuild's EscapingUtilities.Escape: % * ? @ $ ( ) ; and ' as %XX, as MSBuild stores the paths of its reserved properties and the
+		///result of a property function, so a ';' or a '*' in them is no list separator or wildcard where the value is used. A value that holds a
+		///marker of something this reader cannot evaluate stays as it is.</summary>
+		private static string Escape(string text) {
+			if(string.IsNullOrEmpty(text) || IsUnresolved(text) || text.IndexOfAny(_arrayEscapedChars)<0) {
+				return text;
+			}
+			StringBuilder stringBuilder=new StringBuilder(text.Length+8);
+			foreach(char c in text) {
+				if(Array.IndexOf(_arrayEscapedChars,c)>=0) {
+					stringBuilder.Append('%').Append(((int)c).ToString("x2"));
+					continue;
+				}
+				stringBuilder.Append(c);
+			}
+			return stringBuilder.ToString();
 		}
 
 		private static void ThrowIfUnresolved(string value,string where) {
@@ -1502,13 +1567,25 @@ namespace ProjectFileTests {
 			return null;
 		}
 
+		///<summary>The condition of a PropertyGroup, an Import or an ImportGroup: Exists('relative') is relative to the folder of the file the
+		///condition is in (MSBuild's Evaluator.GetCurrentDirectoryForConditionEvaluation, kept from MSBuild 2.0 for those three elements).
+		///</summary>
+		private bool IsConditionTrueInFile(XElement xElement,FileContext fileContext) {
+			return IsConditionTrue(xElement,fileContext,fileContext.Directory);
+		}
+
+		///<summary>The condition of any other element (a property, an ItemGroup, an item, a piece of metadata): Exists('relative') is relative to
+		///the project's folder, even in an imported file, as MSBuild has it.</summary>
 		private bool IsConditionTrue(XElement xElement,FileContext fileContext) {
+			return IsConditionTrue(xElement,fileContext,Folder);
+		}
+
+		private bool IsConditionTrue(XElement xElement,FileContext fileContext,string folderForExists) {
 			string condition=(string)xElement.Attribute("Condition");
 			if(condition==null || condition.Trim()=="") {
 				return true;
 			}
-			//Exists('relative') is relative to the folder of the file the condition is in, as MSBuild has it for imported files.
-			return new ConditionParser(condition,x => Expand(x,fileContext),x => Path.Combine(fileContext.Directory,x),fileContext.Path).Parse();
+			return new ConditionParser(condition,x => Expand(x,fileContext),x => Path.Combine(folderForExists,x),fileContext.Path).Parse();
 		}
 
 		///<summary>MSBuild's condition grammar as the repository uses it: 'string' and unquoted operands (properties expanded), == != &lt; &gt;
@@ -1655,7 +1732,8 @@ namespace ProjectFileTests {
 				if(value.Contains(UNRESOLVED_START)) {
 					ThrowIfUnresolved(value,_where+": Condition=\""+_condition+"\"");
 				}
-				return value;
+				//MSBuild compares, tests and checks for files with the operands unescaped: '$(V)' == '1.0.0.*' and == '1.0.0.%2a' alike.
+				return Unescape(value);
 			}
 
 			private string TryOperator() {
