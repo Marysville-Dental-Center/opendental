@@ -46,8 +46,21 @@ namespace EhrTests {
 				+"<text>"+body+"</text>"+entries+"</section></component></structuredBody></component></ClinicalDocument>";
 		}
 
-		///<summary>A small CCR whose social history, two result rows and plan of care (order and goal) carry the given Description/Text values.</summary>
-		private static string MakeCcr(string textSocial,string textResult1,string textResult2,string textOrder,string textGoal) {
+		///<summary>A small CCR whose social history, two result rows and plan of care (order and goal) carry the given Description/Text values, and
+		///with one References/Reference per element of arrayLocationsXml, whose Locations/Location/Description/Text is that XML text as it is
+		///(character references included).</summary>
+		private static string MakeCcr(string textSocial,string textResult1,string textResult2,string textOrder,string textGoal,params string[] arrayLocationsXml) {
+			string references="";
+			if(arrayLocationsXml.Length>0) {
+				references="<References>";
+				for(int i=0;i<arrayLocationsXml.Length;i++) {
+					references+="<Reference><ReferenceObjectID>RF000"+(i+1)+"</ReferenceObjectID><Type><Text>Test reference</Text></Type>"
+						+"<Description><Text>Reference "+(i+1)+"</Text></Description>"
+						+"<Locations><Location><Description><Text>"+arrayLocationsXml[i]+"</Text></Description></Location></Locations>"
+						+"<Source><Actor><ActorID>AA0002</ActorID></Actor></Source></Reference>";
+				}
+				references+="</References>";
+			}
 			return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n<ContinuityOfCareRecord xmlns=\"urn:astm-org:CCR\">"
 				+"<CCRDocumentObjectID>TEST-CCR-0002</CCRDocumentObjectID><Language><Text>English</Text></Language><Version>V1.0</Version>"
 				+"<DateTime><ExactDateTime>2025-03-14T09:26:53Z</ExactDateTime></DateTime><Patient><ActorID>AA0001</ActorID></Patient>"
@@ -64,7 +77,7 @@ namespace EhrTests {
 				+"<Goals><Goal><Description><Text>"+Escape(textGoal)+"</Text></Description></Goal></Goals></OrderRequest></Plan></PlanOfCare>"
 				+"</Body><Actors><Actor><ActorObjectID>AA0001</ActorObjectID><Person><Name><CurrentName><Given>Test</Given><Family>Patient</Family>"
 				+"</CurrentName></Name></Person></Actor><Actor><ActorObjectID>AA0002</ActorObjectID><Organization><Name>Example Test Clinic</Name>"
-				+"</Organization></Actor></Actors></ContinuityOfCareRecord>";
+				+"</Organization></Actor></Actors>"+references+"</ContinuityOfCareRecord>";
 		}
 
 		private static string Escape(string text) {
@@ -77,8 +90,9 @@ namespace EhrTests {
 
 		///<summary>The checks every hostile page must pass, on its real tags (text the page shows, escaped, is not markup): no script element, no
 		///event handler attribute, no script URL (javascript:, vbscript:, data:text/html) in any URL attribute, no CSS url() or expression(), and
-		///nothing that loads by itself from a file, a share or the web: only a link (a href) may point elsewhere, and the CCD window opens only
-		///http, https and mailto links, in the default browser (FormEhrSummaryCcdEdit, WebView2Policy.OpenInSystemBrowser).</summary>
+		///nothing that loads by itself from a file, a share or the web: only a link (a href) may point elsewhere, and only to a place in the page
+		///(#), the web (http://, https://) or an e-mail address (mailto:), never to a file or a share; the CCD window opens only http, https and
+		///mailto links, in the default browser (FormEhrSummaryCcdEdit, WebView2Policy.OpenInSystemBrowser).</summary>
 		private static void AssertHarmless(string html) {
 			Assert.IsFalse(Regex.IsMatch(html,@"<script\b",RegexOptions.IgnoreCase),"A script element: "+Excerpt(html,"<script"));
 			List<Match> listTags=Regex.Matches(html,@"<([a-zA-Z][\w:-]*)\b[^<>]*>").Cast<Match>().ToList();
@@ -100,7 +114,9 @@ namespace EhrTests {
 					}
 					Assert.IsFalse(Regex.IsMatch(valueRead,@"(javascript|vbscript):|^data:text/html"),"A script URL: "+tag);
 					if(tagName=="a" && name=="href") {
-						continue;//A link loads nothing by itself.
+						//A link loads nothing by itself, and goes only to the page, the web or an e-mail address.
+						Assert.IsTrue(Regex.IsMatch(valueRead,@"^(#|https?://|mailto:)"),"A link to a file, a share or another scheme: "+tag);
+						continue;
 					}
 					Assert.IsFalse(valueRead.StartsWith(@"\\") || valueRead.StartsWith("//") || valueRead.StartsWith("/\\"),"A share or a network path: "+tag);
 					Assert.IsFalse(Regex.IsMatch(valueRead,@"^(file|https?|ftp|smb):"),"A file or web address: "+tag);
@@ -335,6 +351,32 @@ namespace EhrTests {
 			}
 		}
 
+		///<summary>A CCR whose references' locations are a javascript: URL (also in mixed case with a tab character reference), a vbscript: URL, a
+		///file URL and a share path: ccr.xsl writes each location as the href of a link, unchecked, and the page writer drops every one of those
+		///hrefs, so the page has no script, file or share link; the location still shows as the link's text. A web link stays.</summary>
+		[TestMethod]
+		public void Ccr_ReferenceLocations_NoScriptFileOrShareLinks() {
+			string[] arrayLocationsXml={ "javascript:alert(1)"," JaVa&#x09;ScRiPt:alert(2)","vbscript:x","file:///C:/Windows/win.ini",@"\\192.0.2.10\share\x.exe",
+				"https://www.example.test/reference" };
+			string html=CdaGolden.Render(EhrRenderKind.Ccr,MakeCcr("Test","One","Two","Order","Goal",arrayLocationsXml));
+			AssertHarmless(html);
+			List<string> listHrefs=Regex.Matches(html,@"<a\b[^>]*\shref\s*=\s*""([^""]*)""",RegexOptions.IgnoreCase).Cast<Match>()
+				.Select(x => System.Net.WebUtility.HtmlDecode(x.Groups[1].Value)).ToList();
+			Assert.IsTrue(listHrefs.Count>0,"The page has links.");
+			foreach(string href in listHrefs) {
+				string hrefRead=new string(href.Where(x => x>' ').ToArray()).ToLowerInvariant();
+				Assert.IsFalse(hrefRead.StartsWith("file:") || hrefRead.StartsWith(@"\\") || hrefRead.StartsWith("//") || hrefRead.StartsWith("/\\"),"A file or share link: "+href);
+				Assert.IsFalse(Regex.IsMatch(hrefRead,"(javascript|vbscript):"),"A script link: "+href);
+			}
+			CollectionAssert.Contains(listHrefs,"https://www.example.test/reference","A web link stays.");
+			Assert.AreEqual(5,Regex.Matches(html,@"<a target=""_blank"">").Count,"The five other locations are links without an href.");
+			//Each location still shows, as text.
+			string text=CdaGolden.VisibleText(html);
+			foreach(string visible in new[] { "javascript:alert(1)","vbscript:x","file:///C:/Windows/win.ini",@"\\192.0.2.10\share\x.exe","ScRiPt:alert(2)" }) {
+				StringAssert.Contains(text,visible);
+			}
+		}
+
 		///<summary>The CCR writer of the child writes text a stylesheet marks disable-output-escaping (which reaches a writer as WriteRaw) escaped;
 		///the CCD writer writes it as it is (CDA.xsl's own CSS). The shipped ccr.xsl has no such attribute any more; this checks the writer itself,
 		///without running a stylesheet.</summary>
@@ -370,6 +412,7 @@ namespace EhrTests {
 					xmlWriter.WriteEndElement();
 				}
 				xmlWriter.WriteStartElement("a");
+				xmlWriter.WriteAttributeString("title","a share");
 				xmlWriter.WriteAttributeString("href",@"\\192.0.2.10\share\a.txt");
 				xmlWriter.WriteString("a link");
 				xmlWriter.WriteEndElement();
@@ -388,11 +431,58 @@ namespace EhrTests {
 			Assert.AreEqual(2,Regex.Matches(html,@"\ssrc=").Count,"Only the two data: images keep theirs.");
 			StringAssert.Contains(html,"src=\"data:image/png;base64,AAAA\"");
 			StringAssert.Contains(html,"src=\" Data:Image/gif;base64,BBBB\"");
-			StringAssert.Contains(html,"<a href=\"\\\\192.0.2.10\\share\\a.txt\">a link</a>","A link stays.");
+			StringAssert.Contains(html,"<a title=\"a share\">a link</a>","The link to a share loses its href; its text stays.");
 			StringAssert.Contains(html,"<object />");
 			Assert.IsFalse(html.Contains("xlink:href"));
-			Assert.IsTrue(EhrRenderChild.PageXmlWriter.IsAllowed("","title","javascript:alert(1)"),"An attribute that loads nothing is kept.");
-			Assert.IsFalse(EhrRenderChild.PageXmlWriter.IsAllowed("","SRC","x.png"),"Any case.");
+			Assert.IsTrue(EhrRenderChild.PageXmlWriter.IsAllowed("p","","title","","javascript:alert(1)"),"An attribute that loads nothing is kept.");
+			Assert.IsFalse(EhrRenderChild.PageXmlWriter.IsAllowed("img","","SRC","","x.png"),"Any case.");
+		}
+
+		///<summary>The page writer keeps a link (the href of a or area, a cite) only when it goes to a place in the page (#), to the web (http://,
+		///https://) or to an e-mail address (mailto:), read as a browser reads it (control characters and spaces dropped, any case): a javascript:,
+		///vbscript:, data:, file: or share link, or a relative one, loses its href and keeps its text. An href of any other element (link, image,
+		///base) or in a namespace (xlink:href) loads by itself and is dropped unless it is a data: image.</summary>
+		[TestMethod]
+		public void PageWriter_KeepsOnlyLinksToThePageTheWebOrEmail() {
+			string[] arrayKept={ "#AA0001","http://www.example.test/a?b=1","HTTPS://www.example.test/","mailto:test@example.test"," https://www.example.test/x" };
+			string[] arrayDropped={ "javascript:alert(1)"," JaVa\tScRiPt:alert(2)","java\nscript:alert(3)","vbscript:x","data:text/html,<b>x</b>",
+				"file:///C:/Windows/win.ini",@"\\192.0.2.10\share\x.exe","//192.0.2.10/x","/\\192.0.2.10/x","x.html","","http:\\\\192.0.2.10\\x",
+				"ftp://192.0.2.10/x" };
+			string html=WriteThroughPageWriter(isRawEscaped:true,xmlWriter => {
+				xmlWriter.WriteStartElement("p");
+				foreach(string value in arrayKept.Concat(arrayDropped)) {
+					xmlWriter.WriteStartElement("a");
+					xmlWriter.WriteAttributeString("target","_blank");
+					xmlWriter.WriteAttributeString("href",value);
+					xmlWriter.WriteString("link");
+					xmlWriter.WriteEndElement();
+				}
+				xmlWriter.WriteStartElement("blockquote");
+				xmlWriter.WriteAttributeString("cite","javascript:alert(4)");
+				xmlWriter.WriteString("quote");
+				xmlWriter.WriteEndElement();
+				xmlWriter.WriteStartElement("link");
+				xmlWriter.WriteAttributeString("rel","stylesheet");
+				xmlWriter.WriteAttributeString("href","http://192.0.2.10/x.css");
+				xmlWriter.WriteEndElement();
+				xmlWriter.WriteStartElement("a");
+				xmlWriter.WriteAttributeString("xlink","href","http://www.w3.org/1999/xlink","http://www.example.test/");
+				xmlWriter.WriteAttributeString("ping","http://192.0.2.10/p");
+				xmlWriter.WriteString("namespaced");
+				xmlWriter.WriteEndElement();
+				xmlWriter.WriteEndElement();
+			});
+			List<string> listHrefs=Regex.Matches(html,@"\shref=""([^""]*)""").Cast<Match>().Select(x => System.Net.WebUtility.HtmlDecode(x.Groups[1].Value)).ToList();
+			CollectionAssert.AreEqual(arrayKept,listHrefs,"Only the links to the page, the web or an e-mail address keep their href.");
+			Assert.AreEqual(arrayKept.Length+arrayDropped.Length,Regex.Matches(html,@"<a target=""_blank""[^>]*>link</a>").Count,"Every link keeps its text.");
+			StringAssert.Contains(html,"<blockquote>quote</blockquote>");
+			StringAssert.Contains(html,"<link rel=\"stylesheet\" />","The stylesheet link loads by itself: no href.");
+			StringAssert.Contains(html,"<a>namespaced</a>","xlink:href and ping are dropped.");
+			Assert.IsTrue(EhrRenderChild.PageXmlWriter.IsAllowed("AREA","","HREF","","#x"));
+			Assert.IsFalse(EhrRenderChild.PageXmlWriter.IsAllowed("area","","href","","javascript:x"));
+			Assert.IsFalse(EhrRenderChild.PageXmlWriter.IsAllowed("image","","href","","http://www.example.test/x.png"),"An image's href loads.");
+			Assert.IsTrue(EhrRenderChild.PageXmlWriter.IsAllowed("image","","href","","data:image/png;base64,AAAA"));
+			Assert.IsFalse(EhrRenderChild.PageXmlWriter.IsAllowed("a","","href","http://www.w3.org/1999/xlink","http://www.example.test/"),"A namespaced href.");
 		}
 
 		private static string WriteThroughPageWriter(bool isRawEscaped,Action<XmlWriter> actionWrite) {

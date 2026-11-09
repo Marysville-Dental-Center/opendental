@@ -172,6 +172,7 @@ namespace OpenPmsDental {
 				//markup: the copy shipped has none, and the CCR's writer writes such raw text as escaped text anyway. CDA.xsl uses the attribute once,
 				//on its own CSS text, so the CCD's raw text is written as it is. Both writers drop an image or other source a page would load by
 				//itself unless it is a data: image: CDA.xsl's sanitizer drops a URL with a colon, but a share path (\\server\share\x.png) has none.
+				//Both drop a link unless it goes to the page (#), the web or an e-mail address: ccr.xsl writes a CCR's reference locations as links.
 				using(XmlWriter xmlWriterPage=new PageXmlWriter(xmlWriter,isRawEscaped:isCcr)) {
 					xslCompiledTransform.Transform(xmlReader,xsltArgumentList,xmlWriterPage,new ResourceResolver());
 				}
@@ -258,17 +259,28 @@ namespace OpenPmsDental {
 			}
 		}
 
-		///<summary>The writer of the pages: writes through to another writer, with two exceptions. With isRawEscaped (a CCR), text the stylesheet asks
-		///to write unescaped (disable-output-escaping, which reaches a writer as WriteRaw) is written escaped, as text, so a received document's text
-		///never becomes markup of the page. And an attribute through which a page would load something by itself (src, data, background, ...) is
-		///dropped unless its value is a data: image, so a received document's image or object never comes from a file, a share or the web; links
-		///(href) stay, and the CCD window opens only http, https and mailto links, in the default browser.</summary>
+		///<summary>The writer of the pages: writes through to another writer, with three exceptions. With isRawEscaped (a CCR), text the stylesheet
+		///asks to write unescaped (disable-output-escaping, which reaches a writer as WriteRaw) is written escaped, as text, so a received document's
+		///text never becomes markup of the page. An attribute through which a page would load something by itself (src, data, background, an href
+		///of any element but a and area, ...) is dropped unless its value is a data: image, so a received document's image or object never comes
+		///from a file, a share or the web. And a link (the href of a or area, a cite) is dropped unless it goes to a place in the page (#), to the
+		///web (http://, https://) or to an e-mail address (mailto:), so the page has no javascript:, vbscript:, file: or share link, whatever the
+		///stylesheet copied from the document (ccr.xsl writes a CCR's reference locations as links, unchecked); the CCD window opens only http,
+		///https and mailto links anyway, in the default browser.</summary>
 		public class PageXmlWriter:XmlWriter {
-			///<summary>The attributes through which a browser loads something by itself.</summary>
+			///<summary>The attributes through which a browser loads something by itself, by their local name, whatever their prefix (xlink:href is
+			///href below).</summary>
 			private static readonly string[] _arrayLoadingAttributes={ "src","data","background","poster","srcset","lowsrc","dynsrc","codebase",
-				"archive","classid","longdesc","manifest","formaction","action","xlink:href" };
+				"archive","classid","longdesc","manifest","formaction","action","ping" };
+			///<summary>The elements whose href is a link, which loads nothing until it is clicked. Any other href (link, image, use, base, an xlink:href)
+			///loads by itself.</summary>
+			private static readonly string[] _arrayLinkElements={ "a","area" };
+			///<summary>The beginnings a link may have, read as a browser reads it (IsAllowed).</summary>
+			private static readonly string[] _arrayLinkStarts={ "#","http://","https://","mailto:" };
 			private readonly XmlWriter _xmlWriter;
 			private readonly bool _isRawEscaped;
+			///<summary>The local name of the element whose start tag is being written, for its attributes.</summary>
+			private string _elementLocalName="";
 			///<summary>The attribute being held back until its value is known, or null.</summary>
 			private string[] _arrayAttributeHeld;
 			private StringBuilder _stringBuilderValueHeld;
@@ -278,10 +290,12 @@ namespace OpenPmsDental {
 				_isRawEscaped=isRawEscaped;
 			}
 
-			///<summary>True when an attribute of this name may hold this value: any value for an attribute that loads nothing, and only a data: image
-			///(read as a browser reads it: control characters and spaces dropped, any case) for one that does.</summary>
-			public static bool IsAllowed(string prefix,string localName,string value) {
-				if(!IsLoadingAttribute(prefix,localName)) {
+			///<summary>True when an attribute of this name (prefix, local name and namespace URI), on an element of this local name, may hold this
+			///value: any value for an attribute that loads nothing and is no link; only a data: image for one that loads; only #, http://, https:// or
+			///mailto: for a link. A value is read as a browser reads a URL: control characters and spaces dropped, any case.</summary>
+			public static bool IsAllowed(string elementLocalName,string prefix,string localName,string ns,string value) {
+				AttributeKind attributeKind=GetAttributeKind(elementLocalName,prefix,localName,ns);
+				if(attributeKind==AttributeKind.Other) {
 					return true;
 				}
 				StringBuilder stringBuilder=new StringBuilder();
@@ -290,7 +304,16 @@ namespace OpenPmsDental {
 						stringBuilder.Append(char.ToLowerInvariant(c));
 					}
 				}
-				return stringBuilder.ToString().StartsWith("data:image/");
+				string valueRead=stringBuilder.ToString();
+				if(attributeKind==AttributeKind.Loading) {
+					return valueRead.StartsWith("data:image/");
+				}
+				foreach(string start in _arrayLinkStarts) {
+					if(valueRead.StartsWith(start)) {
+						return true;
+					}
+				}
+				return false;
 			}
 
 			public override WriteState WriteState {
@@ -317,18 +340,42 @@ namespace OpenPmsDental {
 				}
 			}
 
-			private static bool IsLoadingAttribute(string prefix,string localName) {
-				string name=(string.IsNullOrEmpty(prefix) ? "" : prefix+":")+localName;
+			///<summary>What an attribute of this name does on an element of this local name. Names are compared in any case.</summary>
+			private static AttributeKind GetAttributeKind(string elementLocalName,string prefix,string localName,string ns) {
 				foreach(string nameLoading in _arrayLoadingAttributes) {
-					if(string.Equals(name,nameLoading,StringComparison.OrdinalIgnoreCase)) {
-						return true;
+					if(string.Equals(localName,nameLoading,StringComparison.OrdinalIgnoreCase)) {
+						return AttributeKind.Loading;
 					}
 				}
-				return false;
+				if(string.Equals(localName,"href",StringComparison.OrdinalIgnoreCase)) {
+					if(!string.IsNullOrEmpty(prefix) || !string.IsNullOrEmpty(ns)) {
+						return AttributeKind.Loading;//xlink:href and the like.
+					}
+					foreach(string elementLink in _arrayLinkElements) {
+						if(string.Equals(elementLocalName,elementLink,StringComparison.OrdinalIgnoreCase)) {
+							return AttributeKind.Link;
+						}
+					}
+					return AttributeKind.Loading;
+				}
+				if(string.Equals(localName,"cite",StringComparison.OrdinalIgnoreCase)) {
+					return AttributeKind.Link;
+				}
+				return AttributeKind.Other;
+			}
+
+			///<summary>What an attribute does, for the writer's checks.</summary>
+			private enum AttributeKind {
+				///<summary>Neither loads nor links: written as it is.</summary>
+				Other,
+				///<summary>The page loads its value by itself: kept only for a data: image.</summary>
+				Loading,
+				///<summary>A link: kept only to the page, the web or an e-mail address.</summary>
+				Link,
 			}
 
 			public override void WriteStartAttribute(string prefix,string localName,string ns) {
-				if(IsLoadingAttribute(prefix,localName)) {
+				if(GetAttributeKind(_elementLocalName,prefix,localName,ns)!=AttributeKind.Other) {
 					_arrayAttributeHeld=new string[] { prefix,localName,ns };
 					_stringBuilderValueHeld=new StringBuilder();
 					return;
@@ -345,8 +392,8 @@ namespace OpenPmsDental {
 				string value=_stringBuilderValueHeld.ToString();
 				_arrayAttributeHeld=null;
 				_stringBuilderValueHeld=null;
-				if(!IsAllowed(arrayAttribute[0],arrayAttribute[1],value)) {
-					return;//Dropped: the page would load it by itself.
+				if(!IsAllowed(_elementLocalName,arrayAttribute[0],arrayAttribute[1],arrayAttribute[2],value)) {
+					return;//Dropped: the page would load it by itself, or a link that is not to the page, the web or an e-mail address.
 				}
 				_xmlWriter.WriteStartAttribute(arrayAttribute[0],arrayAttribute[1],arrayAttribute[2]);
 				_xmlWriter.WriteString(value);
@@ -430,6 +477,7 @@ namespace OpenPmsDental {
 			}
 
 			public override void WriteStartElement(string prefix,string localName,string ns) {
+				_elementLocalName=localName??"";
 				_xmlWriter.WriteStartElement(prefix,localName,ns);
 			}
 
