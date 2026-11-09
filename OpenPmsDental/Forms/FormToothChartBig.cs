@@ -80,9 +80,12 @@ namespace OpenPmsDental {
 					_toothChartRelay.SetSelected(listSelectedTeeth[i],true);
 				}
 			}
-			ToothChartPainter.PaintBigChartToothInitials(_toothChartRelay,ListToothInitials);
-			ToothChartPainter.PaintBigChartProcs(_toothChartRelay,ListDataRowsProcs,ListToothInitials,PatientCur,ListAppointments);
-			ToothChartPainter.PaintBigChartOrthoHardware(_toothChartRelay,ListOrthoHardwares);
+			//first, primary.  That way, you can still set a primary tooth missing afterwards.
+			ToothChartPainter.PaintPrimaryTeeth(_toothChartRelay,ListToothInitials);
+			ToothChartPainter.PaintToothInitials(_toothChartRelay,ListToothInitials);
+			ToothChartPainter.PaintProcedures(_toothChartRelay,ToothChartPaintProc.FromDataRows(ListDataRowsProcs),ListToothInitials,
+				ToothChartPaintOptions.ForBigChart(PatientCur,ListAppointments));
+			ToothChartPainter.PaintOrthoHardware(_toothChartRelay,ListOrthoHardwares);
 			_toothChartRelay.EndUpdate();
 			//FillMovementsAndHidden();
 			Cursor=Cursors.Default;

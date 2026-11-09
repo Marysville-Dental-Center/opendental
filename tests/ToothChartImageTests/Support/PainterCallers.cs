@@ -21,7 +21,7 @@ namespace ToothChartImageTests {
 			DataTable tableProgNotes=CallLogFixtures.GetProgNotes(scene.PatNum);
 			List<OrthoHardware> listOrthoHardwaresPatient=OrthoHardwares.GetPatientData(scene.PatNum);
 			List<DataRow> listDataRowsProcsOrig=CallLogFixtures.GetProcRowsOrig(tableProgNotes);
-			ToothChartPainter.PaintChartModulePrimaryTeeth(target,listToothInitials);
+			ToothChartPainter.PaintPrimaryTeeth(target,listToothInitials);
 			DataTable table=tableProgNotes.Copy();
 			List<long> listProcNumsTreatPlans=null;
 			if(scene.FuncProcNumsTreatPlans!=null) {
@@ -32,16 +32,19 @@ namespace ToothChartImageTests {
 				out List<DataRow> listDataRowsProcsSkipped);
 			List<ToothInitial> listToothInitialsCopy=ToothChartPainter.GetChartModuleToothInitials(listToothInitials,listDataRowsProcsSkipped,
 				listDataRowsProcsForGraphical,scene.DateLimit);
-			ToothChartPainter.PaintChartModuleToothInitials(target,listToothInitialsCopy);
-			ToothChartPainter.PaintChartModuleProcs(target,listDataRowsProcsForGraphical,listToothInitialsCopy,patient,listAppointments,false);
+			ToothChartPainter.PaintToothInitials(target,listToothInitialsCopy);
+			ToothChartPainter.PaintProcedures(target,ToothChartPaintProc.FromDataRows(listDataRowsProcsForGraphical),listToothInitialsCopy,
+				ToothChartPaintOptions.ForChartModule(patient,listAppointments,false));
 			if(scene.IsOrthoGraphics) {
 				List<OrthoHardware> listOrthoHardwares=ToothChartPainter.GetChartModuleOrthoHardwares(listOrthoHardwaresPatient,scene.DateOrthoExam,
 					scene.IsShowHidden);
-				ToothChartPainter.PaintChartModuleOrthoHardware(target,listOrthoHardwares);
+				ToothChartPainter.PaintOrthoHardware(target,listOrthoHardwares);
 			}
 			if(scene.IsPrintRecolor) {
-				ToothChartPainter.PaintChartModuleProcs(target,listDataRowsProcsForGraphical,listToothInitialsCopy,patient,listAppointments,true);
-				ToothChartPainter.PaintChartModuleProcs(target,listDataRowsProcsForGraphical,listToothInitialsCopy,patient,listAppointments,false);
+				ToothChartPainter.PaintProcedures(target,ToothChartPaintProc.FromDataRows(listDataRowsProcsForGraphical),listToothInitialsCopy,
+					ToothChartPaintOptions.ForChartModule(patient,listAppointments,true));
+				ToothChartPainter.PaintProcedures(target,ToothChartPaintProc.FromDataRows(listDataRowsProcsForGraphical),listToothInitialsCopy,
+					ToothChartPaintOptions.ForChartModule(patient,listAppointments,false));
 			}
 			return callLog;
 		}
@@ -52,10 +55,12 @@ namespace ToothChartImageTests {
 			RecordingPaintTarget target=new RecordingPaintTarget(callLog);
 			Patient patientCur=CallLogFixtures.GetPatient(scene.PatNum);
 			List<ToothInitial> listToothInitials=ToothInitials.GetPatientData(patientCur.PatNum);
-			ToothChartPainter.PaintTreatPlanToothInitials(target,listToothInitials);
+			ToothChartPainter.PaintPrimaryTeeth(target,listToothInitials);
+			ToothChartPainter.PaintToothInitials(target,listToothInitials);
 			List<Procedure> listProceduresFiltered=scene.FuncProceduresFiltered(patientCur.PatNum);//ComputeProcListFiltered
-			ToothChartPainter.PaintTreatPlanProcs(target,listProceduresFiltered,listToothInitials);
-			ToothChartPainter.PaintTreatPlanOrthoHardware(target,OrthoHardwares.GetPatientData(patientCur.PatNum));
+			ToothChartPainter.PaintProcedures(target,ToothChartPaintProc.FromProcedures(listProceduresFiltered),listToothInitials,
+				ToothChartPaintOptions.ForTreatPlanPrintout());
+			ToothChartPainter.PaintOrthoHardware(target,OrthoHardwares.GetPatientData(patientCur.PatNum));
 			return callLog;
 		}
 
@@ -69,7 +74,8 @@ namespace ToothChartImageTests {
 			List<Procedure> listProceduresFilteredOverride=scene.FuncProceduresOverride?.Invoke(scene.PatNum);
 			List<Appointment> listAppts=CallLogFixtures.GetAppointments(scene.PatNum,scene.HasTodaysAppointment);
 			List<ToothInitial> toothInitialList=patNum==0?new List<ToothInitial>():ToothInitials.GetPatientData(patNum);
-			ToothChartPainter.PaintSheetToothInitials(target,toothInitialList);
+			ToothChartPainter.PaintPrimaryTeeth(target,toothInitialList);
+			ToothChartPainter.PaintToothInitials(target,toothInitialList);
 			List<Procedure> listProceduresFiltered=new List<Procedure>();
 			if(listProceduresFilteredOverride!=null) {
 				listProceduresFiltered=listProceduresFilteredOverride;
@@ -79,9 +85,10 @@ namespace ToothChartImageTests {
 				listProceduresFiltered=OpenPmsDentalBusiness.SheetPrinting.FilterProceduresForToothChart(listProceduresAll,treatPlan,scene.ShowCompleted);
 			}
 			listProceduresFiltered.Sort(OpenPmsDentalBusiness.SheetPrinting.CompareProcListFiltered);
-			ToothChartPainter.PaintSheetProcs(target,listProceduresFiltered,toothInitialList,scene.IsInPatientDashboard,patCur,listAppts);
+			ToothChartPainter.PaintProcedures(target,ToothChartPaintProc.FromProcedures(listProceduresFiltered),toothInitialList,
+				ToothChartPaintOptions.ForSheet(scene.IsInPatientDashboard,patCur,listAppts));
 			List<OrthoHardware> listOrthoHardwares=OrthoHardwares.GetPatientData(patNum);
-			ToothChartPainter.PaintSheetOrthoHardware(target,listOrthoHardwares);
+			ToothChartPainter.PaintOrthoHardware(target,listOrthoHardwares);
 			return callLog;
 		}
 
@@ -94,9 +101,11 @@ namespace ToothChartImageTests {
 			List<Appointment> listAppointments=CallLogFixtures.GetAppointments(scene.PatNum,scene.HasTodaysAppointment);
 			Patient patientCur=CallLogFixtures.GetPatient(scene.PatNum);
 			List<OrthoHardware> listOrthoHardwares=OrthoHardwares.GetPatientData(scene.PatNum);
-			ToothChartPainter.PaintBigChartToothInitials(target,listToothInitials);
-			ToothChartPainter.PaintBigChartProcs(target,listDataRowsProcs,listToothInitials,patientCur,listAppointments);
-			ToothChartPainter.PaintBigChartOrthoHardware(target,listOrthoHardwares);
+			ToothChartPainter.PaintPrimaryTeeth(target,listToothInitials);
+			ToothChartPainter.PaintToothInitials(target,listToothInitials);
+			ToothChartPainter.PaintProcedures(target,ToothChartPaintProc.FromDataRows(listDataRowsProcs),listToothInitials,
+				ToothChartPaintOptions.ForBigChart(patientCur,listAppointments));
+			ToothChartPainter.PaintOrthoHardware(target,listOrthoHardwares);
 			return callLog;
 		}
 	}

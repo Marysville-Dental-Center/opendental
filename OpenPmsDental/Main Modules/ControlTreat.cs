@@ -1621,10 +1621,13 @@ namespace OpenPmsDental{
 			_toothChartRelay.ResetTeeth();
 			_toothChartRelay.SetOrthoMode(false);
 			_listToothInitials=ToothInitials.GetPatientData(PatientCur.PatNum);
-			ToothChartPainter.PaintTreatPlanToothInitials(_toothChartRelay,_listToothInitials);
+			//first, primary.  That way, you can still set a primary tooth missing afterwards.
+			ToothChartPainter.PaintPrimaryTeeth(_toothChartRelay,_listToothInitials);
+			ToothChartPainter.PaintToothInitials(_toothChartRelay,_listToothInitials);
 			ComputeProcListFiltered();
-			ToothChartPainter.PaintTreatPlanProcs(_toothChartRelay,_listProceduresFiltered,_listToothInitials);
-			ToothChartPainter.PaintTreatPlanOrthoHardware(_toothChartRelay,OrthoHardwares.GetPatientData(PatientCur.PatNum));
+			ToothChartPainter.PaintProcedures(_toothChartRelay,ToothChartPaintProc.FromProcedures(_listProceduresFiltered),_listToothInitials,
+				ToothChartPaintOptions.ForTreatPlanPrintout());
+			ToothChartPainter.PaintOrthoHardware(_toothChartRelay,OrthoHardwares.GetPatientData(PatientCur.PatNum));
 			_toothChartWrapper.AutoFinish=true;
 			_toothChartRelay.EndUpdate();
 			_bitmapToothChart=_toothChartRelay.GetBitmap();

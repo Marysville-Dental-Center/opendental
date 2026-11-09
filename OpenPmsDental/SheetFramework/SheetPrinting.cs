@@ -148,7 +148,9 @@ namespace OpenPmsDental {
 			toothChartRelay.ResetTeeth();
 			toothChartRelay.SetOrthoMode(false);
 			List<ToothInitial> toothInitialList=patNum==0?new List<ToothInitial>():ToothInitials.GetPatientData(patNum);
-			ToothChartPainter.PaintSheetToothInitials(toothChartRelay,toothInitialList);
+			//first, primary.  That way, you can still set a primary tooth missing afterwards.
+			ToothChartPainter.PaintPrimaryTeeth(toothChartRelay,toothInitialList);
+			ToothChartPainter.PaintToothInitials(toothChartRelay,toothInitialList);
 			//We passed in a list of procs we want to see on the toothchart.  Use that.
 			List<Procedure> listProceduresFiltered=new List<Procedure>();
 			if(listProceduresFilteredOverride!=null) {
@@ -160,9 +162,10 @@ namespace OpenPmsDental {
 			}
 			listProceduresFiltered.Sort(OpenPmsDentalBusiness.SheetPrinting.CompareProcListFiltered);
 			//Draw tooth chart
-			ToothChartPainter.PaintSheetProcs(toothChartRelay,listProceduresFiltered,toothInitialList,isInPatientDashboard,patCur,listAppts);
+			ToothChartPainter.PaintProcedures(toothChartRelay,ToothChartPaintProc.FromProcedures(listProceduresFiltered),toothInitialList,
+				ToothChartPaintOptions.ForSheet(isInPatientDashboard,patCur,listAppts));
 			List<OrthoHardware> listOrthoHardwares=OrthoHardwares.GetPatientData(patNum);
-			ToothChartPainter.PaintSheetOrthoHardware(toothChartRelay,listOrthoHardwares);
+			ToothChartPainter.PaintOrthoHardware(toothChartRelay,listOrthoHardwares);
 			toothChartWrapper.AutoFinish=true;
 			toothChartRelay.EndUpdate();
 			Image retVal=toothChartRelay.GetBitmap();

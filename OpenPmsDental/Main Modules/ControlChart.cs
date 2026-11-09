@@ -6002,7 +6002,8 @@ namespace OpenPmsDental {
 		}		
 		
 		private void DrawProcGraphics(bool isPrinting=false) {
-			ToothChartPainter.PaintChartModuleProcs(_toothChartRelay,_listDataRowsProcsForGraphical,_listToothInitialsCopy,Pd.Patient,Pd.ListAppointments,isPrinting);
+			ToothChartPainter.PaintProcedures(_toothChartRelay,ToothChartPaintProc.FromDataRows(_listDataRowsProcsForGraphical),_listToothInitialsCopy,
+				ToothChartPaintOptions.ForChartModule(Pd.Patient,Pd.ListAppointments,isPrinting));
 		}
 
 		private void DrawOrthoHardware(){
@@ -6012,7 +6013,7 @@ namespace OpenPmsDental {
 			FillOrthoDateIfNeeded();
 			List<OrthoHardware> listOrthoHardwares=ToothChartPainter.GetChartModuleOrthoHardwares(Pd.ListOrthoHardwares,comboOrthoDate.GetSelected<DateTime>(),
 				checkShowHidden.Checked);
-			ToothChartPainter.PaintChartModuleOrthoHardware(_toothChartRelay,listOrthoHardwares);
+			ToothChartPainter.PaintOrthoHardware(_toothChartRelay,listOrthoHardwares);
 		}
 
 		private void EasyHideClinicalData() {
@@ -6383,7 +6384,7 @@ namespace OpenPmsDental {
 			}
 			//primary teeth need to be set before resetting selected teeth, because some of them might be primary.
 			//primary teeth also need to be set before initial list so that we can set a primary tooth missing.
-			ToothChartPainter.PaintChartModulePrimaryTeeth(_toothChartRelay,Pd.ListToothInitials);
+			ToothChartPainter.PaintPrimaryTeeth(_toothChartRelay,Pd.ListToothInitials);
 			if(checkShowTeeth.Checked || retainSelection) {
 				for(int i=0;i<listTeethSelected.Count;i++) {
 					_toothChartRelay.SetSelected(listTeethSelected[i],true);
@@ -6399,7 +6400,7 @@ namespace OpenPmsDental {
 				out _listDataRowsProcsSkipped);
 			_listToothInitialsCopy=ToothChartPainter.GetChartModuleToothInitials(Pd.ListToothInitials,_listDataRowsProcsSkipped,_listDataRowsProcsForGraphical,
 				dateLimit);
-			ToothChartPainter.PaintChartModuleToothInitials(_toothChartRelay,_listToothInitialsCopy);
+			ToothChartPainter.PaintToothInitials(_toothChartRelay,_listToothInitialsCopy);
 			DrawProcGraphics();
 			DrawOrthoHardware();
 			_toothChartRelay.EndUpdate();

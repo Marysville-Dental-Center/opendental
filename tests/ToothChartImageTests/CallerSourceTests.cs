@@ -33,7 +33,7 @@ namespace ToothChartImageTests {
 			string fill=SourceText.GetMethod(code,"private void FillToothChart(bool retainSelection,DateTime dateLimit) {");
 			SourceText.AssertInOrder(fill,"ControlChart.FillToothChart",
 				"_toothChartRelay.ResetTeeth();",
-				"ToothChartPainter.PaintChartModulePrimaryTeeth(_toothChartRelay,Pd.ListToothInitials);",
+				"ToothChartPainter.PaintPrimaryTeeth(_toothChartRelay,Pd.ListToothInitials);",
 				"_toothChartRelay.SetSelected(listTeethSelected[i],true);",
 				"DataTable table=Pd.TableProgNotes.Copy();",
 				"if(checkTreatPlans.Checked) {",
@@ -41,19 +41,20 @@ namespace ToothChartImageTests {
 				"_listDataRowsProcsForGraphical=ToothChartPainter.GetChartModuleRows(table,listProcNumsTreatPlans,_listDataRowsProcsOrig,dateLimit,",
 				"out _listDataRowsProcsSkipped);",
 				"_listToothInitialsCopy=ToothChartPainter.GetChartModuleToothInitials(Pd.ListToothInitials,_listDataRowsProcsSkipped,_listDataRowsProcsForGraphical,",
-				"ToothChartPainter.PaintChartModuleToothInitials(_toothChartRelay,_listToothInitialsCopy);",
+				"ToothChartPainter.PaintToothInitials(_toothChartRelay,_listToothInitialsCopy);",
 				"DrawProcGraphics();",
 				"DrawOrthoHardware();",
 				"_toothChartRelay.EndUpdate();");
-			StringAssert.Contains(SourceText.GetMethod(code,"private void DrawProcGraphics(bool isPrinting=false) {"),
-				"ToothChartPainter.PaintChartModuleProcs(_toothChartRelay,_listDataRowsProcsForGraphical,_listToothInitialsCopy,Pd.Patient,Pd.ListAppointments,isPrinting);");
+			SourceText.AssertInOrder(SourceText.GetMethod(code,"private void DrawProcGraphics(bool isPrinting=false) {"),"ControlChart.DrawProcGraphics",
+				"ToothChartPainter.PaintProcedures(_toothChartRelay,ToothChartPaintProc.FromDataRows(_listDataRowsProcsForGraphical),_listToothInitialsCopy,",
+				"ToothChartPaintOptions.ForChartModule(Pd.Patient,Pd.ListAppointments,isPrinting));");
 			SourceText.AssertInOrder(SourceText.GetMethod(code,"private void DrawOrthoHardware(){"),"ControlChart.DrawOrthoHardware",
 				"if(!checkOrthoGraphics.Checked){",
 				"return;",
 				"FillOrthoDateIfNeeded();",
 				"ToothChartPainter.GetChartModuleOrthoHardwares(Pd.ListOrthoHardwares,comboOrthoDate.GetSelected<DateTime>(),",
 				"checkShowHidden.Checked);",
-				"ToothChartPainter.PaintChartModuleOrthoHardware(_toothChartRelay,listOrthoHardwares);");
+				"ToothChartPainter.PaintOrthoHardware(_toothChartRelay,listOrthoHardwares);");
 			//The print recolour of Save to Images: printing colours, the picture, then the screen's colours again.
 			SourceText.AssertInOrder(SourceText.GetMethod(code,"private void menuItemChartSave_Click(object sender,EventArgs e) {"),"menuItemChartSave_Click",
 				"if(_toothChartRelay.HasToothColorUserPref()) {","DrawProcGraphics(true);","bitmapChart=_toothChartRelay.GetBitmap();","DrawProcGraphics(false);");
@@ -67,10 +68,12 @@ namespace ToothChartImageTests {
 				"ToothChartRelay.ApplyComputerSettings(_toothChartWrapper,ToothChartSettingsUse.StoredMode);",
 				"_toothChartRelay.ResetTeeth();",
 				"_listToothInitials=ToothInitials.GetPatientData(PatientCur.PatNum);",
-				"ToothChartPainter.PaintTreatPlanToothInitials(_toothChartRelay,_listToothInitials);",
+				"ToothChartPainter.PaintPrimaryTeeth(_toothChartRelay,_listToothInitials);",
+				"ToothChartPainter.PaintToothInitials(_toothChartRelay,_listToothInitials);",
 				"ComputeProcListFiltered();",
-				"ToothChartPainter.PaintTreatPlanProcs(_toothChartRelay,_listProceduresFiltered,_listToothInitials);",
-				"ToothChartPainter.PaintTreatPlanOrthoHardware(_toothChartRelay,OrthoHardwares.GetPatientData(PatientCur.PatNum));",
+				"ToothChartPainter.PaintProcedures(_toothChartRelay,ToothChartPaintProc.FromProcedures(_listProceduresFiltered),_listToothInitials,",
+				"ToothChartPaintOptions.ForTreatPlanPrintout());",
+				"ToothChartPainter.PaintOrthoHardware(_toothChartRelay,OrthoHardwares.GetPatientData(PatientCur.PatNum));",
 				"_toothChartRelay.EndUpdate();");
 		}
 
@@ -81,16 +84,18 @@ namespace ToothChartImageTests {
 				"ToothChartRelay.ApplyComputerSettings(toothChartWrapper,ToothChartSettingsUse.StoredMode);",
 				"toothChartRelay.ResetTeeth();",
 				"List<ToothInitial> toothInitialList=patNum==0?new List<ToothInitial>():ToothInitials.GetPatientData(patNum);",
-				"ToothChartPainter.PaintSheetToothInitials(toothChartRelay,toothInitialList);",
+				"ToothChartPainter.PaintPrimaryTeeth(toothChartRelay,toothInitialList);",
+				"ToothChartPainter.PaintToothInitials(toothChartRelay,toothInitialList);",
 				"if(listProceduresFilteredOverride!=null) {",
 				"listProceduresFiltered=listProceduresFilteredOverride;",
 				"else if(patNum>0) {",
 				"List<Procedure> listProceduresAll=Procedures.Refresh(patNum);",
 				"listProceduresFiltered=OpenPmsDentalBusiness.SheetPrinting.FilterProceduresForToothChart(listProceduresAll,treatPlan,showCompleted);",
 				"listProceduresFiltered.Sort(OpenPmsDentalBusiness.SheetPrinting.CompareProcListFiltered);",
-				"ToothChartPainter.PaintSheetProcs(toothChartRelay,listProceduresFiltered,toothInitialList,isInPatientDashboard,patCur,listAppts);",
+				"ToothChartPainter.PaintProcedures(toothChartRelay,ToothChartPaintProc.FromProcedures(listProceduresFiltered),toothInitialList,",
+				"ToothChartPaintOptions.ForSheet(isInPatientDashboard,patCur,listAppts));",
 				"List<OrthoHardware> listOrthoHardwares=OrthoHardwares.GetPatientData(patNum);",
-				"ToothChartPainter.PaintSheetOrthoHardware(toothChartRelay,listOrthoHardwares);",
+				"ToothChartPainter.PaintOrthoHardware(toothChartRelay,listOrthoHardwares);",
 				"toothChartRelay.EndUpdate();");
 		}
 
@@ -102,9 +107,11 @@ namespace ToothChartImageTests {
 			SourceText.AssertInOrder(SourceText.GetMethod(code,"private void FillToothChart(){"),"FormToothChartingBig.FillToothChart",
 				"_toothChartRelay.ResetTeeth();",
 				"_toothChartRelay.SetSelected(listSelectedTeeth[i],true);",
-				"ToothChartPainter.PaintBigChartToothInitials(_toothChartRelay,ListToothInitials);",
-				"ToothChartPainter.PaintBigChartProcs(_toothChartRelay,ListDataRowsProcs,ListToothInitials,PatientCur,ListAppointments);",
-				"ToothChartPainter.PaintBigChartOrthoHardware(_toothChartRelay,ListOrthoHardwares);",
+				"ToothChartPainter.PaintPrimaryTeeth(_toothChartRelay,ListToothInitials);",
+				"ToothChartPainter.PaintToothInitials(_toothChartRelay,ListToothInitials);",
+				"ToothChartPainter.PaintProcedures(_toothChartRelay,ToothChartPaintProc.FromDataRows(ListDataRowsProcs),ListToothInitials,",
+				"ToothChartPaintOptions.ForBigChart(PatientCur,ListAppointments));",
+				"ToothChartPainter.PaintOrthoHardware(_toothChartRelay,ListOrthoHardwares);",
 				"_toothChartRelay.EndUpdate();");
 		}
 
@@ -122,6 +129,29 @@ namespace ToothChartImageTests {
 		[TestMethod]
 		public void Relay_IsThePaintersTarget() {
 			Assert.IsTrue(typeof(IToothChartPaintTarget).IsAssignableFrom(typeof(ToothChartRelay)));
+		}
+
+		[TestMethod]
+		public void PaintOptions_KeepEachCallersDifferences_O25() {
+			//Only the Chart module skips Mouth procedures, and it turns the per-provider colours off when it prints.
+			ToothChartPaintOptions options=ToothChartPaintOptions.ForChartModule(null,null,false);
+			Assert.IsTrue(options.DoSkipMouth && options.DoLookUpProviderColors && options.IsProviderColorAllowed && !options.DoUseTreatPlanColors);
+			Assert.IsFalse(ToothChartPaintOptions.ForChartModule(null,null,true).IsProviderColorAllowed);
+			//The big chart always has the per-provider colours.
+			options=ToothChartPaintOptions.ForBigChart(null,null);
+			Assert.IsTrue(!options.DoSkipMouth && options.DoLookUpProviderColors && options.IsProviderColorAllowed && !options.DoUseTreatPlanColors);
+			//Sheets have them only in the Patient Dashboard, but look them up either way, as before.
+			options=ToothChartPaintOptions.ForSheet(false,null,null);
+			Assert.IsTrue(!options.DoSkipMouth && options.DoLookUpProviderColors && !options.IsProviderColorAllowed && !options.DoUseTreatPlanColors);
+			Assert.IsTrue(ToothChartPaintOptions.ForSheet(true,null,null).IsProviderColorAllowed);
+			//The Treatment Plan printout has its own colours and never had the per-provider ones.
+			options=ToothChartPaintOptions.ForTreatPlanPrintout();
+			Assert.IsTrue(!options.DoSkipMouth && !options.DoLookUpProviderColors && !options.IsProviderColorAllowed && options.DoUseTreatPlanColors);
+			//One painter: the relay has one procedure painter, one tooth-initial painter and one hardware painter.
+			string relay=SourceText.ReadCode(RELAY);
+			Assert.AreEqual(1,Regex.Matches(relay,@"switch\(procedureCode\.PaintType\)").Count,"One paint switch.");
+			Assert.AreEqual(1,Regex.Matches(relay,@"case ToothInitialType\.Rotate:").Count,"One tooth-initial loop.");
+			Assert.AreEqual(1,Regex.Matches(relay,@"OrthoHardwares\.GetWires\(").Count,"One hardware loop.");
 		}
 		#endregion The painting code is the painter's
 

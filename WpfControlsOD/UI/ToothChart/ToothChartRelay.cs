@@ -518,6 +518,93 @@ namespace OpenPmsDental{
 		void SetVeneer(string toothID,Color color);
 	}
 
+	///<summary>One procedure as ToothChartPainter.PaintProcedures draws it, from a progress-notes row (the Chart module and the big chart) or a
+	///Procedure (the printout, sheets and the dashboard). The procedure code is looked up as those callers did: by the row's code, or by the
+	///procedure's CodeNum.</summary>
+	public class ToothChartPaintProc {
+		public bool IsHidden;
+		public ProcedureCode ProcedureCode;
+		public ProcStat ProcStatus;
+		public long ProvNum;
+		public string ToothNum;
+		public string Surf;
+		public string ToothRange;
+
+		///<summary>Progress-notes rows with raw database values: ProcStatus, ProcCode, ToothNum, HideGraphics, Surf, ToothRange and ProvNum.</summary>
+		public static List<ToothChartPaintProc> FromDataRows(List<DataRow> listDataRows) {
+			List<ToothChartPaintProc> listProcs=new List<ToothChartPaintProc>();
+			for(int i=0;i<listDataRows.Count;i++) {
+				listProcs.Add(new ToothChartPaintProc {
+					IsHidden=listDataRows[i]["HideGraphics"].ToString()=="1",
+					ProcedureCode=ProcedureCodes.GetProcCode(listDataRows[i]["ProcCode"].ToString()),
+					ProcStatus=(ProcStat)PIn.Long(listDataRows[i]["ProcStatus"].ToString()),
+					ProvNum=PIn.Long(listDataRows[i]["ProvNum"].ToString()),
+					ToothNum=listDataRows[i]["ToothNum"].ToString(),
+					Surf=listDataRows[i]["Surf"].ToString(),
+					ToothRange=listDataRows[i]["ToothRange"].ToString(),
+				});
+			}
+			return listProcs;
+		}
+
+		public static List<ToothChartPaintProc> FromProcedures(List<Procedure> listProcedures) {
+			List<ToothChartPaintProc> listProcs=new List<ToothChartPaintProc>();
+			for(int i=0;i<listProcedures.Count;i++) {
+				listProcs.Add(new ToothChartPaintProc {
+					IsHidden=listProcedures[i].HideGraphics,
+					ProcedureCode=ProcedureCodes.GetProcCode(listProcedures[i].CodeNum),
+					ProcStatus=listProcedures[i].ProcStatus,
+					ProvNum=listProcedures[i].ProvNum,
+					ToothNum=listProcedures[i].ToothNum,
+					Surf=listProcedures[i].Surf,
+					ToothRange=listProcedures[i].ToothRange,
+				});
+			}
+			return listProcs;
+		}
+	}
+
+	///<summary>How the callers' painting differs (O-25), kept as options of the one painter so that each caller paints as it did before TC-2.
+	///The For methods give each caller's set.</summary>
+	public class ToothChartPaintOptions {
+		///<summary>Skips procedures whose code paints nothing or treats the whole mouth. Only the Chart module skipped Mouth procedures.</summary>
+		public bool DoSkipMouth;
+		///<summary>The Treatment Plan printout's own colours (no TPi exception for a code's graphic colour, no per-provider colours, and status D or
+		///a status it does not know is not drawn). Otherwise ToothChartPainter.GetToothColors, which paints such a status white.</summary>
+		public bool DoUseTreatPlanColors;
+		///<summary>Looks up whose completed work keeps its colour (GetPertinentProvNumsForToothColorPref) before painting. Every caller but the
+		///printout did.</summary>
+		public bool DoLookUpProviderColors;
+		///<summary>Lets the per-provider colours apply (the user's ToothChartUsesDiffColorByProv): not while the Chart module prints, and on sheets
+		///only in the Patient Dashboard.</summary>
+		public bool IsProviderColorAllowed;
+		///<summary>The patient and their appointments, for the per-provider colours.</summary>
+		public Patient Patient;
+		public List<Appointment> ListAppointments;
+
+		///<summary>The Chart module (ControlChart.DrawProcGraphics): Mouth procedures skipped; the per-provider colours, except when printing.</summary>
+		public static ToothChartPaintOptions ForChartModule(Patient patient,List<Appointment> listAppointments,bool isPrinting) {
+			return new ToothChartPaintOptions { DoSkipMouth=true,DoLookUpProviderColors=true,IsProviderColorAllowed=!isPrinting,Patient=patient,
+				ListAppointments=listAppointments };
+		}
+
+		///<summary>The big chart (FormToothChartingBig): the per-provider colours always.</summary>
+		public static ToothChartPaintOptions ForBigChart(Patient patient,List<Appointment> listAppointments) {
+			return new ToothChartPaintOptions { DoLookUpProviderColors=true,IsProviderColorAllowed=true,Patient=patient,ListAppointments=listAppointments };
+		}
+
+		///<summary>Sheets and the Patient Dashboard (SheetPrinting.GetToothChartHelper): the per-provider colours only in the dashboard.</summary>
+		public static ToothChartPaintOptions ForSheet(bool isInPatientDashboard,Patient patCur,List<Appointment> listAppts) {
+			return new ToothChartPaintOptions { DoLookUpProviderColors=true,IsProviderColorAllowed=isInPatientDashboard,Patient=patCur,
+				ListAppointments=listAppts };
+		}
+
+		///<summary>The Treatment Plan printout (ControlTreat.PrepImageForPrinting): its own colours.</summary>
+		public static ToothChartPaintOptions ForTreatPlanPrintout() {
+			return new ToothChartPaintOptions { DoUseTreatPlanColors=true };
+		}
+	}
+
 	///<summary>The painting code of the tooth chart's callers (TC-2): the procedures, the tooth initials and the orthodontic hardware, drawn on an
 	///IToothChartPaintTarget. Moved from ControlChart, ControlTreat, SheetPrinting and FormToothChartingBig, so that the callers hold no chart code
 	///and tests can log what each caller paints (tests/ToothChartImageTests, CallLogTests).</summary>
@@ -562,18 +649,6 @@ namespace OpenPmsDental{
 			return listOrthoHardwares.FindAll(x=>x.DateExam==dateExam && (!x.IsHidden || isShowHidden));
 		}
 
-
-		///<summary>ControlChart.FillToothChart: the primary teeth, before the selection is restored and before the other tooth initials.</summary>
-		public static void PaintChartModulePrimaryTeeth(IToothChartPaintTarget target,List<ToothInitial> listToothInitials) {
-			//primary teeth need to be set before resetting selected teeth, because some of them might be primary.
-			//primary teeth also need to be set before initial list so that we can set a primary tooth missing.
-			for(int i=0;i<listToothInitials.Count;i++) {
-				if(listToothInitials[i].InitialType==ToothInitialType.Primary) {
-					target.SetPrimary(listToothInitials[i].ToothNum);
-				}
-			}
-		}
-
 		///<summary>ControlChart.FillToothChart: a copy of the tooth initials for the slider date. A missing tooth whose extraction the slider has not reached yet (skipped, or completed after the slider date and drawn as planned) is not missing.</summary>
 		public static List<ToothInitial> GetChartModuleToothInitials(List<ToothInitial> listToothInitials,List<DataRow> listDataRowsProcsSkipped,
 			List<DataRow> listDataRowsProcsForGraphical,DateTime dateLimit)
@@ -614,244 +689,6 @@ namespace OpenPmsDental{
 			return listToothInitialsCopy;
 		}
 
-		///<summary>ControlChart.FillToothChart: the tooth initials of the slider date, without the primary teeth.</summary>
-		public static void PaintChartModuleToothInitials(IToothChartPaintTarget target,List<ToothInitial> listToothInitialsCopy) {
-			for(int i=0;i<listToothInitialsCopy.Count;i++) {
-				switch(listToothInitialsCopy[i].InitialType) {
-					case ToothInitialType.Missing:
-						target.SetMissing(listToothInitialsCopy[i].ToothNum);
-						break;
-					case ToothInitialType.Hidden:
-						target.SetHidden(listToothInitialsCopy[i].ToothNum);
-						break;
-					//case ToothInitialType.Primary:
-					//	break;
-					case ToothInitialType.Rotate:
-						target.MoveTooth(listToothInitialsCopy[i].ToothNum,listToothInitialsCopy[i].Movement,0,0,0,0,0);
-						break;
-					case ToothInitialType.TipM:
-						target.MoveTooth(listToothInitialsCopy[i].ToothNum,0,listToothInitialsCopy[i].Movement,0,0,0,0);
-						break;
-					case ToothInitialType.TipB:
-						target.MoveTooth(listToothInitialsCopy[i].ToothNum,0,0,listToothInitialsCopy[i].Movement,0,0,0);
-						break;
-					case ToothInitialType.ShiftM:
-						target.MoveTooth(listToothInitialsCopy[i].ToothNum,0,0,0,listToothInitialsCopy[i].Movement,0,0);
-						break;
-					case ToothInitialType.ShiftO:
-						target.MoveTooth(listToothInitialsCopy[i].ToothNum,0,0,0,0,listToothInitialsCopy[i].Movement,0);
-						break;
-					case ToothInitialType.ShiftB:
-						target.MoveTooth(listToothInitialsCopy[i].ToothNum,0,0,0,0,0,listToothInitialsCopy[i].Movement);
-						break;
-					case ToothInitialType.Drawing:
-						target.AddDrawingSegment(listToothInitialsCopy[i].Copy());
-						break;
-					case ToothInitialType.Text:
-						target.AddText(listToothInitialsCopy[i].GetTextString(),listToothInitialsCopy[i].GetTextPoint(),listToothInitialsCopy[i].ColorDraw,listToothInitialsCopy[i].ToothInitialNum);
-						break;
-				}
-			}
-		}
-
-		///<summary>ControlChart.DrawProcGraphics: the procedures of the progress notes. isPrinting turns the per-provider colours off.</summary>
-		public static void PaintChartModuleProcs(IToothChartPaintTarget target,List<DataRow> listDataRowsProcsForGraphical,List<ToothInitial> listToothInitialsCopy,
-			Patient patient,List<Appointment> listAppointments,bool isPrinting)
-		{
-			//this requires: ProcStatus, ProcCode, ToothNum, HideGraphics, Surf, and ToothRange.  All need to be raw database values.
-			string[] stringArrayTeeth;
-			List<long> listProvNums=GetPertinentProvNumsForToothColorPref(Security.CurUser,patient,listAppointments);
-			for(int i=0;i<listDataRowsProcsForGraphical.Count;i++) {
-				if(listDataRowsProcsForGraphical[i]["HideGraphics"].ToString()=="1") {
-					continue;
-				}
-				ProcedureCode procedureCode=ProcedureCodes.GetProcCode(listDataRowsProcsForGraphical[i]["ProcCode"].ToString());
-				if(procedureCode.PaintType==ToothPaintingType.None || procedureCode.TreatArea==TreatmentArea.Mouth) {
-					continue;
-				}
-				if(procedureCode.PaintType==ToothPaintingType.Extraction && (
-					PIn.Long(listDataRowsProcsForGraphical[i]["ProcStatus"].ToString())==(int)ProcStat.C
-					|| PIn.Long(listDataRowsProcsForGraphical[i]["ProcStatus"].ToString())==(int)ProcStat.EC
-					|| PIn.Long(listDataRowsProcsForGraphical[i]["ProcStatus"].ToString())==(int)ProcStat.EO
-					)) {
-					continue;//prevents the red X. Missing teeth already handled.
-				}
-				ProcStat procStat=(ProcStat)PIn.Long(listDataRowsProcsForGraphical[i]["ProcStatus"].ToString());
-				long provNumForProc=PIn.Long(listDataRowsProcsForGraphical[i]["ProvNum"].ToString());
-				bool applyColorPref=DoesToothColorPrefApply(listProvNums,provNumForProc) && !isPrinting;
-				GetToothColors(procedureCode,procStat,applyColorPref,out Color colorDark,out Color colorLight);
-				switch(procedureCode.PaintType) {
-					case ToothPaintingType.BridgeDark:
-						if(ToothInitials.ToothIsMissingOrHidden(listToothInitialsCopy,listDataRowsProcsForGraphical[i]["ToothNum"].ToString())){
-							target.SetPontic(listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),colorDark);
-						}
-						else{
-							target.SetCrown(listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),colorDark);
-						}
-						break;
-					case ToothPaintingType.BridgeLight:
-						if(ToothInitials.ToothIsMissingOrHidden(listToothInitialsCopy,listDataRowsProcsForGraphical[i]["ToothNum"].ToString())) {
-							target.SetPontic(listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),colorLight);
-						}
-						else {
-							target.SetCrown(listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),colorLight);
-						}
-						break;
-					case ToothPaintingType.CrownDark:
-						target.SetCrown(listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),colorDark);
-						break;
-					case ToothPaintingType.CrownLight:
-						target.SetCrown(listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),colorLight);
-						break;
-					case ToothPaintingType.DentureDark:
-						if(listDataRowsProcsForGraphical[i]["Surf"].ToString()=="U") {
-							stringArrayTeeth=new string[14];
-							for(int t=0;t<14;t++) {
-								stringArrayTeeth[t]=(t+2).ToString();
-							}
-						}
-						else if(listDataRowsProcsForGraphical[i]["Surf"].ToString()=="L") {
-							stringArrayTeeth=new string[14];
-							for(int t=0;t<14;t++) {
-								stringArrayTeeth[t]=(t+18).ToString();
-							}
-						}
-						else {
-							stringArrayTeeth=listDataRowsProcsForGraphical[i]["ToothRange"].ToString().Split(new char[] {','});
-						}
-						for(int t=0;t<stringArrayTeeth.Length;t++) {
-							if(ToothInitials.ToothIsMissingOrHidden(listToothInitialsCopy,stringArrayTeeth[t])) {
-								target.SetPontic(stringArrayTeeth[t],colorDark);
-								continue;
-							}
-							target.SetCrown(stringArrayTeeth[t],colorDark);
-						}
-						break;
-					case ToothPaintingType.DentureLight:
-						if(listDataRowsProcsForGraphical[i]["Surf"].ToString()=="U") {
-							stringArrayTeeth=new string[14];
-							for(int t=0;t<14;t++) {
-								stringArrayTeeth[t]=(t+2).ToString();
-							}
-						}
-						else if(listDataRowsProcsForGraphical[i]["Surf"].ToString()=="L") {
-							stringArrayTeeth=new string[14];
-							for(int t=0;t<14;t++) {
-								stringArrayTeeth[t]=(t+18).ToString();
-							}
-						}
-						else {
-							stringArrayTeeth=listDataRowsProcsForGraphical[i]["ToothRange"].ToString().Split(new char[] { ',' });
-						}
-						for(int t=0;t<stringArrayTeeth.Length;t++) {
-							if(ToothInitials.ToothIsMissingOrHidden(listToothInitialsCopy,stringArrayTeeth[t])) {
-								target.SetPontic(stringArrayTeeth[t],colorLight);
-								continue;
-							}
-							target.SetCrown(stringArrayTeeth[t],colorLight);
-						}
-						break;
-					case ToothPaintingType.Extraction:
-						target.SetBigX(listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),colorDark);
-						break;
-					case ToothPaintingType.FillingDark:
-						target.SetSurfaceColors(listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),listDataRowsProcsForGraphical[i]["Surf"].ToString(),colorDark);
-						break;
-					case ToothPaintingType.FillingLight:
-						target.SetSurfaceColors(listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),listDataRowsProcsForGraphical[i]["Surf"].ToString(),colorLight);
-						break;
-					case ToothPaintingType.Implant:
-						target.SetImplant(listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),colorDark);
-						break;
-					case ToothPaintingType.PostBU:
-						target.SetBU(listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),colorDark);
-						break;
-					case ToothPaintingType.RCT:
-						target.SetRCT(listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),colorDark);
-						break;
-					case ToothPaintingType.RetainedRoot:
-						target.SetRetainedRoot(listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),colorDark);
-						break;
-					case ToothPaintingType.Sealant:
-						target.SetSealant(listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),colorDark);
-						break;
-					case ToothPaintingType.SpaceMaintainer:
-						if(procedureCode.TreatArea==TreatmentArea.Tooth && listDataRowsProcsForGraphical[i]["ToothNum"].ToString()!=""){
-							target.SetSpaceMaintainer(listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),colorDark);
-							break;
-						}
-						if(procedureCode.TreatArea==TreatmentArea.ToothRange && listDataRowsProcsForGraphical[i]["ToothRange"].ToString()!="") {
-							stringArrayTeeth=listDataRowsProcsForGraphical[i]["ToothRange"].ToString().Split(',');
-							for(int t=0;t<stringArrayTeeth.Length;t++) {
-								target.SetSpaceMaintainer(stringArrayTeeth[t],colorDark);
-							}
-							break;
-						}
-						if(procedureCode.AreaAlsoToothRange==true && listDataRowsProcsForGraphical[i]["ToothRange"].ToString()!="") {
-							stringArrayTeeth=listDataRowsProcsForGraphical[i]["ToothRange"].ToString().Split(',');
-							for(int t=0;t<stringArrayTeeth.Length;t++) {
-								target.SetSpaceMaintainer(stringArrayTeeth[t],colorDark);
-							}
-							break;
-						}
-						if(procedureCode.TreatArea==TreatmentArea.Quad){
-							stringArrayTeeth=new string[0];
-							if(listDataRowsProcsForGraphical[i]["Surf"].ToString()=="UR") {
-								stringArrayTeeth=new string[] {"4","5","6","7","8"};
-							}
-							if(listDataRowsProcsForGraphical[i]["Surf"].ToString()=="UL") {
-								stringArrayTeeth=new string[] {"9","10","11","12","13"};
-							}
-							if(listDataRowsProcsForGraphical[i]["Surf"].ToString()=="LL") {
-								stringArrayTeeth=new string[] {"20","21","22","23","24"};
-							}
-							if(listDataRowsProcsForGraphical[i]["Surf"].ToString()=="LR") {
-								stringArrayTeeth=new string[] {"25","26","27","28","29"};
-							}							
-							for(int t=0;t<stringArrayTeeth.Length;t++) {//could still be length 0
-								target.SetSpaceMaintainer(stringArrayTeeth[t],colorDark);
-							}
-						}
-						break;
-					case ToothPaintingType.Text:
-						target.SetText(listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),colorDark,procedureCode.PaintText);
-						break;
-					case ToothPaintingType.Veneer:
-						target.SetVeneer(listDataRowsProcsForGraphical[i]["ToothNum"].ToString(),colorLight);
-						break;
-				}
-			}
-		}
-
-		///<summary>ControlChart.DrawOrthoHardware: the hardware of the exam shown, from GetChartModuleOrthoHardwares.</summary>
-		public static void PaintChartModuleOrthoHardware(IToothChartPaintTarget target,List<OrthoHardware> listOrthoHardwares) {
-			List<OrthoHardwareSpec> listOrthoHardwareSpecs=OrthoHardwareSpecs.GetDeepCopy();
-			List<OrthoHardwares.OrthoWire> listOrthoWires=new List<OrthoHardwares.OrthoWire>();//also used for elastics
-			for(int i=0;i<listOrthoHardwares.Count;i++){
-				OrthoHardwareSpec orthoHardwareSpec=listOrthoHardwareSpecs.Find(x=>x.OrthoHardwareSpecNum==listOrthoHardwares[i].OrthoHardwareSpecNum);
-				if(listOrthoHardwares[i].OrthoHardwareType==EnumOrthoHardwareType.Bracket){
-					target.SetBracket(listOrthoHardwares[i].ToothRange,orthoHardwareSpec.ItemColor);
-				}
-				if(listOrthoHardwares[i].OrthoHardwareType==EnumOrthoHardwareType.Wire){
-					listOrthoWires.AddRange(OrthoHardwares.GetWires(listOrthoHardwares[i].ToothRange,orthoHardwareSpec.ItemColor));
-				}
-				if(listOrthoHardwares[i].OrthoHardwareType==EnumOrthoHardwareType.Elastic){
-					listOrthoWires.AddRange(OrthoHardwares.GetElastics(listOrthoHardwares[i].ToothRange,orthoHardwareSpec.ItemColor));
-				}
-			}
-			for(int i=0;i<listOrthoWires.Count;i++){
-				if(listOrthoWires[i].OrthoWireType==OrthoHardwares.EnumOrthoWireType.BetweenBrackets){
-					target.AddOrthoWireBetweenBrackets(listOrthoWires[i].ToothIDstart,listOrthoWires[i].ToothIDend,listOrthoWires[i].ColorDraw);
-				}
-				if(listOrthoWires[i].OrthoWireType==OrthoHardwares.EnumOrthoWireType.InBracket){
-					target.AddOrthoWireInBracket(listOrthoWires[i].ToothIDstart,listOrthoWires[i].ColorDraw);
-				}
-				if(listOrthoWires[i].OrthoWireType==OrthoHardwares.EnumOrthoWireType.Elastic){
-					target.AddOrthoElastic(listOrthoWires[i].ToothIDstart,listOrthoWires[i].ToothIDend,listOrthoWires[i].ColorDraw);
-				}
-			}
-		}
-
 		///<summary>Returns true if rowCur represents a valid procedure that should be shown on the tooth chart based on the current track bar date. Returns false if rowCur does not have a valid DateTP, DateEntryC, and ProcDate set. Will also return false if rowCur should not be drawn on the tooth chart (based on the track bar's currently selected date / status of rowCur). If the row needs to be skipped, it gets added to listDataRowsProcsSkipped. Moved from ControlChart.</summary>
 		public static bool ShouldRowShowGraphical(DataRow dataRow,DateTime dateLimit,List<DataRow> listDataRowsProcsSkipped) {
 			DateTime dateTP;
@@ -880,18 +717,22 @@ namespace OpenPmsDental{
 			}
 			return true;
 		}
-
 		#endregion Chart module (ControlChart)
 
-		#region Treatment Plan printout (ControlTreat)
-		///<summary>ControlTreat.PrepImageForPrinting: the primary teeth, then the other tooth initials.</summary>
-		public static void PaintTreatPlanToothInitials(IToothChartPaintTarget target,List<ToothInitial> listToothInitials) {
+		#region The painter
+		///<summary>The primary teeth of the tooth initials. They come first, so a primary tooth can be set missing afterwards; the Chart module also
+		///restores its selection after them.</summary>
+		public static void PaintPrimaryTeeth(IToothChartPaintTarget target,List<ToothInitial> listToothInitials) {
 			//first, primary.  That way, you can still set a primary tooth missing afterwards.
 			for(int i=0;i<listToothInitials.Count;i++) {
 				if(listToothInitials[i].InitialType==ToothInitialType.Primary) {
 					target.SetPrimary(listToothInitials[i].ToothNum);
 				}
 			}
+		}
+
+		///<summary>The other tooth initials: missing and hidden teeth, movements, drawings and free text.</summary>
+		public static void PaintToothInitials(IToothChartPaintTarget target,List<ToothInitial> listToothInitials) {
 			for(int i=0;i<listToothInitials.Count;i++) {
 				switch(listToothInitials[i].InitialType) {
 					case ToothInitialType.Missing:
@@ -928,313 +769,60 @@ namespace OpenPmsDental{
 			}
 		}
 
-		///<summary>ControlTreat.DrawProcsGraphics: the printout's procedures, in its own colours (no planned-inactive exception, no per-provider colours) and without deleted or unknown statuses.</summary>
-		public static void PaintTreatPlanProcs(IToothChartPaintTarget target,List<Procedure> listProceduresFiltered,List<ToothInitial> listToothInitials) {
-			Procedure procedure;
-			string[] stringArrayTeeth;
-			System.Drawing.Color cLight=System.Drawing.Color.White;
-			System.Drawing.Color cDark=System.Drawing.Color.White;
-			List<Def> listDefs=Defs.GetDefsForCategory(DefCat.ChartGraphicColors,true);
-			for(int i=0;i<listProceduresFiltered.Count;i++) {
-				procedure=listProceduresFiltered[i];
-				//if(proc.ProcStatus!=procStat) {
-				//  continue;
-				//}
-				if(procedure.HideGraphics) {
-					continue;
-				}
-				if(ProcedureCodes.GetProcCode(procedure.CodeNum).PaintType==ToothPaintingType.Extraction && (
-					procedure.ProcStatus==ProcStat.C
-					|| procedure.ProcStatus==ProcStat.EC
-					|| procedure.ProcStatus==ProcStat.EO
-					)) {
-					continue;//prevents the red X. Missing teeth already handled.
-				}
-				if(ProcedureCodes.GetProcCode(procedure.CodeNum).GraphicColor==System.Drawing.Color.FromArgb(0)) {
-					switch(procedure.ProcStatus) {
-						case ProcStat.C:
-							cDark=listDefs[1].ItemColor;
-							cLight=listDefs[6].ItemColor;
-							break;
-						case ProcStat.TP:
-							cDark=listDefs[0].ItemColor;
-							cLight=listDefs[5].ItemColor;
-							break;
-						case ProcStat.EC:
-							cDark=listDefs[2].ItemColor;
-							cLight=listDefs[7].ItemColor;
-							break;
-						case ProcStat.EO:
-							cDark=listDefs[3].ItemColor;
-							cLight=listDefs[8].ItemColor;
-							break;
-						case ProcStat.R:
-							cDark=listDefs[4].ItemColor;
-							cLight=listDefs[9].ItemColor;
-							break;
-						case ProcStat.Cn:
-							cDark=listDefs[16].ItemColor;
-							cLight=listDefs[17].ItemColor;
-							break;
-						case ProcStat.D:  //Don't think this can ever happen, but skip anyway.
-						default:
-							continue;//Don't draw.
-					}
-				}
-				else {
-					cDark=ProcedureCodes.GetProcCode(procedure.CodeNum).GraphicColor;
-					cLight=ProcedureCodes.GetProcCode(procedure.CodeNum).GraphicColor;
-				}
-				switch(ProcedureCodes.GetProcCode(procedure.CodeNum).PaintType) {
-					case ToothPaintingType.BridgeDark:
-						if(ToothInitials.ToothIsMissingOrHidden(listToothInitials,procedure.ToothNum)) {
-							target.SetPontic(procedure.ToothNum,cDark);
-						}
-						else {
-							target.SetCrown(procedure.ToothNum,cDark);
-						}
-						break;
-					case ToothPaintingType.BridgeLight:
-						if(ToothInitials.ToothIsMissingOrHidden(listToothInitials,procedure.ToothNum)) {
-							target.SetPontic(procedure.ToothNum,cLight);
-						}
-						else {
-							target.SetCrown(procedure.ToothNum,cLight);
-						}
-						break;
-					case ToothPaintingType.CrownDark:
-						target.SetCrown(procedure.ToothNum,cDark);
-						break;
-					case ToothPaintingType.CrownLight:
-						target.SetCrown(procedure.ToothNum,cLight);
-						break;
-					case ToothPaintingType.DentureDark:
-						if(procedure.Surf=="U") {
-							stringArrayTeeth=new string[14];
-							for(int t=0;t<14;t++) {
-								stringArrayTeeth[t]=(t+2).ToString();
-							}
-						}
-						else if(procedure.Surf=="L") {
-							stringArrayTeeth=new string[14];
-							for(int t=0;t<14;t++) {
-								stringArrayTeeth[t]=(t+18).ToString();
-							}
-						}
-						else {
-							stringArrayTeeth=procedure.ToothRange.Split(new char[] { ',' });
-						}
-						for(int t=0;t<stringArrayTeeth.Length;t++) {
-							if(ToothInitials.ToothIsMissingOrHidden(listToothInitials,stringArrayTeeth[t])) {
-								target.SetPontic(stringArrayTeeth[t],cDark);
-							}
-							else {
-								target.SetCrown(stringArrayTeeth[t],cDark);
-							}
-						}
-						break;
-					case ToothPaintingType.DentureLight:
-						if(procedure.Surf=="U") {
-							stringArrayTeeth=new string[14];
-							for(int t=0;t<14;t++) {
-								stringArrayTeeth[t]=(t+2).ToString();
-							}
-						}
-						else if(procedure.Surf=="L") {
-							stringArrayTeeth=new string[14];
-							for(int t=0;t<14;t++) {
-								stringArrayTeeth[t]=(t+18).ToString();
-							}
-						}
-						else {
-							stringArrayTeeth=procedure.ToothRange.Split(new char[] { ',' });
-						}
-						for(int t=0;t<stringArrayTeeth.Length;t++) {
-							if(ToothInitials.ToothIsMissingOrHidden(listToothInitials,stringArrayTeeth[t])) {
-								target.SetPontic(stringArrayTeeth[t],cLight);
-							}
-							else {
-								target.SetCrown(stringArrayTeeth[t],cLight);
-							}
-						}
-						break;
-					case ToothPaintingType.Extraction:
-						target.SetBigX(procedure.ToothNum,cDark);
-						break;
-					case ToothPaintingType.FillingDark:
-						target.SetSurfaceColors(procedure.ToothNum,procedure.Surf,cDark);
-						break;
-					case ToothPaintingType.FillingLight:
-						target.SetSurfaceColors(procedure.ToothNum,procedure.Surf,cLight);
-						break;
-					case ToothPaintingType.Implant:
-						target.SetImplant(procedure.ToothNum,cDark);
-						break;
-					case ToothPaintingType.PostBU:
-						target.SetBU(procedure.ToothNum,cDark);
-						break;
-					case ToothPaintingType.RCT:
-						target.SetRCT(procedure.ToothNum,cDark);
-						break;
-					case ToothPaintingType.RetainedRoot:
-						target.SetRetainedRoot(procedure.ToothNum,cDark);
-						break;
-					case ToothPaintingType.Sealant:
-						target.SetSealant(procedure.ToothNum,cDark);
-						break;
-					case ToothPaintingType.SpaceMaintainer:
-						if(ProcedureCodes.GetProcCode(procedure.CodeNum).TreatArea==TreatmentArea.Tooth && procedure.ToothNum!=""){
-							target.SetSpaceMaintainer(procedure.ToothNum,cDark);
-						}
-						else if((ProcedureCodes.GetProcCode(procedure.CodeNum).TreatArea==TreatmentArea.ToothRange && procedure.ToothRange!="") 
-							|| (ProcedureCodes.GetProcCode(procedure.CodeNum).AreaAlsoToothRange && procedure.ToothRange!=""))
-						{
-							stringArrayTeeth=procedure.ToothRange.Split(',');
-							for(int t=0;t<stringArrayTeeth.Length;t++) {
-								target.SetSpaceMaintainer(stringArrayTeeth[t],cDark);
-							}
-						}
-						else if(ProcedureCodes.GetProcCode(procedure.CodeNum).TreatArea==TreatmentArea.Quad){
-							stringArrayTeeth=new string[0];
-							if(procedure.Surf=="UR") {
-								stringArrayTeeth=new string[] {"4","5","6","7","8"};
-							}
-							if(procedure.Surf=="UL") {
-								stringArrayTeeth=new string[] {"9","10","11","12","13"};
-							}
-							if(procedure.Surf=="LL") {
-								stringArrayTeeth=new string[] {"20","21","22","23","24"};
-							}
-							if(procedure.Surf=="LR") {
-								stringArrayTeeth=new string[] {"25","26","27","28","29"};
-							}							
-							for(int t=0;t<stringArrayTeeth.Length;t++) {//could still be length 0
-								target.SetSpaceMaintainer(stringArrayTeeth[t],cDark);
-							}
-						}
-						break;
-					case ToothPaintingType.Text:
-						target.SetText(procedure.ToothNum,cDark,ProcedureCodes.GetProcCode(procedure.CodeNum).PaintText);
-						break;
-					case ToothPaintingType.Veneer:
-						target.SetVeneer(procedure.ToothNum,cLight);
-						break;
-				}
-			}
-		}
-
-		///<summary>ControlTreat.DrawOrthoHardware: all of the patient's hardware.</summary>
-		public static void PaintTreatPlanOrthoHardware(IToothChartPaintTarget target,List<OrthoHardware> listOrthoHardwares) {
-			List<OrthoHardwareSpec> listOrthoHardwareSpecs=OrthoHardwareSpecs.GetDeepCopy();
-			List<OrthoHardwares.OrthoWire> listOrthoWires=new List<OrthoHardwares.OrthoWire>();//also used for elastics
-			for(int i=0;i<listOrthoHardwares.Count;i++){
-				OrthoHardwareSpec orthoHardwareSpec=listOrthoHardwareSpecs.Find(x=>x.OrthoHardwareSpecNum==listOrthoHardwares[i].OrthoHardwareSpecNum);
-				if(listOrthoHardwares[i].OrthoHardwareType==EnumOrthoHardwareType.Bracket){
-					target.SetBracket(listOrthoHardwares[i].ToothRange,orthoHardwareSpec.ItemColor);
-				}
-				if(listOrthoHardwares[i].OrthoHardwareType==EnumOrthoHardwareType.Wire){
-					listOrthoWires.AddRange(OrthoHardwares.GetWires(listOrthoHardwares[i].ToothRange,orthoHardwareSpec.ItemColor));
-				}
-				if(listOrthoHardwares[i].OrthoHardwareType==EnumOrthoHardwareType.Elastic){
-					listOrthoWires.AddRange(OrthoHardwares.GetElastics(listOrthoHardwares[i].ToothRange,orthoHardwareSpec.ItemColor));
-				}
-			}
-			for(int i=0;i<listOrthoWires.Count;i++){
-				if(listOrthoWires[i].OrthoWireType==OrthoHardwares.EnumOrthoWireType.BetweenBrackets){
-					target.AddOrthoWireBetweenBrackets(listOrthoWires[i].ToothIDstart,listOrthoWires[i].ToothIDend,listOrthoWires[i].ColorDraw);
-				}
-				if(listOrthoWires[i].OrthoWireType==OrthoHardwares.EnumOrthoWireType.InBracket){
-					target.AddOrthoWireInBracket(listOrthoWires[i].ToothIDstart,listOrthoWires[i].ColorDraw);
-				}
-				if(listOrthoWires[i].OrthoWireType==OrthoHardwares.EnumOrthoWireType.Elastic){
-					target.AddOrthoElastic(listOrthoWires[i].ToothIDstart,listOrthoWires[i].ToothIDend,listOrthoWires[i].ColorDraw);
-				}
-			}
-		}
-
-		#endregion Treatment Plan printout (ControlTreat)
-
-		#region Sheets and the Patient Dashboard (SheetPrinting)
-		///<summary>SheetPrinting.GetToothChartHelper: the primary teeth, then the other tooth initials.</summary>
-		public static void PaintSheetToothInitials(IToothChartPaintTarget target,List<ToothInitial> toothInitialList) {
-			//first, primary.  That way, you can still set a primary tooth missing afterwards.
-			for(int i=0;i<toothInitialList.Count;i++) {
-				if(toothInitialList[i].InitialType==ToothInitialType.Primary) {
-					target.SetPrimary(toothInitialList[i].ToothNum);
-				}
-			}
-			for(int i=0;i<toothInitialList.Count;i++) {
-				switch(toothInitialList[i].InitialType) {
-					case ToothInitialType.Missing:
-						target.SetMissing(toothInitialList[i].ToothNum);
-						break;
-					case ToothInitialType.Hidden:
-						target.SetHidden(toothInitialList[i].ToothNum);
-						break;
-					case ToothInitialType.Rotate:
-						target.MoveTooth(toothInitialList[i].ToothNum,toothInitialList[i].Movement,0,0,0,0,0);
-						break;
-					case ToothInitialType.TipM:
-						target.MoveTooth(toothInitialList[i].ToothNum,0,toothInitialList[i].Movement,0,0,0,0);
-						break;
-					case ToothInitialType.TipB:
-						target.MoveTooth(toothInitialList[i].ToothNum,0,0,toothInitialList[i].Movement,0,0,0);
-						break;
-					case ToothInitialType.ShiftM:
-						target.MoveTooth(toothInitialList[i].ToothNum,0,0,0,toothInitialList[i].Movement,0,0);
-						break;
-					case ToothInitialType.ShiftO:
-						target.MoveTooth(toothInitialList[i].ToothNum,0,0,0,0,toothInitialList[i].Movement,0);
-						break;
-					case ToothInitialType.ShiftB:
-						target.MoveTooth(toothInitialList[i].ToothNum,0,0,0,0,0,toothInitialList[i].Movement);
-						break;
-					case ToothInitialType.Drawing:
-						target.AddDrawingSegment(toothInitialList[i].Copy());
-						break;
-					case ToothInitialType.Text:
-						target.AddText(toothInitialList[i].GetTextString(), toothInitialList[i].GetTextPoint(), toothInitialList[i].ColorDraw, toothInitialList[i].ToothInitialNum);
-						break;
-				}
-			}
-		}
-
-		///<summary>SheetPrinting.DrawProcsGraphics: the procedures of a sheet or the Patient Dashboard. The per-provider colours apply only in the dashboard.</summary>
-		public static void PaintSheetProcs(IToothChartPaintTarget target,List<Procedure> procList,List<ToothInitial> toothInitialList,bool isInPatientDashboard,
-			Patient patCur=null,List<Appointment> listAppts=null)
+		///<summary>The procedures of every caller (O-25: one painter, each caller's own output kept as options): hidden procedures and completed or
+		///existing extractions are skipped (the missing teeth show them), then each procedure is painted by its code's paint type in the colour of
+		///its status. options says how each caller differs.</summary>
+		public static void PaintProcedures(IToothChartPaintTarget target,List<ToothChartPaintProc> listProcs,List<ToothInitial> listToothInitials,
+			ToothChartPaintOptions options)
 		{
-			Procedure proc;
-			string[] teeth;
-			List<long> listCurProvNums=GetPertinentProvNumsForToothColorPref(Security.CurUser,patCur,listAppts);
-			for(int i=0;i<procList.Count;i++) {
-				proc=procList[i];
-				//if(proc.ProcStatus!=procStat) {
-				//  continue;
-				//}
-				if(proc.HideGraphics) {
+			string[] stringArrayTeeth;
+			List<long> listProvNums=new List<long>();
+			if(options.DoLookUpProviderColors) {
+				listProvNums=GetPertinentProvNumsForToothColorPref(Security.CurUser,options.Patient,options.ListAppointments);
+			}
+			List<Def> listDefsTreatPlan=null;
+			if(options.DoUseTreatPlanColors) {
+				listDefsTreatPlan=Defs.GetDefsForCategory(DefCat.ChartGraphicColors,true);
+			}
+			for(int i=0;i<listProcs.Count;i++) {
+				ToothChartPaintProc proc=listProcs[i];
+				if(proc.IsHidden) {
 					continue;
 				}
-				if(ProcedureCodes.GetProcCode(proc.CodeNum).PaintType==ToothPaintingType.Extraction && (
+				ProcedureCode procedureCode=proc.ProcedureCode;
+				if(options.DoSkipMouth && (procedureCode.PaintType==ToothPaintingType.None || procedureCode.TreatArea==TreatmentArea.Mouth)) {
+					continue;
+				}
+				if(procedureCode.PaintType==ToothPaintingType.Extraction && (
 					proc.ProcStatus==ProcStat.C
 					|| proc.ProcStatus==ProcStat.EC
 					|| proc.ProcStatus==ProcStat.EO
 					)) {
 					continue;//prevents the red X. Missing teeth already handled.
 				}
-				ProcedureCode procCode = ProcedureCodes.GetProcCode(proc.CodeNum);
-				bool doApplyColorPref=isInPatientDashboard && DoesToothColorPrefApply(listCurProvNums,proc.ProvNum);
-				GetToothColors(procCode,proc.ProcStatus,doApplyColorPref,out Color cDark,out Color cLight);
-				switch(ProcedureCodes.GetProcCode(proc.CodeNum).PaintType) {
+				Color cDark;
+				Color cLight;
+				if(options.DoUseTreatPlanColors) {
+					if(!GetTreatPlanColors(procedureCode,proc.ProcStatus,listDefsTreatPlan,out cDark,out cLight)) {
+						continue;//Don't draw.
+					}
+				}
+				else {
+					bool isProviderColor=options.IsProviderColorAllowed && DoesToothColorPrefApply(listProvNums,proc.ProvNum);
+					//A status GetToothColors does not know (D, from an invalidated locked procedure) is painted white, as before.
+					GetToothColors(procedureCode,proc.ProcStatus,isProviderColor,out cDark,out cLight);
+				}
+				switch(procedureCode.PaintType) {
 					case ToothPaintingType.BridgeDark:
-						if(ToothInitials.ToothIsMissingOrHidden(toothInitialList,proc.ToothNum)) {
+						if(ToothInitials.ToothIsMissingOrHidden(listToothInitials,proc.ToothNum)){
 							target.SetPontic(proc.ToothNum,cDark);
 						}
-						else {
+						else{
 							target.SetCrown(proc.ToothNum,cDark);
 						}
 						break;
 					case ToothPaintingType.BridgeLight:
-						if(ToothInitials.ToothIsMissingOrHidden(toothInitialList,proc.ToothNum)) {
+						if(ToothInitials.ToothIsMissingOrHidden(listToothInitials,proc.ToothNum)) {
 							target.SetPontic(proc.ToothNum,cLight);
 						}
 						else {
@@ -1249,52 +837,50 @@ namespace OpenPmsDental{
 						break;
 					case ToothPaintingType.DentureDark:
 						if(proc.Surf=="U") {
-							teeth=new string[14];
+							stringArrayTeeth=new string[14];
 							for(int t=0;t<14;t++) {
-								teeth[t]=(t+2).ToString();
+								stringArrayTeeth[t]=(t+2).ToString();
 							}
 						}
 						else if(proc.Surf=="L") {
-							teeth=new string[14];
+							stringArrayTeeth=new string[14];
 							for(int t=0;t<14;t++) {
-								teeth[t]=(t+18).ToString();
+								stringArrayTeeth[t]=(t+18).ToString();
 							}
 						}
 						else {
-							teeth=proc.ToothRange.Split(new char[] { ',' });
+							stringArrayTeeth=proc.ToothRange.Split(new char[] {','});
 						}
-						for(int t=0;t<teeth.Length;t++) {
-							if(ToothInitials.ToothIsMissingOrHidden(toothInitialList,teeth[t])) {
-								target.SetPontic(teeth[t],cDark);
+						for(int t=0;t<stringArrayTeeth.Length;t++) {
+							if(ToothInitials.ToothIsMissingOrHidden(listToothInitials,stringArrayTeeth[t])) {
+								target.SetPontic(stringArrayTeeth[t],cDark);
+								continue;
 							}
-							else {
-								target.SetCrown(teeth[t],cDark);
-							}
+							target.SetCrown(stringArrayTeeth[t],cDark);
 						}
 						break;
 					case ToothPaintingType.DentureLight:
 						if(proc.Surf=="U") {
-							teeth=new string[14];
+							stringArrayTeeth=new string[14];
 							for(int t=0;t<14;t++) {
-								teeth[t]=(t+2).ToString();
+								stringArrayTeeth[t]=(t+2).ToString();
 							}
 						}
 						else if(proc.Surf=="L") {
-							teeth=new string[14];
+							stringArrayTeeth=new string[14];
 							for(int t=0;t<14;t++) {
-								teeth[t]=(t+18).ToString();
+								stringArrayTeeth[t]=(t+18).ToString();
 							}
 						}
 						else {
-							teeth=proc.ToothRange.Split(new char[] { ',' });
+							stringArrayTeeth=proc.ToothRange.Split(new char[] { ',' });
 						}
-						for(int t=0;t<teeth.Length;t++) {
-							if(ToothInitials.ToothIsMissingOrHidden(toothInitialList,teeth[t])) {
-								target.SetPontic(teeth[t],cLight);
+						for(int t=0;t<stringArrayTeeth.Length;t++) {
+							if(ToothInitials.ToothIsMissingOrHidden(listToothInitials,stringArrayTeeth[t])) {
+								target.SetPontic(stringArrayTeeth[t],cLight);
+								continue;
 							}
-							else {
-								target.SetCrown(teeth[t],cLight);
-							}
+							target.SetCrown(stringArrayTeeth[t],cLight);
 						}
 						break;
 					case ToothPaintingType.Extraction:
@@ -1322,268 +908,36 @@ namespace OpenPmsDental{
 						target.SetSealant(proc.ToothNum,cDark);
 						break;
 					case ToothPaintingType.SpaceMaintainer:
-						if(ProcedureCodes.GetProcCode(proc.CodeNum).TreatArea==TreatmentArea.Tooth && proc.ToothNum!=""){
+						if(procedureCode.TreatArea==TreatmentArea.Tooth && proc.ToothNum!=""){
 							target.SetSpaceMaintainer(proc.ToothNum,cDark);
+							break;
 						}
-						else if((ProcedureCodes.GetProcCode(proc.CodeNum).TreatArea==TreatmentArea.ToothRange && proc.ToothRange!="") 
-							|| (ProcedureCodes.GetProcCode(proc.CodeNum).AreaAlsoToothRange && proc.ToothRange!=""))
-						{
-							teeth=proc.ToothRange.Split(',');
-							for(int t=0;t<teeth.Length;t++) {
-								target.SetSpaceMaintainer(teeth[t],cDark);
-							}
-						}
-						else if(ProcedureCodes.GetProcCode(proc.CodeNum).TreatArea==TreatmentArea.Quad){
-							teeth=new string[0];
-							if(proc.Surf=="UR") {
-								teeth=new string[] {"4","5","6","7","8"};
-							}
-							if(proc.Surf=="UL") {
-								teeth=new string[] {"9","10","11","12","13"};
-							}
-							if(proc.Surf=="LL") {
-								teeth=new string[] {"20","21","22","23","24"};
-							}
-							if(proc.Surf=="LR") {
-								teeth=new string[] {"25","26","27","28","29"};
-							}							
-							for(int t=0;t<teeth.Length;t++) {//could still be length 0
-								target.SetSpaceMaintainer(teeth[t],cDark);
-							}
-						}
-						break;
-					case ToothPaintingType.Text:
-						target.SetText(proc.ToothNum,cDark,ProcedureCodes.GetProcCode(proc.CodeNum).PaintText);
-						break;
-					case ToothPaintingType.Veneer:
-						target.SetVeneer(proc.ToothNum,cLight);
-						break;
-				}
-			}
-		}
-
-		///<summary>SheetPrinting.DrawOrthoHardware: all of the patient's hardware.</summary>
-		public static void PaintSheetOrthoHardware(IToothChartPaintTarget target,List<OrthoHardware> listOrthoHardwares) {
-			List<OrthoHardwareSpec> listOrthoHardwareSpecs=OrthoHardwareSpecs.GetDeepCopy();
-			List<OrthoHardwares.OrthoWire> listOrthoWires=new List<OrthoHardwares.OrthoWire>();//also used for elastics
-			for(int i=0;i<listOrthoHardwares.Count;i++){
-				OrthoHardwareSpec orthoHardwareSpec=listOrthoHardwareSpecs.Find(x=>x.OrthoHardwareSpecNum==listOrthoHardwares[i].OrthoHardwareSpecNum);
-				if(listOrthoHardwares[i].OrthoHardwareType==EnumOrthoHardwareType.Bracket){
-					target.SetBracket(listOrthoHardwares[i].ToothRange,orthoHardwareSpec.ItemColor);
-				}
-				if(listOrthoHardwares[i].OrthoHardwareType==EnumOrthoHardwareType.Wire){
-					listOrthoWires.AddRange(OrthoHardwares.GetWires(listOrthoHardwares[i].ToothRange,orthoHardwareSpec.ItemColor));
-				}
-				if(listOrthoHardwares[i].OrthoHardwareType==EnumOrthoHardwareType.Elastic){
-					listOrthoWires.AddRange(OrthoHardwares.GetElastics(listOrthoHardwares[i].ToothRange,orthoHardwareSpec.ItemColor));
-				}
-			}
-			for(int i=0;i<listOrthoWires.Count;i++){
-				if(listOrthoWires[i].OrthoWireType==OrthoHardwares.EnumOrthoWireType.BetweenBrackets){
-					target.AddOrthoWireBetweenBrackets(listOrthoWires[i].ToothIDstart,listOrthoWires[i].ToothIDend,listOrthoWires[i].ColorDraw);
-				}
-				if(listOrthoWires[i].OrthoWireType==OrthoHardwares.EnumOrthoWireType.InBracket){
-					target.AddOrthoWireInBracket(listOrthoWires[i].ToothIDstart,listOrthoWires[i].ColorDraw);
-				}
-				if(listOrthoWires[i].OrthoWireType==OrthoHardwares.EnumOrthoWireType.Elastic){
-					target.AddOrthoElastic(listOrthoWires[i].ToothIDstart,listOrthoWires[i].ToothIDend,listOrthoWires[i].ColorDraw);
-				}
-			}
-		}
-
-		#endregion Sheets and the Patient Dashboard (SheetPrinting)
-
-		#region Big chart (FormToothChartingBig)
-		///<summary>FormToothChartingBig.FillToothChart: the primary teeth, then the other tooth initials.</summary>
-		public static void PaintBigChartToothInitials(IToothChartPaintTarget target,List<ToothInitial> listToothInitials) {
-			//first, primary.  That way, you can still set a primary tooth missing afterwards.
-			for(int i=0;i<listToothInitials.Count;i++) {
-				if(listToothInitials[i].InitialType==ToothInitialType.Primary) {
-					target.SetPrimary(listToothInitials[i].ToothNum);
-				}
-			}
-			for(int i=0;i<listToothInitials.Count;i++) {
-				switch(listToothInitials[i].InitialType) {
-					case ToothInitialType.Missing:
-						target.SetMissing(listToothInitials[i].ToothNum);
-						break;
-					case ToothInitialType.Hidden:
-						target.SetHidden(listToothInitials[i].ToothNum);
-						break;
-					//case ToothInitialType.Primary:
-					//	break;
-					case ToothInitialType.Rotate:
-						target.MoveTooth(listToothInitials[i].ToothNum,listToothInitials[i].Movement,0,0,0,0,0);
-						break;
-					case ToothInitialType.TipM:
-						target.MoveTooth(listToothInitials[i].ToothNum,0,listToothInitials[i].Movement,0,0,0,0);
-						break;
-					case ToothInitialType.TipB:
-						target.MoveTooth(listToothInitials[i].ToothNum,0,0,listToothInitials[i].Movement,0,0,0);
-						break;
-					case ToothInitialType.ShiftM:
-						target.MoveTooth(listToothInitials[i].ToothNum,0,0,0,listToothInitials[i].Movement,0,0);
-						break;
-					case ToothInitialType.ShiftO:
-						target.MoveTooth(listToothInitials[i].ToothNum,0,0,0,0,listToothInitials[i].Movement,0);
-						break;
-					case ToothInitialType.ShiftB:
-						target.MoveTooth(listToothInitials[i].ToothNum,0,0,0,0,0,listToothInitials[i].Movement);
-						break;
-					case ToothInitialType.Drawing:
-						target.AddDrawingSegment(listToothInitials[i].Copy());
-						break;
-					case ToothInitialType.Text:
-						target.AddText(listToothInitials[i].GetTextString(), listToothInitials[i].GetTextPoint(), listToothInitials[i].ColorDraw, listToothInitials[i].ToothInitialNum);
-						break;
-				}
-			}
-		}
-
-		///<summary>FormToothChartingBig.DrawProcGraphics: the rows the Chart module hands the big chart.</summary>
-		public static void PaintBigChartProcs(IToothChartPaintTarget target,List<DataRow> listDataRowsProcs,List<ToothInitial> listToothInitials,Patient patient,
-			List<Appointment> listAppointments)
-		{
-			//this requires: ProcStatus, ProcCode, ToothNum, HideGraphics, Surf, and ToothRange.  All need to be raw database values.
-			string[] stringArrayTeeth;
-			List<long> listProvNums=GetPertinentProvNumsForToothColorPref(Security.CurUser,patient,listAppointments);
-			for(int i=0;i<listDataRowsProcs.Count;i++) {
-				if(listDataRowsProcs[i]["HideGraphics"].ToString()=="1") {
-					continue;
-				}
-				if(ProcedureCodes.GetProcCode(listDataRowsProcs[i]["ProcCode"].ToString()).PaintType==ToothPaintingType.Extraction && (
-					PIn.Long(listDataRowsProcs[i]["ProcStatus"].ToString())==(int)ProcStat.C
-					|| PIn.Long(listDataRowsProcs[i]["ProcStatus"].ToString())==(int)ProcStat.EC
-					|| PIn.Long(listDataRowsProcs[i]["ProcStatus"].ToString())==(int)ProcStat.EO
-					)) {
-					continue;//prevents the red X. Missing teeth already handled.
-				}
-				ProcedureCode procedureCode = ProcedureCodes.GetProcCode(listDataRowsProcs[i]["ProcCode"].ToString());
-				ProcStat procStat = (ProcStat)PIn.Long(listDataRowsProcs[i]["ProcStatus"].ToString());
-				long provNum=PIn.Long(listDataRowsProcs[i]["ProvNum"].ToString());
-				bool doApplyColorPref=DoesToothColorPrefApply(listProvNums,provNum);
-				GetToothColors(procedureCode,procStat,doApplyColorPref,out Color cDark,out Color cLight);
-				switch(ProcedureCodes.GetProcCode(listDataRowsProcs[i]["ProcCode"].ToString()).PaintType) {
-					case ToothPaintingType.BridgeDark:
-						if(ToothInitials.ToothIsMissingOrHidden(listToothInitials,listDataRowsProcs[i]["ToothNum"].ToString())) {
-							target.SetPontic(listDataRowsProcs[i]["ToothNum"].ToString(),cDark);
-						}
-						else {
-							target.SetCrown(listDataRowsProcs[i]["ToothNum"].ToString(),cDark);
-						}
-						break;
-					case ToothPaintingType.BridgeLight:
-						if(ToothInitials.ToothIsMissingOrHidden(listToothInitials,listDataRowsProcs[i]["ToothNum"].ToString())) {
-							target.SetPontic(listDataRowsProcs[i]["ToothNum"].ToString(),cLight);
-						}
-						else {
-							target.SetCrown(listDataRowsProcs[i]["ToothNum"].ToString(),cLight);
-						}
-						break;
-					case ToothPaintingType.CrownDark:
-						target.SetCrown(listDataRowsProcs[i]["ToothNum"].ToString(),cDark);
-						break;
-					case ToothPaintingType.CrownLight:
-						target.SetCrown(listDataRowsProcs[i]["ToothNum"].ToString(),cLight);
-						break;
-					case ToothPaintingType.DentureDark:
-						if(listDataRowsProcs[i]["Surf"].ToString()=="U") {
-							stringArrayTeeth=new string[14];
-							for(int t=0;t<14;t++) {
-								stringArrayTeeth[t]=(t+2).ToString();
-							}
-						}
-						else if(listDataRowsProcs[i]["Surf"].ToString()=="L") {
-							stringArrayTeeth=new string[14];
-							for(int t=0;t<14;t++) {
-								stringArrayTeeth[t]=(t+18).ToString();
-							}
-						}
-						else {
-							stringArrayTeeth=listDataRowsProcs[i]["ToothRange"].ToString().Split(new char[] { ',' });
-						}
-						for(int t=0;t<stringArrayTeeth.Length;t++) {
-							if(ToothInitials.ToothIsMissingOrHidden(listToothInitials,stringArrayTeeth[t])) {
-								target.SetPontic(stringArrayTeeth[t],cDark);
-							}
-							else {
-								target.SetCrown(stringArrayTeeth[t],cDark);
-							}
-						}
-						break;
-					case ToothPaintingType.DentureLight:
-						if(listDataRowsProcs[i]["Surf"].ToString()=="U") {
-							stringArrayTeeth=new string[14];
-							for(int t=0;t<14;t++) {
-								stringArrayTeeth[t]=(t+2).ToString();
-							}
-						}
-						else if(listDataRowsProcs[i]["Surf"].ToString()=="L") {
-							stringArrayTeeth=new string[14];
-							for(int t=0;t<14;t++) {
-								stringArrayTeeth[t]=(t+18).ToString();
-							}
-						}
-						else {
-							stringArrayTeeth=listDataRowsProcs[i]["ToothRange"].ToString().Split(new char[] { ',' });
-						}
-						for(int t=0;t<stringArrayTeeth.Length;t++) {
-							if(ToothInitials.ToothIsMissingOrHidden(listToothInitials,stringArrayTeeth[t])) {
-								target.SetPontic(stringArrayTeeth[t],cLight);
-							}
-							else {
-								target.SetCrown(stringArrayTeeth[t],cLight);
-							}
-						}
-						break;
-					case ToothPaintingType.Extraction:
-						target.SetBigX(listDataRowsProcs[i]["ToothNum"].ToString(),cDark);
-						break;
-					case ToothPaintingType.FillingDark:
-						target.SetSurfaceColors(listDataRowsProcs[i]["ToothNum"].ToString(),listDataRowsProcs[i]["Surf"].ToString(),cDark);
-						break;
-					case ToothPaintingType.FillingLight:
-						target.SetSurfaceColors(listDataRowsProcs[i]["ToothNum"].ToString(),listDataRowsProcs[i]["Surf"].ToString(),cLight);
-						break;
-					case ToothPaintingType.Implant:
-						target.SetImplant(listDataRowsProcs[i]["ToothNum"].ToString(),cDark);
-						break;
-					case ToothPaintingType.PostBU:
-						target.SetBU(listDataRowsProcs[i]["ToothNum"].ToString(),cDark);
-						break;
-					case ToothPaintingType.RCT:
-						target.SetRCT(listDataRowsProcs[i]["ToothNum"].ToString(),cDark);
-						break;
-					case ToothPaintingType.RetainedRoot:
-						target.SetRetainedRoot(listDataRowsProcs[i]["ToothNum"].ToString(),cDark);
-						break;
-					case ToothPaintingType.Sealant:
-						target.SetSealant(listDataRowsProcs[i]["ToothNum"].ToString(),cDark);
-						break;
-					case ToothPaintingType.SpaceMaintainer:
-						if(procedureCode.TreatArea==TreatmentArea.Tooth && listDataRowsProcs[i]["ToothNum"].ToString()!=""){
-							target.SetSpaceMaintainer(listDataRowsProcs[i]["ToothNum"].ToString(),cDark);
-						}
-						else if((procedureCode.TreatArea==TreatmentArea.ToothRange && listDataRowsProcs[i]["ToothRange"].ToString()!="") 
-							|| (procedureCode.AreaAlsoToothRange==true && listDataRowsProcs[i]["ToothRange"].ToString()!=""))
-						{
-							stringArrayTeeth=listDataRowsProcs[i]["ToothRange"].ToString().Split(',');
+						if(procedureCode.TreatArea==TreatmentArea.ToothRange && proc.ToothRange!="") {
+							stringArrayTeeth=proc.ToothRange.Split(',');
 							for(int t=0;t<stringArrayTeeth.Length;t++) {
 								target.SetSpaceMaintainer(stringArrayTeeth[t],cDark);
 							}
+							break;
 						}
-						else if(procedureCode.TreatArea==TreatmentArea.Quad){
+						if(procedureCode.AreaAlsoToothRange==true && proc.ToothRange!="") {
+							stringArrayTeeth=proc.ToothRange.Split(',');
+							for(int t=0;t<stringArrayTeeth.Length;t++) {
+								target.SetSpaceMaintainer(stringArrayTeeth[t],cDark);
+							}
+							break;
+						}
+						if(procedureCode.TreatArea==TreatmentArea.Quad){
 							stringArrayTeeth=new string[0];
-							if(listDataRowsProcs[i]["Surf"].ToString()=="UR") {
+							if(proc.Surf=="UR") {
 								stringArrayTeeth=new string[] {"4","5","6","7","8"};
 							}
-							if(listDataRowsProcs[i]["Surf"].ToString()=="UL") {
+							if(proc.Surf=="UL") {
 								stringArrayTeeth=new string[] {"9","10","11","12","13"};
 							}
-							if(listDataRowsProcs[i]["Surf"].ToString()=="LL") {
+							if(proc.Surf=="LL") {
 								stringArrayTeeth=new string[] {"20","21","22","23","24"};
 							}
-							if(listDataRowsProcs[i]["Surf"].ToString()=="LR") {
+							if(proc.Surf=="LR") {
 								stringArrayTeeth=new string[] {"25","26","27","28","29"};
 							}							
 							for(int t=0;t<stringArrayTeeth.Length;t++) {//could still be length 0
@@ -1592,17 +946,59 @@ namespace OpenPmsDental{
 						}
 						break;
 					case ToothPaintingType.Text:
-						target.SetText(listDataRowsProcs[i]["ToothNum"].ToString(),cDark,ProcedureCodes.GetProcCode(listDataRowsProcs[i]["ProcCode"].ToString()).PaintText);
+						target.SetText(proc.ToothNum,cDark,procedureCode.PaintText);//"W" is the watch mark; other text is not drawn yet (TC-5)
 						break;
 					case ToothPaintingType.Veneer:
-						target.SetVeneer(listDataRowsProcs[i]["ToothNum"].ToString(),cLight);
+						target.SetVeneer(proc.ToothNum,cLight);
 						break;
 				}
 			}
 		}
 
-		///<summary>FormToothChartingBig.DrawOrthoHardware: the hardware the Chart module hands the big chart.</summary>
-		public static void PaintBigChartOrthoHardware(IToothChartPaintTarget target,List<OrthoHardware> listOrthoHardwares) {
+		///<summary>The Treatment Plan printout's own colours (ControlTreat before TC-2): the code's graphic colour whatever the status (no
+		///exception for TPi), otherwise the chart colour of the status, and no per-provider colours. False for status D and for a status it does
+		///not know, which the printout does not draw.</summary>
+		private static bool GetTreatPlanColors(ProcedureCode procedureCode,ProcStat procStat,List<Def> listDefs,out Color cDark,out Color cLight) {
+			cDark=Color.White;
+			cLight=Color.White;
+			if(procedureCode.GraphicColor!=Color.FromArgb(0)) {
+				cDark=procedureCode.GraphicColor;
+				cLight=procedureCode.GraphicColor;
+				return true;
+			}
+			switch(procStat) {
+				case ProcStat.C:
+					cDark=listDefs[1].ItemColor;
+					cLight=listDefs[6].ItemColor;
+					return true;
+				case ProcStat.TP:
+					cDark=listDefs[0].ItemColor;
+					cLight=listDefs[5].ItemColor;
+					return true;
+				case ProcStat.EC:
+					cDark=listDefs[2].ItemColor;
+					cLight=listDefs[7].ItemColor;
+					return true;
+				case ProcStat.EO:
+					cDark=listDefs[3].ItemColor;
+					cLight=listDefs[8].ItemColor;
+					return true;
+				case ProcStat.R:
+					cDark=listDefs[4].ItemColor;
+					cLight=listDefs[9].ItemColor;
+					return true;
+				case ProcStat.Cn:
+					cDark=listDefs[16].ItemColor;
+					cLight=listDefs[17].ItemColor;
+					return true;
+				case ProcStat.D:  //Don't think this can ever happen, but skip anyway.
+				default:
+					return false;//Don't draw.
+			}
+		}
+
+		///<summary>Orthodontic hardware: brackets, then the wires and elastics between and within them, in the colours of their specs.</summary>
+		public static void PaintOrthoHardware(IToothChartPaintTarget target,List<OrthoHardware> listOrthoHardwares) {
 			List<OrthoHardwareSpec> listOrthoHardwareSpecs=OrthoHardwareSpecs.GetDeepCopy();
 			List<OrthoHardwares.OrthoWire> listOrthoWires=new List<OrthoHardwares.OrthoWire>();//also used for elastics
 			for(int i=0;i<listOrthoHardwares.Count;i++){
@@ -1629,7 +1025,7 @@ namespace OpenPmsDental{
 				}
 			}
 		}
-		#endregion Big chart (FormToothChartingBig)
+		#endregion The painter
 
 		#region Colours (moved from ToothChartRelay, whose methods forward here)
 		///<summary>Checks ProvNums only if the logged in user has 'ToothChartUsesDiffColorByProv' user pref on</summary>
