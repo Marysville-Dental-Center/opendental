@@ -1,20 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <!-- Settings shared by the projects that build a third-party library from its upstream source: PDFsharp/MigraDoc and WeCantSpell.Hunspell,
        git submodules under third-party\ that this repository references instead of copying (docs\third-party-source-builds.md). Each project
-       imports this file after Microsoft.Common.props, then its library's props file (PDFsharp.props, WeCantSpell.Hunspell.props), and
-       SourceBuild.targets after Microsoft.CSharp.targets. Nothing inside a submodule is changed, and nothing is restored or downloaded: the
-       upstream project files (SDK style, NuGet, GitVersion, SourceLink) are not used; these classic project files compile the same source
-       for the .NET Framework 4.8, x86 like the program, with the support assemblies of "Required dlls". -->
+       is an SDK-style project for the .NET Framework 4.8 with explicit SDK imports: the SDK's Sdk.props, then this file, then its library's
+       props file (PDFsharp.props, or the properties in WeCantSpell.Hunspell.csproj), then the SDK's Sdk.targets, and SourceBuild.targets
+       last, so $(IntermediateOutputPath) is set when SourceBuild.targets uses it. Nothing inside a submodule is changed, and nothing is
+       downloaded: the upstream project files (NuGet, GitVersion, SourceLink) are not used; these project files compile the same source, x86
+       like the program, with the support assemblies of "Required dlls", and reference no package (their restore finds nothing to restore
+       and writes a packages.lock.json that names only the other projects of this folder). -->
   <PropertyGroup>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <TargetFramework>net48</TargetFramework>
     <OutputType>Library</OutputType>
+    <!-- Visual Studio's platforms; the solution builds these projects as x86. -->
+    <Platforms>AnyCPU;x86</Platforms>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
     <PlatformTarget>x86</PlatformTarget>
     <Prefer32Bit>false</Prefer32Bit>
     <ErrorReport>prompt</ErrorReport>
     <OutputPath>bin\$(Configuration)\</OutputPath>
+    <!-- The intermediate folder of the classic project files, obj\x86\Debug\ and obj\x86\Release\, not the SDK's obj\Debug\
+         (Directory.Build.props turns the platform folder off): SourceBuildItems.txt lists the generated files of this folder by their full
+         path, so it stays the same file. -->
+    <IntermediateOutputPath>$(BaseIntermediateOutputPath)$(PlatformTarget)\$(Configuration)\</IntermediateOutputPath>
+    <!-- The assembly attributes come from SourceBuild.targets only (SourceBuildInfo.g.cs), not from the SDK. -->
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <!-- Each project names its compiler symbols itself: upstream's net462 or netstandard2.0 set, not the SDK's net48 set (NETFRAMEWORK,
+         NET48, NET48_OR_GREATER, ...), and no DEBUG or RELEASE (see below). -->
+    <DisableImplicitFrameworkDefines>true</DisableImplicitFrameworkDefines>
+    <DisableImplicitConfigurationDefines>true</DisableImplicitConfigurationDefines>
+    <!-- No default globs: each project names what it compiles and embeds (links into the submodule, and the few files of this folder), in
+         this order, as the classic project files did. -->
+    <EnableDefaultItems>false</EnableDefaultItems>
     <!-- No XML documentation: the release ships only the assemblies. -->
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>

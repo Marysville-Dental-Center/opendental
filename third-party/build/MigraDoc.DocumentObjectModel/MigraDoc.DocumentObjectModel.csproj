@@ -1,13 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <!-- MigraDoc.DocumentObjectModel 6.5.0 from empira's source in the submodule third-party\PDFsharp
        (src\foundation\src\MigraDoc\src\MigraDoc.DocumentObjectModel), as upstream's MigraDoc.DocumentObjectModel.csproj builds it for net462.
        docs\third-party-source-builds.md. -->
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
-    <ProjectGuid>{3F1D73FB-1575-4188-8E92-214AFF173E32}</ProjectGuid>
     <RootNamespace>MigraDoc</RootNamespace>
     <AssemblyName>MigraDoc.DocumentObjectModel</AssemblyName>
   </PropertyGroup>
@@ -40,15 +37,9 @@
     <Compile Include="LoggerMessages.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\PdfSharp.Shared\PdfSharp.Shared.csproj">
-      <Project>{E7DBF664-0058-4F44-96A8-A58F064271DC}</Project>
-      <Name>PdfSharp.Shared</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\PdfSharp.System\PdfSharp.System.csproj">
-      <Project>{780459C6-739E-4C8D-9462-58D6E23B1DAC}</Project>
-      <Name>PdfSharp.System</Name>
-    </ProjectReference>
+    <ProjectReference Include="..\PdfSharp.Shared\PdfSharp.Shared.csproj" />
+    <ProjectReference Include="..\PdfSharp.System\PdfSharp.System.csproj" />
   </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
   <Import Project="..\SourceBuild.targets" />
 </Project>
