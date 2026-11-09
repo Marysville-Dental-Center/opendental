@@ -118,6 +118,49 @@ namespace EhrTests {
 			Assert.IsFalse(Regex.IsMatch(html,@"\bsrc\s*=\s*""(https?:|file:|\\\\)",RegexOptions.IgnoreCase),"Nothing loads from the web, a file or a share.");
 		}
 
+		///<summary>The copy of upstream's CCD-full.xml holds no code of a licensed code system anywhere, comments included (plan, section 6; E-11).
+		///Every token shaped like a LOINC code (nnnnn-n), a SNOMED CT identifier (6 to 18 digits) or a CDT code (D####) is one of the fixture's
+		///known non-codes: a date and time, a value some id element's extension attribute has (made-up NPIs, SSNs and record numbers, also where a
+		///comment repeats one), a CDCREC code (the code attribute of an element of code system 2.16.840.1.113883.6.238) or the name of an ISO
+		///standard (ISO 3166-1, ISO 639-1). The replaced codes are TEST values, and CVX and HCPCS Level II codes have other shapes. The scan finds
+		///the four codes the first copy kept in its comments.</summary>
+		[TestMethod]
+		public void CcdFullFixture_HasNoLicensedCodes() {
+			List<string> listFound=FindCodeShapedTokens(CdaGolden.ReadFixture("CCD-full.modified.xml"));
+			Assert.AreEqual(0,listFound.Count,"Code-shaped tokens in the fixture:\r\n"+string.Join("\r\n",listFound));
+			//The scan sees codes in comments and text, and lets the fixture's kinds of non-codes through.
+			string xmlFirstCopy="<a>\n<!--  Note 418038007 - Propensity to adverse reactions has been retired  -->\n<!-- (e.g. CO2 would be 20565-8), but -->\n"
+				+"<!-- the code element would have SNOMED code 46680005. Since -->\n<b>D0120</b>\n<id extension=\"12345678910\"/><!-- NPI \"12345678910\" -->\n"
+				+"<c value=\"20140103\"/><c value=\"201210020908-0500\"/>\n<raceCode code=\"2076-8\" codeSystem=\"2.16.840.1.113883.6.238\"/>"
+				+"<!-- ISO 3166-1 --><templateId root=\"2.16.840.1.113883.10.20.22.4.4\" extension=\"2015-08-01\"/>\n<d code=\"2076-8\" codeSystem=\"2.16.840.1.113883.6.1\"/></a>";
+			CollectionAssert.AreEqual(new[] { "line 2: 418038007","line 3: 20565-8","line 4: 46680005","line 5: D0120","line 9: 2076-8" },FindCodeShapedTokens(xmlFirstCopy));
+		}
+
+		///<summary>The tokens of xml shaped like a LOINC code, a SNOMED CT identifier or a CDT code that are none of the known non-codes
+		///(CcdFullFixture_HasNoLicensedCodes), as "line N: token".</summary>
+		private static List<string> FindCodeShapedTokens(string xml) {
+			Regex regexDateTime=new Regex(@"^(19|20)\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])(\d{2}){0,3}$");
+			HashSet<string> hashSetExtensions=new HashSet<string>(Regex.Matches(xml,@"\bextension=""(\d+)""").Cast<Match>().Select(x => x.Groups[1].Value));
+			List<string> listFound=new List<string>();
+			foreach(Match match in Regex.Matches(xml,@"(?<![\w.-])(?:\d{1,5}-\d|\d{6,18})(?!\w)(?!\.\d)|\bD\d{4}\b")) {
+				string token=match.Value;
+				if(regexDateTime.IsMatch(token) || hashSetExtensions.Contains(token)) {
+					continue;
+				}
+				if(match.Index>=4 && xml.Substring(match.Index-4,4)=="ISO ") {
+					continue;
+				}
+				int indexTagStart=xml.LastIndexOf('<',match.Index);
+				int indexTagEnd=xml.IndexOf('>',match.Index);
+				string tag=indexTagStart<0 || indexTagEnd<0 ? "" : xml.Substring(indexTagStart,indexTagEnd-indexTagStart);
+				if(tag.Contains("codeSystem=\"2.16.840.1.113883.6.238\"") && tag.Contains("code=\""+token+"\"")) {
+					continue;//CDCREC.
+				}
+				listFound.Add("line "+(xml.Take(match.Index).Count(x => x=='\n')+1)+": "+token);
+			}
+			return listFound;
+		}
+
 		///<summary>A synthetic CCR through ccr.xsl (the copy marked as modified): every date form of the fixture is readable, the non-ASCII name is
 		///kept, and the page matches its golden page.</summary>
 		[TestMethod]

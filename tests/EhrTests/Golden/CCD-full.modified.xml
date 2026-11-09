@@ -8,7 +8,8 @@
  Changes: every code of a code system other than HL7's own vocabulary, CDCREC, CVX and HCPCS Level II (here LOINC,
  SNOMED CT, CPT, RxNorm, NDC, NUCC and CDC's HSLOC) and its display name were replaced with made-up TEST values
  (TEST0001 and up, "TEST display 1" and up), also where the same code appears in text or a comment and where
- the same display name appears in text. This comment was added. Nothing else was changed.
+ the same display name appears in text, and so were the codes that appear in comments only (TEST0055 to
+ TEST0057) and the name given there with one of them. This comment was added. Nothing else was changed.
 -->
 <!--
  Title:        Continuity of Care Document (CCD)
@@ -1038,8 +1039,8 @@
                                     <effectiveTime>
                                         <low value="20140103"/>
                                     </effectiveTime>
-                                    <!--  This specifies that the allergy is a propensity to adverse reactions to substance  -->
-                                    <!--  Note 418038007 - Propensity to adverse reactions has been retired; TEST0018 is the recommended replacement  -->
+                                    <!--  This specifies that the allergy is a TEST display 53  -->
+                                    <!--  Note TEST0055 - TEST display 53 has been retired; TEST0018 is the recommended replacement  -->
                                     <value xsi:type="CD"
                                         displayName="TEST display 18" codeSystemName="SNOMED CT"
                                         codeSystem="2.16.840.1.113883.6.96" code="TEST0018"/>
@@ -1631,7 +1632,7 @@
                       <!--  Note that we've included the first set of lab results in a BATTERY classCode and under the Basic Metabolic Panel  -->
                       <!--  Note the code for Basic Metabolic Panel IN BLOOD was not specifically noted in test script.   -->
                       <!--  Warning: Basic Metabolic Panels in SERUM are more common in the real-word, but does not align with with provided test scenario.  -->
-                      <!--  Technically this Basic Metabolic Panel order returns slightly different LOINC codes (e.g. CO2 would be 20565-8), but it's close overall.  -->
+                      <!--  Technically this Basic Metabolic Panel order returns slightly different LOINC codes (e.g. CO2 would be TEST0057), but it's close overall.  -->
                       <code displayName="TEST display 33"
                             codeSystemName="LOINC" codeSystem="2.16.840.1.113883.6.1" code="TEST0035">
                         <originalText>
@@ -1762,7 +1763,7 @@
                           <templateId root="2.16.840.1.113883.10.20.22.4.2"
                                       extension="2023-05-01"/>
                           <id root="70c62997-9f12-4b7c-9023-0cdf249336a7"/>
-                          <!--  Note that this exception is base on LOINC code in test data. CO2 code of 20565-8 (In Blood) would more accurately align with panel ordered  -->
+                          <!--  Note that this exception is base on LOINC code in test data. CO2 code of TEST0057 (In Blood) would more accurately align with panel ordered  -->
                           <code xsi:type="CD"
                                 displayName="TEST display 37" codeSystemName="LOINC" codeSystem="2.16.840.1.113883.6.1"
                                 code="TEST0039">
@@ -2100,7 +2101,7 @@
                                 extension="2015-08-01"/>
                             <id root="e421f5c8-29c2-4798-9cb5-7988c236e49d"/>
                             <!--  If this were C-CDA 1.1 + 2.1 (with an additional templateId containing no extension),
-           the code element would have SNOMED code 46680005. Since this is not allowed in C-CDA 3.0,
+           the code element would have SNOMED code TEST0056. Since this is not allowed in C-CDA 3.0,
            it has been omitted from this example.  -->
                             <code
                                 displayName="TEST display 43" codeSystemName="LOINC" codeSystem="2.16.840.1.113883.6.1"
