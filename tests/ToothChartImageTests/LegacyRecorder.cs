@@ -488,7 +488,7 @@ namespace ToothChartImageTests {
 		}
 
 		///<summary>The DirectX device format to record with: the given one, or the first standard format that starts and gives a picture (the search
-		///FormOpenDental makes for a computer with no format saved, FormGraphics.GetPreferredDirectXFormat) with multisampling turned off. With
+		///FormOpenDental makes for a computer with no format saved, ToothChartWrapper.GetPreferredDirectXFormat, formerly in FormGraphics) with multisampling turned off. With
 		///multisampling a draw is not repeatable on every driver: on the build PC (2026-11-08) every GetBitmap of the same scene with four samples gave
 		///other pixels along the edges, so a re-recording could never be compared byte for byte. Without it the same scene gives the same pixels.
 		///Null when DirectX cannot start.</summary>
@@ -522,7 +522,7 @@ namespace ToothChartImageTests {
 			return null;
 		}
 
-		///<summary>FormGraphics.TestDirectXFormat: an invisible wrapper on the host form starts DirectX with the format and returns a picture.</summary>
+		///<summary>ToothChartWrapper.TestDirectXFormat (formerly in FormGraphics): an invisible wrapper on the host form starts DirectX with the format and returns a picture.</summary>
 		private bool TestDirectXFormat(string directXFormat) {
 			using ToothChartWrapper wrapperTest=new ToothChartWrapper();
 			wrapperTest.Visible=false;
