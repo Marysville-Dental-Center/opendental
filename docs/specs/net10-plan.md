@@ -489,6 +489,15 @@ it is not done. `EmbedUntrackedSources=false` and `ChecksumAlgorithm=SHA256` in 
 classic build wrote them. The stage 1 gate's window checks open the WPF windows of WpfControlsOD and the capture windows to confirm
 the pages load and look the same.
 
+Also accepted (S1-5, the lead, 2026-11-08): the transitive project references put ODR, OpenPmsDentalDbSettings and (through
+UnitTests) CrudGenerator files into the bin folders of CentralManager and DocumentationBuilder, and DocumentationBuilder's
+Release folder now takes the Release program; neither tool ships, and the program's own output and every test folder are
+unchanged. As with S1-1 and S1-3, the solution's Any CPU configurations of the program, CentralManager and UnitTestsCore now
+build x86 (the program's Release|Any CPU with SGen and its doc file); nothing builds them. Visual Studio's form designer may
+write `<Compile Update=...><SubType>Form</SubType>` entries back into a converted project file when a form is opened: that is
+churn, not an edit to keep. `DocumentationBuilder/xDocumentationBuilder.sln` still names the dropped LinuxRelease
+configurations; nothing uses it, and it stays.
+
 **Tooling changes (switch at S1-0).** Lane: the Build Tools 2026 MSBuild and vstest (found with a version range, overridable by
 parameter), `/restore` and locked mode, the SDK pin (and the resolver variables for the per-user band), `OPMS_REQUIRE_BUILD_OUTPUT`. Test
 runners: vstest 18 from Build Tools 2026; paths otherwise unchanged (flat output). Build-Release, New-InitSql, New-DevDatabase and the two

@@ -397,7 +397,7 @@ server of its own (section 5.1).
 | Middle Tier server (`DtoProcessor`, `Userods`), `OpenPmsDentalHL7` | no | Connect through `DataConnection`, so the rule applies; their configuration files have no CA or certificate elements, so only a loopback database works for them. |
 | `DatabaseIntegrityCheck` | no | Dev-only. Its connection now goes through `NewMySqlConnection`, so with its `SslMode=none` it reaches loopback databases only. |
 | `CentralManager`, `MySQLManager` | no | Dev-only; they connect through `DataConnection`, so the rule applies. |
-| `DocumentationBuilder` | no | Dev-only, not in the solution filter, unchanged: it reads the config of a local Release build (`..\..\..\OpenPmsDental\bin\Release`), a loopback database. |
+| `DocumentationBuilder` | no | Dev-only, in the solution filter since S1-5 of the .NET 10 plan (not shipped), unchanged: it reads the config of a local Release build (`..\..\..\OpenPmsDental\bin\Release`), a loopback database. |
 | `tools/SyntheticData`, `tools/AdoptionValidation` | no | Dev-only, unchanged: they refuse any server but this computer themselves (`LocalOnly.EnsureLocalHost`, the adoption tools' loopback and SSH-forward checks). |
 
 ## 8. Open points for the owner
