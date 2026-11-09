@@ -186,8 +186,10 @@ namespace OpenPmsDentalDbSettings {
 			}
 			DbSettingsAuth dbSettingsAuth=ResolveAuth(dbSettingsRequest,dbConnectionConfigCurrent);
 			bool isPfxImport=false;
-			//Whether the store had the .pfx's certificate before this save: then the tool did not import it, and it never removes it.
-			bool isPfxCertInStoreBefore=false;
+			//Whether the store's entry of the .pfx's certificate uses the private key this save's import stored (ClientCertificateStore.ImportPfx):
+			//then the tool made the key the certificate has, records it, and removes it with that key when a later save stops using it. Not when
+			//the store held the certificate with a usable key before, which the import leaves as it is: the tool never removes that one.
+			bool isStoreKeyImported=false;
 			string password="";
 			if(dbSettingsAuth==DbSettingsAuth.Certificate) {
 				if(!string.IsNullOrWhiteSpace(dbSettingsRequest.PfxFile)) {
@@ -202,7 +204,6 @@ namespace OpenPmsDentalDbSettings {
 						dbConnectionConfigNew.ClientCertThumbprint=DbConnectionConfig.NormalizeThumbprint(x509Certificate2.Thumbprint);
 					}
 					isPfxImport=true;
-					isPfxCertInStoreBefore=ClientCertificateStore.FindInStore(dbConnectionConfigNew.ClientCertThumbprint)!=null;
 				}
 				else {
 					string thumbprint=DbConnectionConfig.NormalizeThumbprint(dbSettingsRequest.Thumbprint??dbConnectionConfigCurrent.ClientCertThumbprint);
@@ -261,7 +262,8 @@ namespace OpenPmsDentalDbSettings {
 					OfficeCaFile.WriteCopy(listCaCertificates,caCopyPath);
 				}
 				if(isPfxImport) {
-					string thumbprintImported=ClientCertificateStore.ImportPfx(dbSettingsRequest.PfxFile.Trim(),dbSettingsRequest.PfxPassword,out warning);
+					string thumbprintImported=ClientCertificateStore.ImportPfx(dbSettingsRequest.PfxFile.Trim(),dbSettingsRequest.PfxPassword,out warning,
+						out isStoreKeyImported);
 					dbConnectionConfigNew.ClientCertThumbprint=DbConnectionConfig.NormalizeThumbprint(thumbprintImported);
 				}
 				if(dbSettingsAuth==DbSettingsAuth.Certificate) {
@@ -293,7 +295,7 @@ namespace OpenPmsDentalDbSettings {
 			}
 			//The settings are saved: only now does the certificate they replaced go, and only one this tool imported itself.
 			PlanImportedCertificate(thumbprintRecorded,dbConnectionConfigCurrent.ClientCertThumbprint,dbConnectionConfigNew.ClientCertThumbprint,isPfxImport,
-				isPfxCertInStoreBefore,out string thumbprintToRecord,out string thumbprintToRemove);
+				isStoreKeyImported,out string thumbprintToRecord,out string thumbprintToRemove);
 			try {
 				ImportedCertificateRecord.Write(pathRecord,thumbprintToRecord);
 			}
@@ -307,19 +309,21 @@ namespace OpenPmsDentalDbSettings {
 		}
 
 		///<summary>What a save does with the certificate the tool imported itself (owner decision of 2026-11-02). thumbprintToRecord: the
-		///certificate the saved settings use when the tool imported it (from a .pfx whose certificate the store did not have before), or the one
-		///already recorded when the settings keep it; else "". thumbprintToRemove: the recorded certificate when the settings used it and now stop
-		///(another certificate, or the password); else "". A certificate the tool did not import (one named by thumbprint, or one that was in the
-		///store before its .pfx was imported) is never recorded, so never removed. Thumbprints are normalized; "" means none.</summary>
+		///certificate the saved settings use when its store entry uses the private key the tool's import stored (isStoreKeyImported, from
+		///ClientCertificateStore.ImportPfx: a certificate the store did not have, or one whose entry had no usable key in the import's key set and
+		///took the import's, DCFU3), or the one already recorded when the settings keep it; else "". thumbprintToRemove: the recorded certificate
+		///when the settings used it and now stop (another certificate, or the password); else "". A certificate whose key the tool did not make
+		///(one named by thumbprint, or one the store held with a usable key before its .pfx was imported) is never recorded, so never removed.
+		///Thumbprints are normalized; "" means none.</summary>
 		public static void PlanImportedCertificate(string thumbprintRecorded,string thumbprintCurrent,string thumbprintNew,bool isPfxImported,
-			bool isPfxCertInStoreBefore,out string thumbprintToRecord,out string thumbprintToRemove)
+			bool isStoreKeyImported,out string thumbprintToRecord,out string thumbprintToRemove)
 		{
 			thumbprintRecorded=DbConnectionConfig.NormalizeThumbprint(thumbprintRecorded);
 			thumbprintCurrent=DbConnectionConfig.NormalizeThumbprint(thumbprintCurrent);
 			thumbprintNew=DbConnectionConfig.NormalizeThumbprint(thumbprintNew);
 			thumbprintToRecord="";
 			if(thumbprintNew!="") {
-				if(isPfxImported && !isPfxCertInStoreBefore) {
+				if(isPfxImported && isStoreKeyImported) {
 					thumbprintToRecord=thumbprintNew;
 				}
 				else if(thumbprintNew==thumbprintRecorded) {

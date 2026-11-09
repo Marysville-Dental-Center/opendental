@@ -7,7 +7,8 @@ using CodeBase;
 using DataConnectionBase;
 
 namespace OpenPmsDentalDbSettings {
-	///<summary>The thumbprint of the client certificate the tool imported into LocalMachine\My from a .pfx (one the store did not have before), in
+	///<summary>The thumbprint of the client certificate the tool imported into LocalMachine\My from a .pfx (one whose store entry then uses the
+	///private key the import stored: a certificate the store did not have, or one whose entry had no usable key, DbSettingsRunner), in
 	///ConnectionSettings\imported-client-certificate.txt next to the office CA copy (owner decision of 2026-11-02;
 	///docs/specs/db-connection-security.md section 4.3). Kept there, not in FreeDentalConfig.xml, because the ConnectionSettings folder is
 	///administrator-only with a protected DACL (OfficeCaFile.WriteProtectedFile): what the tool may delete from the computer's store must never
