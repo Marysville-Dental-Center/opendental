@@ -1,0 +1,17 @@
+Scene: x-on-implant-tooth
+Group: known-difference
+Description: TP X and TP implant on present tooth 19, and on missing tooth 14: DirectX draws the implant after the X with depth testing on (plan 5.1).
+Size: 500x370
+Colours: printout (Chart Graphic Colors 14 and 15)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 500x370 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 14944
+Pixels SHA-256: 0ff0395a4ba953f263ad9b3745620a48c58901260da5dce541385697eb4c0c8c
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

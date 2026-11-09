@@ -1,0 +1,18 @@
+Scene: filling-mirror-pairs
+Group: paint
+Description: The same surfaces on mirrored teeth: M on 3 and 14, D on 19 and 30, F on 8 and 9, I on 24 and 25, MO on 4 and 13, DO on 20 and 29 (TP dark).
+Size: 410x307
+Colours: module (Chart Graphic Colors 10-13)
+Requested mode: OpenGL
+Started mode: OpenGL
+Device or pixel format: OpenGL pixel format 1 (32-bit colour, 0-bit alpha, 24-bit depth, 0-bit stencil, single buffered, accelerated)
+OpenGL: NVIDIA Corporation; NVIDIA RTX A1000/PCIe/SSE2; 4.6.0 NVIDIA 596.71
+Bitmap: 410x307 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 1897
+Pixels SHA-256: 7e0834819dd0e0e0c045049e0fa4d38b16bade1cac7fe5944fb219157e94ba80
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

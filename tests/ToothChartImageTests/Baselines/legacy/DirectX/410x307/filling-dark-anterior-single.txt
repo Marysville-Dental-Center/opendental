@@ -1,0 +1,19 @@
+Scene: filling-dark-anterior-single
+Group: paint
+Description: Dark TP fillings, one surface per tooth: 6 M, 7 D, 8 F, 9 I, 10 L, 11 V, 22 M, 23 D, 24 F, 25 I, 26 L, 27 V.
+Size: 410x307
+Colours: module (Chart Graphic Colors 10-13)
+Requested mode: DirectX
+Started mode: DirectX
+Device or pixel format: DirectX device format 0;Hardware;64;D16;X8R8G8B8;None
+DirectX standard search: 0;Hardware;64;D16;X8R8G8B8;FourSamples (multisampling turned off: with it a draw is not repeatable on every driver)
+DirectX adapter: 0 (Hardware device): NVIDIA RTX A1000, driver 32.0.15.9671 (nvldumd.dll), display \\.\DISPLAY1, PCI 10DE:25B0
+Bitmap: 410x307 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 1346
+Pixels SHA-256: c5b28d12206302d7939eaa29e553015d3914efb6a802477b45b4484f453ddd3c
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

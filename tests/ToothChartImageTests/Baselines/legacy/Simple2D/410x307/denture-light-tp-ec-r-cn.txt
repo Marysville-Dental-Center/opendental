@@ -1,0 +1,17 @@
+Scene: denture-light-tp-ec-r-cn
+Group: paint
+Description: Light dentures in the statuses the other light denture scenes leave out: an upper complete denture (surface U) in TP with teeth 1-16 missing, and lower partial dentures over the ranges 18, 19 in EC, 24, 25 in R and 30, 31 in Cn (missing).
+Size: 410x307
+Colours: module (Chart Graphic Colors 10-13)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 410x307 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 6633
+Pixels SHA-256: 1b07a2cc44b310fa612199d4eba0d84037bb1180ef89c94d8d474ead1f316ed5
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

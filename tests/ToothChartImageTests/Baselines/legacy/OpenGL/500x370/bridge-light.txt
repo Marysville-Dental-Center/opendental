@@ -1,0 +1,18 @@
+Scene: bridge-light
+Group: paint
+Description: Light bridges: 3-4-5 TP and 12-13-14 C with 4 and 13 missing, 19-20-21 EC and 28-29-30 Cn with 20 and 29 missing.
+Size: 500x370
+Colours: printout (Chart Graphic Colors 14 and 15)
+Requested mode: OpenGL
+Started mode: OpenGL
+Device or pixel format: OpenGL pixel format 1 (32-bit colour, 0-bit alpha, 24-bit depth, 0-bit stencil, single buffered, accelerated)
+OpenGL: NVIDIA Corporation; NVIDIA RTX A1000/PCIe/SSE2; 4.6.0 NVIDIA 596.71
+Bitmap: 500x370 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 4398
+Pixels SHA-256: 881670100ba94fec1b37ff8d94b524b255d41b885fa2634ec9d8798b05b7f549
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

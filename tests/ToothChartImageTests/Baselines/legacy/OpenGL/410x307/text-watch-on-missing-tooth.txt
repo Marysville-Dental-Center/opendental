@@ -1,0 +1,18 @@
+Scene: text-watch-on-missing-tooth
+Group: paint
+Description: Watch marks on missing teeth 3 and 30 (the mark still shows) and on present tooth 19.
+Size: 410x307
+Colours: module (Chart Graphic Colors 10-13)
+Requested mode: OpenGL
+Started mode: OpenGL
+Device or pixel format: OpenGL pixel format 1 (32-bit colour, 0-bit alpha, 24-bit depth, 0-bit stencil, single buffered, accelerated)
+OpenGL: NVIDIA Corporation; NVIDIA RTX A1000/PCIe/SSE2; 4.6.0 NVIDIA 596.71
+Bitmap: 410x307 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 1430
+Pixels SHA-256: 7ae99680973b87b73a9e9e9642bc0c276df31e2bac3e7b86c0d11b5b2d42246c
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

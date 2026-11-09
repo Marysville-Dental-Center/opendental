@@ -1,0 +1,18 @@
+Scene: missing-anterior
+Group: states
+Description: Central incisors 8, 9, 24 and 25 missing.
+Size: 500x370
+Colours: printout (Chart Graphic Colors 14 and 15)
+Requested mode: OpenGL
+Started mode: OpenGL
+Device or pixel format: OpenGL pixel format 1 (32-bit colour, 0-bit alpha, 24-bit depth, 0-bit stencil, single buffered, accelerated)
+OpenGL: NVIDIA Corporation; NVIDIA RTX A1000/PCIe/SSE2; 4.6.0 NVIDIA 596.71
+Bitmap: 500x370 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 1617
+Pixels SHA-256: 8150c988ab291939ef101178abd80ad67753b9687e8059b38c383a591acda4a0
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

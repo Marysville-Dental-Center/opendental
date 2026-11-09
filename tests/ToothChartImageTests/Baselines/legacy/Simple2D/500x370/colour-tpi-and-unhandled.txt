@@ -1,0 +1,17 @@
+Scene: colour-tpi-and-unhandled
+Group: colours
+Description: The TPi exception and unhandled statuses: a code colour (purple) on a TP crown on 3, but white on the same crown in status TPi on 14; white MOD fillings on 19 and 30 for a status the colour code does not handle (the Chart module and sheets paint it white).
+Size: 500x370
+Colours: printout (Chart Graphic Colors 14 and 15)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 500x370 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 14680
+Pixels SHA-256: e90014b566fc73a6f44666309a25a3043d8dca880da2933b4591a908fdf41095
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

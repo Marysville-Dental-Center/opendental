@@ -1,0 +1,17 @@
+Scene: empty-palmer
+Group: empty
+Description: An adult chart with all 32 teeth and no work, in Palmer numbering.
+Size: 500x370
+Colours: printout (Chart Graphic Colors 14 and 15)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 500x370 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 14530
+Pixels SHA-256: da3dc24ccd0bfd578cb0e41449aa144e6d1b5ebfc09c7254ee78d1db72bde801
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

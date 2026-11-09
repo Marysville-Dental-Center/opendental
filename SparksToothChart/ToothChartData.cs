@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Text;
 using OpenPmsDentalBusiness;
-using SharpDX.Direct3D9;
 
 namespace SparksToothChart {
 	///<summary>This is an object full of data about how to draw the 3D graphical teeth.  It also contains a number of helper functions that need to be shared between the different tooth charts.</summary>
@@ -97,20 +96,6 @@ namespace SparksToothChart {
 				tcd.ListPerioMeasure.Add(pm.Copy());
 			}
 			return tcd;
-		}
-
-		///<summary>Unregisters all vertex and index buffers from their current device.</summary>
-		public void CleanupDirectX(){
-			for(int i=0;i<ListToothGraphics.Count;i++){
-				ListToothGraphics[i].CleanupDirectX();
-			}
-		}
-
-		///<summary>Registers all vertex and index buffers with the specified device.</summary>
-		public void PrepareForDirectX(Device device){
-			for(int i=0;i<ListToothGraphics.Count;i++) {
-				ListToothGraphics[i].PrepareForDirectX(device);
-			}
 		}
 
 		///<summary>This gets set whenever the wrapper resizes.  It's the size of the control in screen pixels.</summary>
@@ -1110,14 +1095,14 @@ namespace SparksToothChart {
 		}
 
 		///<summary>Returns a series of points that can be used to create a droplet shape for bleeding and suppuration.  The points form a pentagon with a sixth implied point at 0,0.  Use the points and 0,0 to create 5 triangles.  Coordinates are in mm's.  If the droplet needs to be scaled, that will be done inside this method rather than externally.  The droplet will need to be flipped or rotated about the 0,0 point for use in the mandibular.</summary>
-		public SharpDX.Vector3[] GetDropletVertices() {
+		public Vertex3f[] GetDropletVertices() {
 			float scale=1f;
-			return new SharpDX.Vector3[] {
-				new SharpDX.Vector3(0,scale*.89f,0),//top point
-				new SharpDX.Vector3(scale*.34f,scale*.049f,0),//upper right
-				new SharpDX.Vector3(scale*.21f,scale*-.35f,0),//lower right
-				new SharpDX.Vector3(scale*-.21f,scale*-.35f,0),//lower left
-				new SharpDX.Vector3(scale*-.34f,scale*.049f,0)//upper left
+			return new Vertex3f[] {
+				new Vertex3f(0,scale*.89f,0),//top point
+				new Vertex3f(scale*.34f,scale*.049f,0),//upper right
+				new Vertex3f(scale*.21f,scale*-.35f,0),//lower right
+				new Vertex3f(scale*-.21f,scale*-.35f,0),//lower left
+				new Vertex3f(scale*-.34f,scale*.049f,0)//upper left
 			};
 		}
 

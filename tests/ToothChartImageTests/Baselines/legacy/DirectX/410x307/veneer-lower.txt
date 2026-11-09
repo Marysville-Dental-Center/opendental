@@ -1,0 +1,19 @@
+Scene: veneer-lower
+Group: paint
+Description: Veneers on the lower anteriors 22-27, TP.
+Size: 410x307
+Colours: module (Chart Graphic Colors 10-13)
+Requested mode: DirectX
+Started mode: DirectX
+Device or pixel format: DirectX device format 0;Hardware;64;D16;X8R8G8B8;None
+DirectX standard search: 0;Hardware;64;D16;X8R8G8B8;FourSamples (multisampling turned off: with it a draw is not repeatable on every driver)
+DirectX adapter: 0 (Hardware device): NVIDIA RTX A1000, driver 32.0.15.9671 (nvldumd.dll), display \\.\DISPLAY1, PCI 10DE:25B0
+Bitmap: 410x307 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 1511
+Pixels SHA-256: 0c1d2497f7aef1efc32f8c3d557468ec532e5c115d251affda7a441feb9c36c9
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

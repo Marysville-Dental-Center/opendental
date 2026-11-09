@@ -1,0 +1,17 @@
+Scene: mixed-dentition
+Group: empty
+Description: Mixed dentition: primary canines and molars A, B, C, H, I, J, K, L, M, R, S and T with the permanent teeth 4-6, 11-13, 20-22 and 27-29 unerupted under them; permanent incisors and first molars erupted; second and third molars missing.
+Size: 500x370
+Colours: printout (Chart Graphic Colors 14 and 15)
+Requested mode: Simple2D
+Started mode: Simple2D
+Device or pixel format: GDI+ (no device)
+Bitmap: 500x370 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 14576
+Pixels SHA-256: e2bfec8580a825862a19d286556a97bc9aeaacc38bac038719573571db5d0523
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

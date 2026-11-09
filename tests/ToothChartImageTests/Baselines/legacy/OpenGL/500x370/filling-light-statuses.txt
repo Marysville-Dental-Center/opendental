@@ -1,0 +1,18 @@
+Scene: filling-light-statuses
+Group: paint
+Description: Light MOD fillings in the six status colours (TP, C, EC, EO, R, Cn) on teeth 3, 5, 7, 10, 12, 14 and 30, 28, 26, 23, 21, 19.
+Size: 500x370
+Colours: printout (Chart Graphic Colors 14 and 15)
+Requested mode: OpenGL
+Started mode: OpenGL
+Device or pixel format: OpenGL pixel format 1 (32-bit colour, 0-bit alpha, 24-bit depth, 0-bit stencil, single buffered, accelerated)
+OpenGL: NVIDIA Corporation; NVIDIA RTX A1000/PCIe/SSE2; 4.6.0 NVIDIA 596.71
+Bitmap: 500x370 Format32bppArgb
+Alpha: every alpha is 255
+Colours in the picture: 3199
+Pixels SHA-256: 9f61c0e3e82fc9eda3c9db54c3ae6747c05cf106f46dc6a5670ae18c63238d8d
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96

@@ -1,0 +1,19 @@
+Scene: colour-tpi-and-unhandled
+Group: colours
+Description: The TPi exception and unhandled statuses: a code colour (purple) on a TP crown on 3, but white on the same crown in status TPi on 14; white MOD fillings on 19 and 30 for a status the colour code does not handle (the Chart module and sheets paint it white).
+Size: 410x307
+Colours: module (Chart Graphic Colors 10-13)
+Requested mode: DirectX
+Started mode: DirectX
+Device or pixel format: DirectX device format 0;Hardware;64;D16;X8R8G8B8;None
+DirectX standard search: 0;Hardware;64;D16;X8R8G8B8;FourSamples (multisampling turned off: with it a draw is not repeatable on every driver)
+DirectX adapter: 0 (Hardware device): NVIDIA RTX A1000, driver 32.0.15.9671 (nvldumd.dll), display \\.\DISPLAY1, PCI 10DE:25B0
+Bitmap: 410x307 Format24bppRgb
+Alpha: every alpha is 255 (format without an alpha channel)
+Colours in the picture: 1485
+Pixels SHA-256: 99af20622169b3323cd16ae2c97510ee2a6ef2971bfc6bf4b8b39a56cfeb1281
+Repeatable: yes (a second GetBitmap gave the same pixels)
+Windows: build 26300.9711 (26H2)
+Adapter: Intel(R) UHD Graphics 630, driver 31.0.101.2115
+Adapter: NVIDIA RTX A1000, driver 32.0.15.9671
+Screen DPI seen by the test host: 96
