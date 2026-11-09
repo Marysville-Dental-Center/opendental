@@ -30,9 +30,13 @@ namespace SparksToothChart {
 		private ToothChartImageHost toothChartImageHost;
 		///<summary>Wpf3D: this wrapper's last 3D layer image, released on Dispose and when the engine changes.</summary>
 		private ToothChartLayerCache _layerCacheWpf;
-		///<summary>Wpf3D: set by every Invalidate (OnInvalidated), cleared when a scene is built (section 5.5).</summary>
+		///<summary>Wpf3D: set by every Invalidate (OnInvalidated), cleared when a scene is built (section 5.5), GetBitmap's included.</summary>
 		private bool _isWpfSceneDirty;
-		///<summary>Wpf3D: set when the first mark of a burst posts the on-screen rebuild; only that rebuild clears it.</summary>
+		///<summary>Wpf3D: set by every mark, like _isWpfSceneDirty, but cleared only by the on-screen rebuild: a GetBitmap builds a scene without
+		///updating the screen, so a wrapper refilled while hidden and then asked for its bitmap still rebuilds its screen image when it is shown.</summary>
+		private bool _isWpfScreenStale;
+		///<summary>Wpf3D: set when the first mark of a burst posts the on-screen rebuild; cleared by that rebuild, and when the handle goes (which can
+		///take the posted rebuild with it).</summary>
 		private bool _isWpfRebuildPosted;
 		private static List<string> _listFallbackMessages=new List<string>();
 		///<summary>Every fallback message of this process, counted on past the 1000 that _listFallbackMessages keeps.</summary>
@@ -425,6 +429,7 @@ namespace SparksToothChart {
 				ResetTeeth();
 				toothChartImageHost.ResumeLayout();
 				_isWpfSceneDirty=true;
+				_isWpfScreenStale=true;
 				return;
 			}
 			if(drawMode==DrawingMode.Simple2D){
@@ -683,9 +688,16 @@ namespace SparksToothChart {
 		///<summary>Marks the WPF chart's scene dirty (every Invalidate comes here, section 5.5). On a wrapper that is shown, the first mark of a burst
 		///posts one rebuild to the UI thread's message queue, and later marks post nothing; a refill's hundreds of Set calls give one image. A wrapper
 		///that is not shown (the hidden forms of prints, sheets and the dashboard) posts nothing: GetBitmap builds its scene. The rebuild is posted
-		///rather than tied to the next paint, because the engine control covers the whole wrapper, which may then get no paint of its own.</summary>
+		///rather than tied to the next paint, because the engine control covers the whole wrapper, which may then get no paint of its own. Every mark
+		///also marks the screen stale (_isWpfScreenStale), which only the rebuild clears.</summary>
 		private void MarkWpfSceneDirty() {
 			_isWpfSceneDirty=true;
+			_isWpfScreenStale=true;
+			PostWpfRebuildIfShown();
+		}
+
+		///<summary>On a wrapper that is shown, posts the on-screen rebuild unless one is posted already.</summary>
+		private void PostWpfRebuildIfShown() {
 			if(_isWpfRebuildPosted || toothChartImageHost==null || !IsShownForWpf()) {
 				return;
 			}
@@ -699,20 +711,28 @@ namespace SparksToothChart {
 			}
 		}
 
-		///<summary>Wpf3D: a wrapper that comes on screen with data set while it was hidden posts its rebuild now, so it does not wait for the next
-		///Invalidate to show the chart.</summary>
+		///<summary>Wpf3D: a wrapper that comes on screen with a stale screen image (data set while it was hidden, even when a GetBitmap has built its
+		///scene since) posts its rebuild now, so it does not wait for the next Invalidate to show the chart.</summary>
 		protected override void OnVisibleChanged(EventArgs e) {
 			base.OnVisibleChanged(e);
-			if(_engine==ToothChartEngine.Wpf3D && _isWpfSceneDirty) {
-				MarkWpfSceneDirty();
+			if(_engine==ToothChartEngine.Wpf3D && _isWpfScreenStale) {
+				PostWpfRebuildIfShown();
 			}
 		}
 
 		protected override void OnHandleCreated(EventArgs e) {
 			base.OnHandleCreated(e);
-			if(_engine==ToothChartEngine.Wpf3D && _isWpfSceneDirty) {
-				MarkWpfSceneDirty();
+			if(_engine==ToothChartEngine.Wpf3D && _isWpfScreenStale) {
+				PostWpfRebuildIfShown();
 			}
+		}
+
+		///<summary>Wpf3D: DestroyHandle drops what BeginInvoke posted (RecreateHandle keeps it), so a posted rebuild may never run. The posted mark is
+		///cleared, and the screen stays stale until a rebuild runs: the next mark, or the new handle, posts again. A kept rebuild that still runs
+		///only renders once more.</summary>
+		protected override void OnHandleDestroyed(EventArgs e) {
+			_isWpfRebuildPosted=false;
+			base.OnHandleDestroyed(e);
 		}
 
 		///<summary>True when the wrapper is on screen: it has a handle and it and its parents are visible.</summary>
@@ -721,12 +741,14 @@ namespace SparksToothChart {
 		}
 
 		///<summary>The posted rebuild: always renders the on-screen image from the current data, even when a GetBitmap in between has built the scene
-		///and cleared the dirty mark (a refill that ends in the dashboard's GetBitmap still updates the screen). Only this clears the posted mark.</summary>
+		///and cleared the dirty mark (a refill that ends in the dashboard's GetBitmap still updates the screen). Only this clears the posted mark
+		///(besides the loss of the handle) and the stale mark.</summary>
 		private void RebuildWpfOnScreen() {
 			_isWpfRebuildPosted=false;
 			if(_engine!=ToothChartEngine.Wpf3D || toothChartImageHost==null || IsDisposed) {
 				return;
 			}
+			_isWpfScreenStale=false;
 			ToothScene toothScene=BuildWpfScene();
 			toothChartImageHost.ShowScene(toothScene);
 		}
@@ -802,6 +824,7 @@ namespace SparksToothChart {
 				toothChartImageHost=null;
 			}
 			_isWpfSceneDirty=false;
+			_isWpfScreenStale=false;
 			_isWpfRebuildPosted=false;
 		}
 

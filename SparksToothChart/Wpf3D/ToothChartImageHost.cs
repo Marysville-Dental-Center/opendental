@@ -10,7 +10,9 @@ namespace SparksToothChart.Wpf3D {
 	///<summary>The WPF chart's engine control: a plain WinForms control that shows the renderer's image (docs/specs/wpf-tooth-chart-plan.md,
 	///section 5.4, O-19 (a)). It makes no WPF object. On-screen renders run asynchronously and the newest scene wins: while one render is in flight,
 	///a newer scene replaces any waiting one, so slider ticks never queue up. A result reaches this control only through a non-blocking BeginInvoke,
-	///skipped when the control is disposed or has no handle; the race where it goes away during the call is caught and ignored.
+	///skipped when the control is disposed or has no handle; the race where it goes away during the call is caught and ignored. A render whose
+	///result cannot arrive (the handle went) is given up, and the newest scene is rendered again when a handle comes back, so the control never stays
+	///"in flight" for good; a render a shutdown of the render thread aborted comes back as a failed result (ToothChartRenderer.RenderAsync).
 	///It raises SegmentDrawn and ToothSelectionsChanged like the other engines, from the DirectX chart's mouse logic (TC-3 moves that logic into one
 	///class shared by the engines), and draws the pen stroke in progress with GDI+ over the image until mouse up, as DirectX draws it over the teeth
 	///without redrawing them.</summary>
@@ -32,7 +34,11 @@ namespace SparksToothChart.Wpf3D {
 		private Bitmap _bitmapShown;
 		private ToothScene _sceneShown;
 		private ToothScene _sceneWaiting;
+		///<summary>The newest scene ShowScene was given: rendered again when a render's result was lost with the handle.</summary>
+		private ToothScene _sceneRequested;
 		private bool _isRenderInFlight;
+		///<summary>Counts the renders started. A result of an older render (one given up when the handle went) is dropped.</summary>
+		private int _generationRender;
 		private int _countImagesReceived;
 		private int _countReceiveCalls;
 		private int _countRendersStarted;
@@ -133,6 +139,7 @@ namespace SparksToothChart.Wpf3D {
 			if(IsDisposed || scene==null) {
 				return;
 			}
+			_sceneRequested=scene;
 			_sceneWaiting=scene;
 			if(!_isRenderInFlight) {
 				StartRender();
@@ -150,33 +157,68 @@ namespace SparksToothChart.Wpf3D {
 			}
 			_isRenderInFlight=true;
 			_countRendersStarted++;
+			int generation=++_generationRender;
 			try {
-				ToothChartRenderer.Instance.RenderAsync(scene,_layerCache,result => OnRenderDone(scene,result));
+				ToothChartRenderer.Instance.RenderAsync(scene,_layerCache,result => OnRenderDone(scene,result,generation));
 			}
 			catch(Exception ex) {
-				_isRenderInFlight=false;
 				ToothChartRenderResult resultFailed=new ToothChartRenderResult();
+				resultFailed.Size=scene.Size;
 				resultFailed.Exception=ex;
-				ReceiveImage(scene,resultFailed);
+				ReceiveImage(scene,resultFailed,generation);
 			}
 		}
 
-		///<summary>On the render thread: hands the result to the UI thread without waiting, or drops it when this control is gone.</summary>
-		private void OnRenderDone(ToothScene scene,ToothChartRenderResult result) {
+		///<summary>On the render thread (or, for a job a shutdown aborted, the thread that ended it): hands the result to the UI thread without
+		///waiting, or drops it when this control is gone or has no handle. A result dropped for want of a handle is not lost for good:
+		///OnHandleCreated renders the newest scene again.</summary>
+		private void OnRenderDone(ToothScene scene,ToothChartRenderResult result,int generation) {
 			if(IsDisposed || Disposing || !IsHandleCreated) {
 				return;
 			}
 			try {
-				BeginInvoke(new Action(() => ReceiveImage(scene,result)));
+				BeginInvoke(new Action(() => ReceiveImage(scene,result,generation)));
 			}
 			catch(InvalidOperationException ex) {
-				ex.DoNothing();//the handle went away between the check and the call (ObjectDisposedException included)
+				ex.DoNothing();//the handle went away between the check and the call (ObjectDisposedException included); OnHandleCreated renders again
 			}
 		}
 
-		///<summary>On the UI thread: shows the image (or, after a failed render, the 2D chart's image of the data) and starts the waiting scene.</summary>
-		private void ReceiveImage(ToothScene scene,ToothChartRenderResult result) {
+		///<summary>A render whose result can no longer arrive (the handle went, and DestroyHandle drops what BeginInvoke posted) or may not have
+		///arrived (it ended while there was no handle) is given up: the control is no longer "in flight", the newest scene waits to be rendered
+		///again, and a late result of the given-up render is dropped.</summary>
+		private void AbandonRenderInFlight() {
+			_generationRender++;
+			_isRenderInFlight=false;
+			if(_sceneWaiting==null && !IsDisposed && !Disposing) {
+				_sceneWaiting=_sceneRequested;
+			}
+		}
+
+		protected override void OnHandleCreated(EventArgs e) {
+			base.OnHandleCreated(e);
+			if(_isRenderInFlight) {
+				AbandonRenderInFlight();//its result may have found no handle
+			}
+			if(_sceneWaiting!=null) {
+				StartRender();
+			}
+		}
+
+		protected override void OnHandleDestroyed(EventArgs e) {
+			if(_isRenderInFlight) {
+				AbandonRenderInFlight();
+			}
+			base.OnHandleDestroyed(e);
+		}
+
+		///<summary>On the UI thread: shows the image (or, after a failed render, the 2D chart's image of the data) and starts the waiting scene. A
+		///result of a given-up render (AbandonRenderInFlight) is dropped.</summary>
+		private void ReceiveImage(ToothScene scene,ToothChartRenderResult result,int generation) {
 			_countReceiveCalls++;
+			if(generation!=_generationRender) {
+				return;
+			}
 			_isRenderInFlight=false;
 			if(IsDisposed) {
 				return;
@@ -220,8 +262,11 @@ namespace SparksToothChart.Wpf3D {
 				}
 			}
 			else {
+				//Pixel for pixel, with an explicit destination: DrawImageUnscaled draws at the image's physical size, which is not its pixel size when
+				//the bitmap's DPI differs from the Graphics' (a drag to a monitor of another scale under PerMonitorV2).
 				e.Graphics.InterpolationMode=InterpolationMode.NearestNeighbor;
-				e.Graphics.DrawImageUnscaled(_bitmapShown,0,0);
+				Rectangle rectangleImage=new Rectangle(0,0,_bitmapShown.Width,_bitmapShown.Height);
+				e.Graphics.DrawImage(_bitmapShown,rectangleImage,rectangleImage,GraphicsUnit.Pixel);
 				if(_bitmapShown.Width<Width || _bitmapShown.Height<Height) {
 					//The control grew and the new image is not there yet: the background fills the rest.
 					using(SolidBrush brush=new SolidBrush(colorBackground)) {
@@ -253,6 +298,7 @@ namespace SparksToothChart.Wpf3D {
 				_bitmapShown?.Dispose();
 				_bitmapShown=null;
 				_sceneWaiting=null;
+				_sceneRequested=null;
 			}
 			base.Dispose(disposing);
 		}
