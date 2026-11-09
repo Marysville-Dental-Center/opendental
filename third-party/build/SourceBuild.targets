@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <!-- Imported last by every project of third-party\build, after the SDK's Sdk.targets (docs\third-party-source-builds.md): the SDK sets
-       $(IntermediateOutputPath) in its targets (SourceBuild.props names the folder), so the two files below are only known from there on.
+  <!-- Imported last by every project of third-party\build, after the SDK's Sdk.targets (docs\third-party-source-builds.md): SourceBuild.props
+       sets $(IntermediateOutputPath) (obj\x86\<configuration>\) and the SDK's targets normalise it, so its final value, and with it the two
+       files below, is only known from there on.
 
        SourceBuildGenerateInfo writes obj\...\SourceBuildInfo.g.cs, what the .NET SDK and GitVersion generate for the upstream projects:
        the assembly attributes (title, product, company, copyright, the fixed versions of the library's props file, an informational version

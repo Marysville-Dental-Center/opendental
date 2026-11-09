@@ -28,8 +28,8 @@
     <SourceBuildDescription>A port of Hunspell for .NET.</SourceBuildDescription>
     <WeCantSpellSourceFolder>$(ThirdPartyRoot)WeCantSpell.Hunspell\WeCantSpell.Hunspell\</WeCantSpellSourceFolder>
     <SourceBuildUpstreamProject>$(WeCantSpellSourceFolder)WeCantSpell.Hunspell.csproj</SourceBuildUpstreamProject>
-    <!-- Upstream: LangVersion 14.0 (the field keyword, null-conditional assignment), which the compiler of the classic project file offered
-         only as preview. The SDK's compiler (Roslyn 5.0 in the pinned SDK 10.0.114) has C# 14 as its current version; preview is kept so
+    <!-- Upstream: LangVersion 14.0 (the field keyword, null-conditional assignment), which the Build Tools 2022 compiler (Roslyn 4.14)
+         offered only as preview. The SDK's compiler (Roslyn 5.0 in the pinned SDK 10.0.114) has C# 14 as its current version; preview is kept so
          this conversion changes no compiler setting. -->
     <LangVersion>preview</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
