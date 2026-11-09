@@ -129,62 +129,24 @@ namespace DbConnectionSecurityTests {
 		}
 
 		///<summary>RemoveImported takes the certificate out of the store and deletes its private key, so no key Users may read is left. The tool
-		///works on LocalMachine\My, which needs administrator rights; the test uses the current user's store with a synthetic certificate.</summary>
+		///works on LocalMachine\My, which needs administrator rights; the test uses a store of the current user with a name of its own
+		///(ClientCertificateTestStore, never CurrentUser\My) and a synthetic certificate. ClientCertificateKeyTests does the same for each kind of
+		///key (CAPI, CNG RSA, CNG ECDSA).</summary>
 		[TestMethod]
 		public void RemoveImported_TakesTheCertificateAndItsPrivateKeyOutOfTheStore() {
 			string subject="CN=synthetic-dbsec-remove-"+Guid.NewGuid().ToString("N");
-			string thumbprint;
-			string keyName;
-			using(X509Certificate2 x509Certificate2Ephemeral=TestHelpers.NewCertificate(subject,isCa:false,isClientAuth:true)) {
-				byte[] arrayPfx=x509Certificate2Ephemeral.Export(X509ContentType.Pfx,"synthetic");
-				X509Certificate2 x509Certificate2=new X509Certificate2(arrayPfx,"synthetic",X509KeyStorageFlags.UserKeySet|X509KeyStorageFlags.PersistKeySet);
-				thumbprint=x509Certificate2.Thumbprint;
-				keyName=GetKeyName(x509Certificate2);
-				using(X509Store x509Store=new X509Store(StoreName.My,StoreLocation.CurrentUser)) {
-					x509Store.Open(OpenFlags.ReadWrite);
-					x509Store.Add(x509Certificate2);
-				}
-			}
-			try {
-				Assert.IsTrue(KeyExists(keyName),"The persisted key is there before.");
-				Assert.AreEqual("",ClientCertificateStore.RemoveImported(thumbprint,StoreLocation.CurrentUser));
-				using(X509Store x509Store=new X509Store(StoreName.My,StoreLocation.CurrentUser)) {
-					x509Store.Open(OpenFlags.ReadOnly);
-					Assert.AreEqual(0,x509Store.Certificates.Find(X509FindType.FindByThumbprint,thumbprint,false).Count,"The certificate is gone.");
-				}
-				Assert.IsFalse(KeyExists(keyName),"Its private key is deleted too.");
-				Assert.AreEqual("",ClientCertificateStore.RemoveImported(thumbprint,StoreLocation.CurrentUser),"A certificate that is not there: nothing.");
-				Assert.AreEqual("",ClientCertificateStore.RemoveImported("",StoreLocation.CurrentUser));
-			}
-			finally {
-				ClientCertificateStore.RemoveImported(thumbprint,StoreLocation.CurrentUser);
-			}
-		}
-
-		///<summary>"cng|provider|name" or "capi|type|provider|container" of the certificate's persisted private key.</summary>
-		private static string GetKeyName(X509Certificate2 x509Certificate2) {
-			RSA rsa=x509Certificate2.GetRSAPrivateKey();
-			if(rsa is RSACng) {
-				CngKey cngKey=((RSACng)rsa).Key;
-				return "cng|"+cngKey.Provider.Provider+"|"+cngKey.KeyName;
-			}
-			CspKeyContainerInfo cspKeyContainerInfo=((RSACryptoServiceProvider)rsa).CspKeyContainerInfo;
-			return "capi|"+cspKeyContainerInfo.ProviderType+"|"+cspKeyContainerInfo.ProviderName+"|"+cspKeyContainerInfo.KeyContainerName;
-		}
-
-		private static bool KeyExists(string keyName) {
-			string[] arrayParts=keyName.Split('|');
-			if(arrayParts[0]=="cng") {
-				return CngKey.Exists(arrayParts[2],new CngProvider(arrayParts[1]));
-			}
-			CspParameters cspParameters=new CspParameters(int.Parse(arrayParts[1]),arrayParts[2],arrayParts[3]) { Flags=CspProviderFlags.UseExistingKey };
-			try {
-				using(new RSACryptoServiceProvider(cspParameters)) {
-					return true;
-				}
-			}
-			catch(CryptographicException) {
-				return false;
+			using(ClientCertificateTestStore clientCertificateTestStore=new ClientCertificateTestStore())
+			using(X509Certificate2 x509Certificate2Ephemeral=TestHelpers.NewCertificate(subject,isCa:false,isClientAuth:true))
+			{
+				TestKey testKey=clientCertificateTestStore.AddCertificate(x509Certificate2Ephemeral);
+				string thumbprint=testKey.Thumbprint;
+				Assert.IsTrue(testKey.Exists(),"The persisted key is there before.");
+				Assert.AreEqual("",ClientCertificateStore.RemoveImported(thumbprint,StoreLocation.CurrentUser,clientCertificateTestStore.Name));
+				Assert.AreEqual(0,clientCertificateTestStore.GetThumbprints().Count,"The certificate is gone.");
+				Assert.IsFalse(testKey.Exists(),"Its private key is deleted too.");
+				Assert.AreEqual("",ClientCertificateStore.RemoveImported(thumbprint,StoreLocation.CurrentUser,clientCertificateTestStore.Name),
+					"A certificate that is not there: nothing.");
+				Assert.AreEqual("",ClientCertificateStore.RemoveImported("",StoreLocation.CurrentUser,clientCertificateTestStore.Name));
 			}
 		}
 		#endregion The certificate the tool replaces (answer b)
