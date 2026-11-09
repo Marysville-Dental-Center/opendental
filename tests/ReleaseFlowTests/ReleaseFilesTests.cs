@@ -160,6 +160,9 @@ namespace ReleaseFlowTests {
 				Assert.IsNull(projectItemElement.XElement.Parent.Attribute("Condition"),fileName);
 				foreach(ProjectFile projectFile in listConfigurations) {
 					ProjectItem projectItem=projectFile.AssertItem("None",include);
+					//The evaluated Link: the item's own in the classic project file; in the SDK-style one, its own or, without one, the file name the
+					//SDK gives an item outside the project folder (SetLinkMetadataAutomatically), which ProjectFile models, so the check holds when
+					//S1-5 drops the explicit Link, as long as the item comes before the Sdk.targets import.
 					Assert.AreEqual(fileName,projectItem.GetMetadata("Link"),"Copied to the top of the output.");
 					Assert.AreEqual("PreserveNewest",projectItem.GetMetadata("CopyToOutputDirectory"),projectFile.Configuration);
 				}

@@ -49,13 +49,16 @@ namespace VendorDirectTests.Foundation {
 		[TestMethod]
 		public void BusinessProject_HasTheVendorFolderWildcards() {
 			//Each vendor folder is compiled whole: by its wildcard in the classic project file, by the default glob in an SDK-style one. The
-			//evaluated items, so the check holds for both.
+			//evaluated items, so the check holds for both. A wildcard compiles each file, so a file added to the folder needs no line of its own
+			//in the project file (a classic file that listed the files one by one would compile them all and still fail the second check).
 			ProjectFile projectFile=ProjectFile.Load(Path.Combine(GetRepositoryRoot(),@"OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj"));
 			foreach(string folder in new[] { @"Bridges\QuickBooksOnline",@"Bridges\CareCredit",@"Bridges\PostcardMania",@"WebBridges\Microsoft365",
 				@"WebBridges\Usps",@"WebBridges\Erx\DoseSpot","VendorDirect" })
 			{
 				System.Collections.Generic.List<string> listNotCompiled=projectFile.GetFilesNotCompiled(folder);
 				Assert.AreEqual(0,listNotCompiled.Count,folder+": not compiled: "+string.Join(", ",listNotCompiled));
+				System.Collections.Generic.List<string> listNotByWildcard=projectFile.GetFilesNotCompiledByWildcard(folder);
+				Assert.AreEqual(0,listNotByWildcard.Count,folder+": not compiled by a wildcard: "+string.Join(", ",listNotByWildcard));
 			}
 			Assert.AreEqual(@"..\Required dlls\Microsoft.Identity.Client.dll",projectFile.GetReference("Microsoft.Identity.Client")?.GetMetadata("HintPath"));
 		}

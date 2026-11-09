@@ -61,9 +61,12 @@ namespace VGPTests {
 			}
 			//The business files are under VendorDirect, which the project compiles whole (by wildcard in the classic project file, by the default glob
 			//in an SDK-style one).
-			System.Collections.Generic.List<string> listNotCompiled=ProjectFile.Load(Path.Combine(root,@"OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj"))
-				.GetFilesNotCompiled(@"VendorDirect\GlobalPayments");
+			ProjectFile projectFileBusiness=ProjectFile.Load(Path.Combine(root,@"OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj"));
+			System.Collections.Generic.List<string> listNotCompiled=projectFileBusiness.GetFilesNotCompiled(@"VendorDirect\GlobalPayments");
 			Assert.AreEqual(0,listNotCompiled.Count,"Not compiled: "+string.Join(", ",listNotCompiled));
+			//By that wildcard or glob, so the folder needs no line of its own in the project file.
+			System.Collections.Generic.List<string> listNotByWildcard=projectFileBusiness.GetFilesNotCompiledByWildcard(@"VendorDirect\GlobalPayments");
+			Assert.AreEqual(0,listNotByWildcard.Count,"Not compiled by a wildcard: "+string.Join(", ",listNotByWildcard));
 		}
 
 		[TestMethod]

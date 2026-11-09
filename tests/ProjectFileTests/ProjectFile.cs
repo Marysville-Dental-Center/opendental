@@ -122,11 +122,13 @@ namespace ProjectFileTests {
 		}
 
 		private static SolutionFile GetSolutionFile(string pathSln) {
-			DateTime dateTimeWrite=File.GetLastWriteTimeUtc(pathSln);
+			FileInfo fileInfo=new FileInfo(pathSln);
 			lock(_dictSolutions) {
 				SolutionFile solutionFile;
-				if(!_dictSolutions.TryGetValue(pathSln,out solutionFile) || solutionFile.DateTimeWriteUtc!=dateTimeWrite) {
-					solutionFile=new SolutionFile(pathSln,dateTimeWrite);
+				if(!_dictSolutions.TryGetValue(pathSln,out solutionFile) || solutionFile.DateTimeWriteUtc!=fileInfo.LastWriteTimeUtc
+					|| solutionFile.Length!=fileInfo.Length)
+				{
+					solutionFile=new SolutionFile(pathSln,fileInfo.LastWriteTimeUtc,fileInfo.Length);
 					_dictSolutions[pathSln]=solutionFile;
 				}
 				return solutionFile;
@@ -544,7 +546,9 @@ namespace ProjectFileTests {
 						SetIfEmpty("TargetPlatformIdentifier",platformIdentifier);
 						if(IsValue("TargetPlatformIdentifier","Windows")) {
 							_dictProperties["TargetPlatformIdentifier"]="Windows";
-							SetIfEmpty("TargetPlatformVersion",platformVersion);
+							if(platformVersion!="") {
+								SetIfEmpty("TargetPlatformVersion",platformVersion);
+							}
 						}
 					}
 				}
@@ -1725,11 +1729,13 @@ namespace ProjectFileTests {
 		///solution configuration and platform builds it with (the ActiveCfg lines of ProjectConfigurationPlatforms).</summary>
 		private sealed class SolutionFile {
 			public readonly DateTime DateTimeWriteUtc;
+			public readonly long Length;
 			private readonly Dictionary<string,string> _dictGuids=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
 			private readonly Dictionary<string,string[]> _dictMappings=new Dictionary<string,string[]>(StringComparer.OrdinalIgnoreCase);
 
-			public SolutionFile(string pathSln,DateTime dateTimeWriteUtc) {
+			public SolutionFile(string pathSln,DateTime dateTimeWriteUtc,long length) {
 				DateTimeWriteUtc=dateTimeWriteUtc;
+				Length=length;
 				string folder=Path.GetDirectoryName(pathSln);
 				string text=File.ReadAllText(pathSln);
 				foreach(Match match in Regex.Matches(text,@"^Project\(""\{[^}]+\}""\)\s*=\s*""[^""]*""\s*,\s*""([^""]+)""\s*,\s*""(\{[^}]+\})""",RegexOptions.Multiline)) {

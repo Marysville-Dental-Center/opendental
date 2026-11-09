@@ -1,0 +1,29 @@
+<Project>
+  <!-- Fixture for tests\ProjectFileTests: the Link metadata the .NET SDK gives items outside the project folder
+       (SetLinkMetadataAutomatically, Microsoft.NET.Sdk.DefaultItems.targets). An SDK-style project with explicit Sdk.props and Sdk.targets
+       imports, as S1-5 converts the program: the automatic Link is an Update inside Sdk.targets, so the items before it get one and an item
+       after it does not. Copied to tests\SdkLinks\SdkLinks.csproj of a scratch folder; its folder holds Program.cs and Notes.txt, the
+       folders above it hold the linked files. -->
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+  <PropertyGroup>
+    <FixtureIntermediateBeforeSdkTargets>$(IntermediateOutputPath)</FixtureIntermediateBeforeSdkTargets>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- The native file the program copies to the top of its output, as OpenPmsDental.csproj's WebView2Loader.dll, without a Link of its own. -->
+    <None Include="..\..\Required dlls\Native.dll" CopyToOutputDirectory="PreserveNewest" />
+    <!-- A wildcard outside the folder: the Link keeps the folders below the wildcard. -->
+    <Compile Include="..\..\Shared\Linked\**\*.cs" />
+    <!-- LinkBase puts the automatic Link under a folder. -->
+    <Content Include="..\..\Shared\Data\Seed.json" LinkBase="Data" CopyToOutputDirectory="PreserveNewest" />
+    <!-- An explicit Link stays. -->
+    <EmbeddedResource Include="..\..\Shared\Strings.resx" Link="Resources\Strings.resx" />
+  </ItemGroup>
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+  <PropertyGroup>
+    <FixtureIntermediateAfterSdkTargets>$(IntermediateOutputPath)</FixtureIntermediateAfterSdkTargets>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- After Sdk.targets: no automatic Link. -->
+    <None Include="..\..\Required dlls\After.dll" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>
