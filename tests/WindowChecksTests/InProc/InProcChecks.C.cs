@@ -164,6 +164,17 @@ namespace WindowChecksTests.InProc {
 			if(opened.IsOpen && ui.GetWindowTypeName(opened.Hwnd)=="FormFrame/InputBox") {
 				checkResult.AddShot(ui.Shot(opened.Hwnd,"C3-amount.png"),"The amount prompt");
 				System.Windows.FrameworkElement frmInput=ui.GetFrm(opened.Hwnd);
+				//The amount: OK with an empty box says "Please enter a value.", so 1.00 is typed into the prompt's text box.
+				string typed=ui.Invoke(() => {
+					object textBox=WpfTree(frmInput).FirstOrDefault(x => x.GetType().Name.StartsWith("Text") && x.GetType().GetProperty("Text")!=null
+						&& x.GetType().Namespace!=null && x.GetType().Namespace.StartsWith("WpfControls"));
+					if(textBox==null) {
+						return "no text box";
+					}
+					textBox.GetType().GetProperty("Text").SetValue(textBox,"1.00");
+					return textBox.GetType().Name;
+				});
+				checkResult.Note("Amount 1.00 typed into the prompt ("+typed+")");
 				List<IntPtr> listBefore=ui.GetWindows();
 				ui.Post("Amount prompt OK",() => {
 					System.Reflection.MethodInfo methodInfo=frmInput.GetType().GetMethod("butOK_Click",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic

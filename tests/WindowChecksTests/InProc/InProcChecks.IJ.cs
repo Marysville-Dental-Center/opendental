@@ -140,7 +140,12 @@ namespace WindowChecksTests.InProc {
 			System.Threading.Thread.Sleep(2500);
 			checkResult.AddShot(ui.Shot(opened.Hwnd,"I8-wpf-big.png"),"The big WPF chart");
 			Size sizeBefore=ui.Invoke(() => Control.FromHandle(opened.Hwnd).Size);
-			ui.Invoke(() => Control.FromHandle(opened.Hwnd).Size=new Size(sizeBefore.Width*3/4,sizeBefore.Height*3/4));
+			//The big window opens maximized: restore it first, then give it a clearly different size (the end of a corner drag).
+			ui.Invoke(() => {
+				Form form=(Form)Control.FromHandle(opened.Hwnd);
+				form.WindowState=FormWindowState.Normal;
+				form.Size=new Size(sizeBefore.Width*3/4,sizeBefore.Height*3/4);
+			});
 			System.Threading.Thread.Sleep(3000);
 			ShotInfo shotInfo=ui.Shot(opened.Hwnd,"I8-wpf-big-resized.png");
 			checkResult.AddShot(shotInfo,"The big WPF chart after a resize to 3/4 (set by the window's Size, not a corner drag)");

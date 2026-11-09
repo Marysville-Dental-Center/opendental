@@ -10,6 +10,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace WindowChecksTests {
 	[TestClass]
 	public class WinChkFixture {
+		private static bool _hasPrechecked;
 		[AssemblyInitialize]
 		public static void AssemblyInitialize(TestContext testContext) {
 			Thread.CurrentThread.CurrentCulture=new CultureInfo("en-US");
@@ -19,6 +20,12 @@ namespace WindowChecksTests {
 		public static void AssemblyCleanup() {
 			if(!ScratchDb.IsMade) {
 				return;
+			}
+			try {
+				PZTests.RunCleanUp();
+			}
+			catch(Exception ex) {
+				Results.Log("Z failed: "+ex);
 			}
 			if(Environment.GetEnvironmentVariable("OPMS_WINDOW_CHECKS_KEEP_DB")=="1") {
 				Results.Log("Kept "+ScratchDb.Name+" (OPMS_WINDOW_CHECKS_KEEP_DB=1)");
@@ -42,6 +49,10 @@ namespace WindowChecksTests {
 			skipReason=ScratchDb.GetSkipReason();
 			if(skipReason!=null) {
 				Assert.Inconclusive(skipReason);
+			}
+			if(!_hasPrechecked) {
+				_hasPrechecked=true;
+				PZTests.RunPrechecks();
 			}
 			Thread.CurrentThread.CurrentCulture=new CultureInfo("en-US");
 		}
