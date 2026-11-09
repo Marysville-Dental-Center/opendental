@@ -9,6 +9,7 @@ using System.Security.AccessControl;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Security.Principal;
+using System.Text;
 using System.Threading;
 
 namespace OpenPmsDentalDbSettings {
@@ -22,8 +23,8 @@ namespace OpenPmsDentalDbSettings {
 		///<summary>The tests only: called with the file's certificates right after ImportPfx stored their keys (PersistKeySet), before anything
 		///else of the import; throwing there is the import failing after the keys were stored. Null in the tool.</summary>
 		internal static Action<X509Certificate2Collection> ActionAfterKeysStoredForTests;
-		///<summary>The tests only: called with the client certificate right before ImportPfx adds it to the store; a CryptographicException there
-		///is a store that refuses it. Null in the tool.</summary>
+		///<summary>The tests only: called with the client certificate right before ImportPfx adds it to the store (not when the store already
+		///holds it with a usable key, which stays as it is); a CryptographicException there is a store that refuses it. Null in the tool.</summary>
 		internal static Action<X509Certificate2> ActionBeforeStoreAddForTests;
 		///<summary>The tests only: called with each certificate right before its private key is deleted (TryDeletePrivateKey); throwing there is a
 		///key that cannot be deleted. Null in the tool.</summary>
@@ -39,9 +40,10 @@ namespace OpenPmsDentalDbSettings {
 		///<summary>Imports the client certificate of the .pfx into LocalMachine\My (private key not exportable) and grants BUILTIN\Users read
 		///access to its private key. Reading the file with PersistKeySet stores the key of every certificate of the file that has one; the import
 		///deletes again the ones it does not use, as DirectCertificateImport does: the keys of the file's other certificates (its CA's, for
-		///example), and every key it stored, the client certificate's too, when the store refuses the certificate. Never a key that a certificate
-		///of the store uses (DeleteKeysNotInStore). Returns its thumbprint; warning is "" or says what the program's users may lack and which key
-		///could not be deleted. Needs administrator rights. Throws DbSettingsException (exit code 2 for the file, 3 for the store), whose message
+		///example), and every key it stored, the client certificate's too, when the store refuses the certificate, or when the store already
+		///holds it with a usable key (its entry then stays as it is, with that key: KeepCertificateInStore). Never a key that a certificate of the
+		///store uses (DeleteKeysNotInStore). Returns its thumbprint; warning is "" or says what the program's users may lack and which key could
+		///not be deleted. Needs administrator rights. Throws DbSettingsException (exit code 2 for the file, 3 for the store), whose message
 		///also names a key that could not be deleted again.</summary>
 		public static string ImportPfx(string pfxPath,string password,out string warning) {
 			return ImportPfx(pfxPath,password,StoreLocation.LocalMachine,StoreName.My.ToString(),out warning);
@@ -81,8 +83,9 @@ namespace OpenPmsDentalDbSettings {
 		}
 
 		///<summary>ImportPfx after the file's keys were stored: adds the client certificate to the open store, deletes the keys of the file's
-		///other certificates, and gives the users read access to its key (isMachine). When anything fails before the certificate is in the store,
-		///every key the import stored is deleted again and DbSettingsException says why, and which key could not be deleted.</summary>
+		///other certificates, and gives the users read access to its key (isMachine). A client certificate that the store already holds with a
+		///usable key is not added again (KeepCertificateInStore). When anything fails before the certificate is in the store, every key the
+		///import stored is deleted again and DbSettingsException says why, and which key could not be deleted.</summary>
 		private static string AddClientCertificate(X509Store x509Store,string storeText,X509Certificate2Collection x509Certificate2Collection,
 			string pfxPath,bool isMachine,out string warning)
 		{
@@ -91,13 +94,24 @@ namespace OpenPmsDentalDbSettings {
 			//certificates of the file share, in one).
 			List<X509Certificate2> listKeysStored=x509Certificate2Collection.Cast<X509Certificate2>().Where(x => x.HasPrivateKey).ToList();
 			X509Certificate2 x509Certificate2;
+			X509Certificate2 x509Certificate2InStore=null;
 			try {
 				ActionAfterKeysStoredForTests?.Invoke(x509Certificate2Collection);
 				x509Certificate2=GetClientCertificate(x509Certificate2Collection,pfxPath);
-				ActionBeforeStoreAddForTests?.Invoke(x509Certificate2);
-				x509Store.Add(x509Certificate2);
+				//Already there only when its key can be used, as DirectCertificateImport decides: an entry whose key was deleted, or does not open,
+				//takes the import's copy and its key.
+				x509Certificate2InStore=FindInStoreNow(x509Store,x509Certificate2.Thumbprint);
+				if(x509Certificate2InStore!=null && !IsKeyUsable(x509Certificate2InStore)) {
+					x509Certificate2InStore.Reset();
+					x509Certificate2InStore=null;
+				}
+				if(x509Certificate2InStore==null) {
+					ActionBeforeStoreAddForTests?.Invoke(x509Certificate2);
+					x509Store.Add(x509Certificate2);
+				}
 			}
 			catch(Exception ex) when(!IsCriticalException(ex)) {
+				x509Certificate2InStore?.Reset();
 				//Nothing was added: every key the import stored goes again, but none a certificate of the store uses.
 				string notDeleted=GetKeysNotDeletedText(listKeysStored,x509Store,new List<X509Certificate2>(),
 					"A private key the tool stored could not be deleted again");
@@ -110,6 +124,14 @@ namespace OpenPmsDentalDbSettings {
 				}
 				throw new DbSettingsException(DbSettingsRunner.EXIT_WRITE_FAILED,"The client certificate could not be imported: "
 					+EndSentence(ex.Message)+notDeleted);
+			}
+			if(x509Certificate2InStore!=null) {
+				try {
+					return KeepCertificateInStore(x509Store,x509Certificate2InStore,listKeysStored,isMachine,out warning);
+				}
+				finally {
+					x509Certificate2InStore.Reset();
+				}
 			}
 			//The file's other certificates with a key (its CA's, for example): their keys were just stored and are not used, unless the client
 			//certificate, or a certificate of the store, uses the same key container.
@@ -128,6 +150,49 @@ namespace OpenPmsDentalDbSettings {
 				}
 			}
 			return x509Certificate2.Thumbprint;
+		}
+
+		///<summary>AddClientCertificate for a client certificate that the store already holds with a usable key (as when setup runs again with
+		///the same .pfx): the store's entry stays as it is, with its key, as DirectCertificateImport leaves such a certificate; the store's add
+		///would give the entry the key the import just stored and leave the key it had on the computer, named by no certificate and readable by
+		///the users. So every key this import stored is deleted again, the client certificate's own too; DeleteKeysNotInStore keeps the entry's
+		///key, which a certificate of the store uses, so no key that was there before is deleted. The users get read access to the entry's key
+		///(isMachine), as to an imported one: the program reads the certificate as the signed-in user. Returns its thumbprint; warning is "" or
+		///says which key could not be deleted and what the users may lack.</summary>
+		private static string KeepCertificateInStore(X509Store x509Store,X509Certificate2 x509Certificate2InStore,
+			List<X509Certificate2> listKeysStored,bool isMachine,out string warning)
+		{
+			string start="The client certificate was already in the computer's certificate store with a usable private key and stays as it is, but ";
+			warning=GetKeysNotDeletedText(listKeysStored,x509Store,new List<X509Certificate2>(),start+"a private key of the file, which the tool "
+				+"stored and does not use, could not be deleted").Trim();
+			if(isMachine) {
+				try {
+					GrantUsersReadToPrivateKey(x509Certificate2InStore);
+				}
+				catch(Exception ex) {
+					warning=AppendSentence(warning,start+"the users of this computer may not be able to use its private key: "+EndSentence(ex.Message)
+						+" In certlm.msc, Personal > Certificates, right-click it, All Tasks > Manage Private Keys, and give Users Read.");
+				}
+			}
+			return x509Certificate2InStore.Thumbprint;
+		}
+
+		///<summary>The store's certificate with this thumbprint, or null, read anew through a handle of its own, as DeleteKeysNotInStore reads
+		///the store: the caller's open handle may keep the certificates as it read them when it was opened. The caller resets it. Throws what
+		///opening the store throws.</summary>
+		private static X509Certificate2 FindInStoreNow(X509Store x509Store,string thumbprint) {
+			using(X509Store x509StoreNow=new X509Store(x509Store.Name,x509Store.Location)) {
+				x509StoreNow.Open(OpenFlags.ReadOnly|OpenFlags.OpenExistingOnly);
+				X509Certificate2 x509Certificate2Found=null;
+				foreach(X509Certificate2 x509Certificate2 in x509StoreNow.Certificates) {
+					if(x509Certificate2Found==null && string.Equals(x509Certificate2.Thumbprint,thumbprint,StringComparison.OrdinalIgnoreCase)) {
+						x509Certificate2Found=x509Certificate2;
+						continue;
+					}
+					x509Certificate2.Reset();//The others are released at once.
+				}
+				return x509Certificate2Found;
+			}
 		}
 
 		///<summary>Deletes the private keys of these certificates that no certificate of the store or of listInUse uses (DeleteKeysNotInStore),
@@ -368,6 +433,71 @@ namespace OpenPmsDentalDbSettings {
 				return null;//An ephemeral key, in memory only: no container to share.
 			}
 			return "CNG|"+cngKey.Provider.Provider+"|"+(cngKey.IsMachineKey ? "machine" : "user")+"|"+cngKey.UniqueName;
+		}
+
+		///<summary>True when the certificate's private key can be used on this computer: it opens (an RSA or ECDSA key) and signs a test digest,
+		///or, for an RSA key that does not sign, decrypts what its public key encrypted. False without a key, or with one that does not open
+		///(deleted, no read access, another user's). HasPrivateKey alone only says that the certificate names a key. A copy of
+		///DirectCertificateImport.IsKeyUsable. Never throws: anything but a critical exception (IsCriticalException) means not usable.</summary>
+		internal static bool IsKeyUsable(X509Certificate2 x509Certificate2) {
+			try {
+				if(!x509Certificate2.HasPrivateKey) {
+					return false;
+				}
+				byte[] byteArrayValue=Encoding.ASCII.GetBytes("Open PMS - Dental client certificate key check");
+				byte[] byteArrayDigest;
+				using(SHA256 sha256=SHA256.Create()) {
+					byteArrayDigest=sha256.ComputeHash(byteArrayValue);
+				}
+				using(RSA rsa=x509Certificate2.GetRSAPrivateKey()) {
+					if(rsa!=null) {
+						return CanSign(rsa,byteArrayValue,byteArrayDigest) || CanDecrypt(rsa,x509Certificate2,byteArrayValue);
+					}
+				}
+				using(ECDsa ecdsa=x509Certificate2.GetECDsaPrivateKey()) {
+					if(ecdsa!=null) {
+						ecdsa.SignHash(byteArrayDigest);
+						return true;
+					}
+				}
+				return false;
+			}
+			catch(Exception ex) when(!IsCriticalException(ex)) {
+				return false;
+			}
+		}
+
+		private static bool CanSign(RSA rsa,byte[] byteArrayValue,byte[] byteArrayDigest) {
+			try {
+				rsa.SignHash(byteArrayDigest,HashAlgorithmName.SHA256,RSASignaturePadding.Pkcs1);
+				return true;
+			}
+			catch(Exception ex) when(!IsCriticalException(ex)) {
+				//An old CAPI provider without SHA-256, or a key that only decrypts (the decryption is tried next).
+			}
+			try {
+				byte[] byteArrayDigestSha1;
+				using(SHA1 sha1=SHA1.Create()) {
+					byteArrayDigestSha1=sha1.ComputeHash(byteArrayValue);
+				}
+				rsa.SignHash(byteArrayDigestSha1,HashAlgorithmName.SHA1,RSASignaturePadding.Pkcs1);
+				return true;
+			}
+			catch(Exception ex) when(!IsCriticalException(ex)) {
+				return false;
+			}
+		}
+
+		private static bool CanDecrypt(RSA rsa,X509Certificate2 x509Certificate2,byte[] byteArrayValue) {
+			try {
+				using(RSA rsaPublic=x509Certificate2.GetRSAPublicKey()) {
+					byte[] byteArrayEncrypted=rsaPublic.Encrypt(byteArrayValue,RSAEncryptionPadding.Pkcs1);
+					return rsa.Decrypt(byteArrayEncrypted,RSAEncryptionPadding.Pkcs1).SequenceEqual(byteArrayValue);
+				}
+			}
+			catch(Exception ex) when(!IsCriticalException(ex)) {
+				return false;
+			}
 		}
 
 		///<summary>True for the exceptions that a method documented "Never throws" lets through: OutOfMemoryException, StackOverflowException and
