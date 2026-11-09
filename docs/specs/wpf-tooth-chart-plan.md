@@ -142,6 +142,23 @@ the later packages:
 - `ToothChartImageTests` takes about 150-190 s (the 253-scene WPF gate is 80-90 s of software rendering); accepted for Targeted and
   Full runs.
 
+**TC-3 (2026-11-09, branch `chart/tc3-1`).** How the package meets its row and O-19 (b):
+- **Live view.** `Wpf3D/ToothChartWpfView.cs`, an `ElementHost` whose WPF content is a `Viewport3D` with the scene's 3D layer and, above
+  it, an element that draws the scene's 2D items with the renderer's own `ChartLayer2D`. The wrapper makes it only when it is shown, in
+  `Wpf3D`, on an STA thread and not drawn in software; the image host stays, hidden, under it. Every image (`GetBitmap`, prints, sheets,
+  the dashboard) is still the software render. A live view that cannot start leaves the image host on screen and logs once
+  (`ToothChartFallbackKind.Wpf3DLiveView`). The frozen models come from one `ToothChartRenderer.BuildModel`, with meshes and materials
+  cached per thread; a scene with the shown 3D layer redraws only the 2D layer.
+- **The "Draw in software" switch** is `ToothChartWrapper.WpfDrawInSoftware`: on, a shown wrapper shows the image host (the software
+  render, the same image as `GetBitmap`'s, which no driver can change: the remedy for dotnet/wpf#7076). It switches at once on a shown
+  wrapper. The stored form is `ToothChartWrapper.DirectXFormatWpfSoftware` ("WpfSoftware") in `computerpref.DirectXFormat`, read with
+  `IsWpfSoftwareFormat`; TC-8 stores it and adds the check box.
+- **Mouse.** `ToothChartMouse.cs`, the DirectX handlers' logic with no drawing in it, drives the image host and the live view. The DirectX
+  engine keeps its own handlers until TC-9a; a test drives both with the same input. Cursors come from the embedded `.cur` files through
+  `ToothChartMouse.GetCursor` (the wrapper's own setter now loads them from its assembly, not its runtime type).
+- **Parity probes** (`ParityProbeTests`, section 7) also sample the X's crossing, the build-up silhouette, the implant and a root canal
+  line, and a second test checks the ink of every number, sealant "S" and watch "W" within one pixel of DirectX's.
+
 **Why not a separate branch.** The chart must not drift from the stages' rewrites of `ControlChart.cs` and the release files. Dark
 merges keep it on `main`, and the gallery approval comes before each merge (O-27).
 
