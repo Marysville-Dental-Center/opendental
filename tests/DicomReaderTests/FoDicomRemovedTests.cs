@@ -29,9 +29,10 @@ namespace DicomReaderTests {
 		}
 
 		private static IEnumerable<string> GetFiles(string root,params string[] arrayExtensions) {
+			//The skipped folders are matched below the root only: a worktree itself lives under .claude, and matching its whole path skipped every file.
 			return Directory.EnumerateFiles(root,"*",SearchOption.AllDirectories)
 				.Where(x => arrayExtensions.Any(y => x.EndsWith(y,StringComparison.OrdinalIgnoreCase)))
-				.Where(x => !Regex.IsMatch(x,@"\\(bin|obj|packages|\.git|\.vs|\.claude)\\",RegexOptions.IgnoreCase));//.claude holds other worktrees
+				.Where(x => !Regex.IsMatch(x.Substring(root.TrimEnd('\\').Length),@"\\(bin|obj|packages|\.git|\.vs|\.claude)\\",RegexOptions.IgnoreCase));//.claude holds other worktrees
 		}
 
 		[TestMethod]
