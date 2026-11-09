@@ -221,8 +221,7 @@ namespace ToothChartImageTests {
 			try {
 				using(ManagementObjectSearcher managementObjectSearcher=new ManagementObjectSearcher("SELECT Name, DriverVersion FROM Win32_VideoController")) {
 					foreach(ManagementBaseObject managementBaseObject in managementObjectSearcher.Get()) {
-						report.ListMachine.Add("Adapter "+managementBaseObject["Name"]+", driver "+managementBaseObject["DriverVersion"]
-							+" (the live view draws with a graphics card; RenderTargetBitmap renders in software)");
+						report.ListMachine.Add("Adapter "+managementBaseObject["Name"]+", driver "+managementBaseObject["DriverVersion"]);
 					}
 				}
 			}
@@ -230,6 +229,10 @@ namespace ToothChartImageTests {
 				report.ListMachine.Add("Adapters unknown ("+ex.GetType().Name+")");
 			}
 			report.ListMachine.Add((Environment.Is64BitProcess?"64":"32")+"-bit process, .NET Framework "+Environment.Version);
+			report.ListMachine.Add("WPF render mode of the process: "+System.Windows.Media.RenderOptions.ProcessRenderMode
+				+(WpfOnScreenTimings.IsProcessSoftware()?" (as OpenPmsDental.exe sets it: every WPF window, the live view included, is drawn in software, O-34)"
+				:" (WPF draws its windows with the graphics card where it can; the program does not run so, O-34)")
+				+"; RenderTargetBitmap, and so every image of the renderer, draws in software either way");
 			using(Graphics g=Graphics.FromHwnd(IntPtr.Zero)) {
 				report.ListMachine.Add("Screen DPI seen by the process "+g.DpiX.ToString(CultureInfo.InvariantCulture));
 			}

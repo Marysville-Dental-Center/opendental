@@ -131,7 +131,9 @@ namespace ToothChartImageTests {
 		///<summary>args[0] is the mode:
 		///"hash &lt;scene&gt;": renders the scene at 410x307 with the module colours and prints its pixel SHA-256.
 		///"exit": renders one image and returns at once, leaving the render thread alive; the process must still end.
-		///"times &lt;out file&gt;": measures the render times for O-19 (WpfTimings) and writes the report.
+		///"times &lt;out file&gt;": measures the render times for O-19 and G1 (WpfTimings) in a process that draws WPF in software, as the program
+		///does (O-34), and writes the report.
+		///"times-hardware &lt;out file&gt;": only the live view's frames, in a process that leaves WPF's hardware rendering on (O-34's choice (a)).
 		///"start-fails", "start-interrupted" and "log-kinds": a start failure, an interrupted cold start and the logged-once lines, each in a fresh
 		///process because a start failure and a logged line are kept for the whole process (see their methods).
 		///"abort-race" and "shutdown-throws": an aborted job's late Aborted handler and an error in the render Dispatcher's own shutdown, each in a
@@ -150,9 +152,19 @@ namespace ToothChartImageTests {
 						}
 						return 0;//no shutdown: the background render thread must not keep the process alive
 					case "times":
+						//As OpenPmsDental.exe does first in Main (ProgramEntry, O-34): every WPF window of the process, the live view included, is drawn
+						//in software. It must be set before WPF makes its first window.
+						System.Windows.Media.RenderOptions.ProcessRenderMode=System.Windows.Interop.RenderMode.SoftwareOnly;
 						string report=WpfTimings.Measure(true).GetReport();
 						File.WriteAllText(args[1],report,new UTF8Encoding(false));
 						Console.WriteLine(report);
+						return 0;
+					case "times-hardware":
+						//The live view's frames with WPF's hardware rendering left on, which the program does not do today (O-34's choice (a)).
+						WpfTimingReport reportHardware=new WpfTimingReport();
+						WpfOnScreenTimings.MeasureLiveViewFramesOnly(reportHardware,WpfTimings.CountRepeats);
+						File.WriteAllText(args[1],reportHardware.GetReport(),new UTF8Encoding(false));
+						Console.WriteLine(reportHardware.GetReport());
 						return 0;
 					case "start-fails":
 						RunStartFails();

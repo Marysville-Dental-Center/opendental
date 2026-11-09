@@ -39,6 +39,19 @@ namespace ToothChartImageTests {
 		public bool IsParityOk=true;
 	}
 
+	///<summary>From G1 on: one live-view capture of the gallery (O-34): the live view as the program draws it on screen, in software at 1x.</summary>
+	public class WpfGalleryLiveCapture {
+		public ChartScene Scene;
+		public ChartSize ChartSize;
+		///<summary>Relative to the gallery folder, for example "live/410x307/restored-adult.png".</summary>
+		public string PathLive;
+		///<summary>The parity probes of the capture against the renderer's picture of the same data, and how many of them differ.</summary>
+		public int CountProbes;
+		public int CountProbesFailed;
+		///<summary>The capture against the renderer's picture by the baseline tolerances (mostly the 3D layer's unsmoothed edges differ).</summary>
+		public ChartImageCompareResult Comparison;
+	}
+
 	public static class WpfGallery {
 		///<summary>The gallery's legacy columns, in order.</summary>
 		private static readonly DrawingMode[] _arrayEngines={ DrawingMode.DirectX,DrawingMode.OpenGL,DrawingMode.Simple2D };
@@ -78,9 +91,10 @@ namespace ToothChartImageTests {
 		}
 
 		///<summary>Copies TC-0's legacy pictures of every scene and size into the gallery (legacy\&lt;mode&gt;\&lt;size&gt;\, legacy-smoothed\&lt;size&gt;\),
-		///so the folder stands alone, and writes index.html and timings.txt. approvedFrom says where the approved WPF pictures came from.</summary>
+		///so the folder stands alone, and writes index.html and timings.txt. approvedFrom says where the approved WPF pictures came from.
+		///listLiveCaptures (from G1 on) are the live view's captures, already saved under folder\live; null when none could be made.</summary>
 		public static void Write(string folder,string galleryName,string galleryNote,List<WpfGalleryPicture> listPictures,WpfTimingReport timingReportCold,
-			string commit,string approvedFrom)
+			string commit,string approvedFrom,List<WpfGalleryLiveCapture> listLiveCaptures=null)
 		{
 			Directory.CreateDirectory(folder);
 			foreach(ChartScene scene in ChartScenes.GetAll()) {
@@ -96,8 +110,8 @@ namespace ToothChartImageTests {
 			if(timingReportCold!=null) {
 				File.WriteAllText(Path.Combine(folder,"timings.txt"),timingReportCold.GetReport(),new UTF8Encoding(false));
 			}
-			File.WriteAllText(Path.Combine(folder,"index.html"),GetIndexHtml(folder,galleryName,galleryNote,listPictures,timingReportCold,commit,approvedFrom),
-				new UTF8Encoding(false));
+			File.WriteAllText(Path.Combine(folder,"index.html"),GetIndexHtml(folder,galleryName,galleryNote,listPictures,timingReportCold,commit,approvedFrom,
+				listLiveCaptures,galleryName!="G0"),new UTF8Encoding(false));
 		}
 
 		private static void CopyIfExists(string pathFrom,string pathTo) {
@@ -108,9 +122,10 @@ namespace ToothChartImageTests {
 			File.Copy(pathFrom,pathTo,true);
 		}
 
-		///<summary>The gallery's index.html. The pictures' files are looked for under folder.</summary>
+		///<summary>The gallery's index.html. The pictures' files are looked for under folder. isLiveSection (from G1 on) adds the section of the live
+		///view's captures, listLiveCaptures, or a note when there are none.</summary>
 		public static string GetIndexHtml(string folder,string galleryName,string galleryNote,List<WpfGalleryPicture> listPictures,WpfTimingReport timingReport,
-			string commit,string approvedFrom)
+			string commit,string approvedFrom,List<WpfGalleryLiveCapture> listLiveCaptures=null,bool isLiveSection=false)
 		{
 			StringBuilder sb=new StringBuilder();
 			sb.Append("<!doctype html>\r\n<html lang=\"en\">\r\n<head>\r\n<meta charset=\"utf-8\">\r\n");
@@ -129,6 +144,9 @@ namespace ToothChartImageTests {
 				+"from the last approved WPF picture (different pixels in red over grey). Approved WPF pictures: "+WebUtility.HtmlEncode(approvedFrom)+".</p>\r\n");
 			if(timingReport!=null) {
 				AppendTimings(sb,timingReport);
+			}
+			if(isLiveSection) {
+				AppendLiveCaptures(sb,folder,listLiveCaptures);
 			}
 			int countWithBaseline=listPictures.Count(x => x.HasBaseline);
 			int countDifferent=listPictures.Count(x => x.Comparison!=null && !x.Comparison.IsPass);
@@ -223,27 +241,114 @@ namespace ToothChartImageTests {
 				+WebUtility.HtmlEncode(pathRelative)+"\">"+(captionHtml??"")+"</td>");
 		}
 
-		///<summary>TC-3's table: refill plus the screen's update with the dashboard hidden and visible, and a selection-only change, for DirectX, the
-		///live view and the WPF chart drawn in software, at 410x307 and 615x461.</summary>
+		///<summary>TC-3's table: refill plus the screen's update with the dashboard hidden and visible, a selection-only change and one pen move, for
+		///DirectX, the live view (as the program draws it, in software: the UI thread's work and WPF's frame; without the 3D layer cache; and with
+		///hardware rendering, which the program does not use, O-34) and the renderer's picture (the "Draw in software" switch), at 410x307 and
+		///615x461.</summary>
 		private static void AppendOnScreenTimings(StringBuilder sb,WpfTimingReport timingReport) {
-			sb.Append("<h2>On-screen times against DirectX (TC-3)</h2>\r\n<p>Measured in the same fresh process on shown, off-screen windows: a refill (the "
-				+"Chart module's Set calls) and the screen's update; with the Patient Dashboard visible the refill also makes the dashboard's image "
-				+"(GetBitmap, the software render); a selection-only change toggles one tooth. Median of "+WpfTimings.CountRepeats+" runs. The live view's "
-				+"times are the UI thread's work: WPF's render thread then draws the frame on the graphics card, and no measurement waits for a frame.</p>\r\n");
+			sb.Append("<h2>On-screen times against DirectX (TC-3)</h2>\r\n<p>Measured in a fresh process that draws every WPF window in software, as "
+				+"OpenPmsDental.exe does (it sets RenderOptions.ProcessRenderMode to SoftwareOnly for the whole process: owner question O-34), on shown "
+				+"windows: a refill (the Chart module's Set calls) and the screen's update; with the Patient Dashboard visible the refill also makes the "
+				+"dashboard's image (GetBitmap, the renderer's picture); a selection-only change toggles one tooth; a pen move adds 4 pixels to a stroke. "
+				+"Median of "+WpfTimings.CountRepeats+" runs. The live view's screen update is the UI thread's work and then WPF's frame, which WPF's "
+				+"render thread draws in software at 1x; the frame is timed until WPF has presented it, on a window on the display that the user cannot "
+				+"see. The live view keeps its 3D layer in a bitmap cache, so a frame that changes only the 2D layer or the pen stroke does not draw "
+				+"the 3D layer again; the row without the cache is the live view as TC-3 first built it. The hardware row comes from a second process "
+				+"that leaves WPF's hardware rendering on: what the live view would cost if the program's software line went (O-34's choice (a)).</p>\r\n");
 			sb.Append("<table class=\"times\"><thead><tr><th>Size</th><th>Engine</th><th>Refill, dashboard hidden</th><th>Refill, dashboard visible</th>"
-				+"<th>Selection only</th></tr></thead><tbody>\r\n");
+				+"<th>Selection only</th><th>One pen move</th></tr></thead><tbody>\r\n");
 			foreach(string size in new[] { "410x307","615x461" }) {
-				foreach(string[] arrayEngine in new[] { new[] { "directx","DirectX (today)" },new[] { "live","WPF live view" },new[] { "software","WPF drawn in software" } }) {
-					string key=size+"."+arrayEngine[0];
-					sb.Append("<tr><td>"+size+"</td><td>"+WebUtility.HtmlEncode(arrayEngine[1])+"</td>");
-					foreach(string suffix in new[] { ".refill",".refill.dashboard",".selection" }) {
-						double value=timingReport.Get(key+suffix);
-						sb.Append("<td class=\"num\">"+(double.IsNaN(value)?"not measured":value.ToString("0.0",CultureInfo.InvariantCulture)+" ms")+"</td>");
-					}
-					sb.Append("</tr>\r\n");
+				double Get(string suffix) {
+					return timingReport.Get(size+suffix);
 				}
+				AppendTimesRow(sb,size,"DirectX (today)",Get(".directx.refill"),Get(".directx.refill.dashboard"),Get(".directx.selection"),double.NaN);
+				AppendTimesRow(sb,size,"WPF live view as the program draws it (software, 1x), until WPF's frame is presented",Get(".live.shown.refill"),
+					Get(".live.refill.dashboard")+Get(".live.frame.refill"),Get(".live.shown.selection"),Get(".live.shown.pen"),true);
+				AppendTimesRow(sb,size,"  of that, the UI thread's work",Get(".live.shown.refill")-Get(".live.frame.refill"),Get(".live.refill.dashboard"),
+					Get(".live.shown.selection")-Get(".live.frame.selection"),Get(".live.shown.pen")-Get(".live.frame.pen"));
+				AppendTimesRow(sb,size,"  of that, WPF's frame in software",Get(".live.frame.refill"),Get(".live.frame.refill"),Get(".live.frame.selection"),
+					Get(".live.frame.pen"));
+				AppendTimesRow(sb,size,"WPF live view without the 3D layer cache (TC-3 as first built), software",Get(".live.nocache.shown.refill"),
+					Get(".live.refill.dashboard")+Get(".live.nocache.frame.refill"),Get(".live.nocache.shown.selection"),Get(".live.nocache.shown.pen"));
+				AppendTimesRow(sb,size,"WPF live view with hardware rendering (not the program today: O-34 (a))",Get(".live.hardware.shown.refill"),
+					Get(".live.refill.dashboard")+Get(".live.hardware.frame.refill"),Get(".live.hardware.shown.selection"),Get(".live.hardware.shown.pen"));
+				AppendTimesRow(sb,size,"WPF drawn in software: the renderer's smoothed picture (the \"Draw in software\" switch)",Get(".software.refill"),
+					Get(".software.refill.dashboard"),Get(".software.selection"),double.NaN);
 			}
 			sb.Append("</tbody></table>\r\n");
+			List<string> listNotes=new List<string>();
+			foreach(string size in new[] { "410x307","615x461" }) {
+				double fullFrame=timingReport.Get(size+".live.fullframe");
+				double idle=timingReport.Get(size+".live.frame.idle");
+				double offscreen=timingReport.Get(size+".live.offscreen.frame.refill");
+				listNotes.Add(size+": one full frame of the live view by WPF's software rasterizer at 1x (the 3D layer drawn again) "+FormatMs(fullFrame)
+					+"; waiting for a frame with nothing changed "+FormatMs(idle)+"; a refill's frame on a window off every display "+FormatMs(offscreen)+".");
+			}
+			sb.Append("<p class=\"cap\">"+WebUtility.HtmlEncode(string.Join(" ",listNotes))+"</p>\r\n");
+		}
+
+		private static void AppendTimesRow(StringBuilder sb,string size,string engine,double refill,double refillDashboard,double selection,double pen,
+			bool isBold=false)
+		{
+			sb.Append("<tr><td>"+size+"</td><td>"+(isBold?"<b>":"")+WebUtility.HtmlEncode(engine)+(isBold?"</b>":"")+"</td>");
+			foreach(double value in new[] { refill,refillDashboard,selection,pen }) {
+				sb.Append("<td class=\"num\">"+(isBold?"<b>":"")+WebUtility.HtmlEncode(FormatMs(value))+(isBold?"</b>":"")+"</td>");
+			}
+			sb.Append("</tr>\r\n");
+		}
+
+		private static string FormatMs(double value) {
+			return double.IsNaN(value)?"not measured":value.ToString("0.0",CultureInfo.InvariantCulture)+" ms";
+		}
+
+		///<summary>From G1 on: the live view as the program draws it (O-34), next to DirectX and the renderer's picture of the same scene, each at 1x and
+		///a part of it enlarged 3 times without smoothing, so the edges can be compared.</summary>
+		private static void AppendLiveCaptures(StringBuilder sb,string folder,List<WpfGalleryLiveCapture> listLiveCaptures) {
+			sb.Append("<h2>The live view as the program draws it (O-34)</h2>\r\n");
+			sb.Append("<p>OpenPmsDental.exe sets RenderOptions.ProcessRenderMode to SoftwareOnly for the whole process (ProgramEntry.cs, a line from "
+				+"upstream), and a window cannot turn hardware rendering back on, so the live view is drawn by WPF's software rasterizer at 1x with no "
+				+"edge smoothing, not by the graphics card that O-19 (b) assumed. These captures are the live view of a shown chart, read back with "
+				+"WPF's software rasterizer, which is what the screen shows in such a process. Next to them: today's DirectX picture (unsmoothed and, "
+				+"where recorded, smoothed) and the renderer's picture (3x supersampled and reduced: GetBitmap, prints, and the screen with \"Draw in "
+				+"software\"). The second row of each scene enlarges the upper right molars 3 times without smoothing.</p>\r\n");
+			if(listLiveCaptures==null || listLiveCaptures.Count==0) {
+				sb.Append("<p class=\"warn\">No live-view captures: no interactive desktop session to show a chart on.</p>\r\n");
+				return;
+			}
+			sb.Append("<table><thead><tr><th>Scene</th><th>DirectX</th><th>DirectX, smoothed</th><th>WPF renderer (GetBitmap)</th>"
+				+"<th>WPF live view (software, 1x)</th></tr></thead><tbody>\r\n");
+			foreach(WpfGalleryLiveCapture capture in listLiveCaptures) {
+				ChartSize chartSize=capture.ChartSize;
+				string[] arrayPaths={ "legacy/DirectX/"+chartSize.FolderName+"/"+capture.Scene.Name+".png","legacy-smoothed/"+chartSize.FolderName+"/"+capture.Scene.Name+".png",
+					"wpf/"+chartSize.FolderName+"/"+capture.Scene.Name+".png",capture.PathLive };
+				sb.Append("<tr><td rowspan=\"2\"><div class=\"name\">"+capture.Scene.Name+"</div><div class=\"cap\">"+chartSize.FolderName+"</div><div>"
+					+WebUtility.HtmlEncode(capture.Scene.Description)+"</div><div class=\"cap\">Live view against the renderer's picture: "
+					+(capture.CountProbes-capture.CountProbesFailed)+" of "+capture.CountProbes+" parity probes agree; "
+					+WebUtility.HtmlEncode(capture.Comparison==null?"":capture.Comparison.ToString())+".</div></td>");
+				foreach(string path in arrayPaths) {
+					AppendImageCell(sb,folder,path,chartSize,"not recorded");
+				}
+				sb.Append("</tr>\r\n<tr>");
+				foreach(string path in arrayPaths) {
+					AppendZoomCell(sb,folder,path,chartSize);
+				}
+				sb.Append("</tr>\r\n");
+			}
+			sb.Append("</tbody></table>\r\n");
+		}
+
+		///<summary>A cell with a part of the picture (the upper right molars: the left quarter of the upper half) enlarged 3 times without smoothing.</summary>
+		private static void AppendZoomCell(StringBuilder sb,string folder,string pathRelative,ChartSize chartSize) {
+			if(!File.Exists(Path.Combine(folder,pathRelative.Replace('/','\\')))) {
+				sb.Append("<td></td>");
+				return;
+			}
+			int zoom=3;
+			int widthCrop=chartSize.Size.Width/4;
+			int heightCrop=chartSize.Size.Height/2;
+			sb.Append("<td><div style=\"width:"+widthCrop*zoom+"px;height:"+heightCrop*zoom+"px;max-width:100%;overflow:hidden\"><img loading=\"lazy\" src=\""
+				+pathRelative+"\" alt=\"enlarged\" style=\"width:"+chartSize.Size.Width*zoom+"px;height:"+chartSize.Size.Height*zoom
+				+"px;max-width:none;image-rendering:pixelated\"></div></td>");
 		}
 
 		///<summary>Under a WPF picture: whether its pixels are exactly those of this branch's baseline (the file being merged).</summary>
