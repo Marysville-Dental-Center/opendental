@@ -1,0 +1,2 @@
+# Tooth chart call log (TC-2): caller ControlChart, scene Slider_2021-12-31, 1 calls
+SetCrown "12" #FF5B5915

@@ -1,0 +1,8 @@
+# Tooth chart call log (TC-2): caller FormToothChartBig, scene ProvColors_UserIsProvider, 7 calls
+SetSurfaceColors "12" "B" #FF414BFF
+SetCrown "3" #FF0D2FD3
+SetCrown "4" #FF273DE9
+SetSurfaceColors "5" "MOD" #FF273DE9
+SetCrown "19" #FF0C2238
+SetSealant "30" #FF0D2FD3
+SetCrown "7" #FF5B5915

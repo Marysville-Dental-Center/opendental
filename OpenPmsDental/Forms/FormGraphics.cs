@@ -251,53 +251,12 @@ namespace OpenPmsDental{
 			}
 		}
 
-		///<summary>CAUTION: Runs slowly. May take minutes. Returns the string "invalid" if no suitable Direct X format can be found.</summary>
-		public static string GetPreferredDirectXFormat(Form callingForm) {
-			if(!ToothChartWrapper.IsDirectXRuntimeAvailable()) {
-				return "invalid";//No format can work without d3dx9_43.dll, so don't spend minutes trying each one.
-			}
-			ToothChartDirectX.DirectXDeviceFormat[] directXDeviceFormatArray=ToothChartDirectX.GetStandardDeviceFormats();
-			for(int i=0;i<directXDeviceFormatArray.Length;i++) {
-				if(TestDirectXFormat(callingForm,directXDeviceFormatArray[i].ToString())) {
-					return directXDeviceFormatArray[i].ToString();
-				}
-			}
-			return "invalid";
-		}
-
-		///<summary>Returns true if the given directXFormat works for a DirectX tooth chart on the local computer.</summary>
-		public static bool TestDirectXFormat(Form callingForm,string directXFormat) {
-			using ToothChartWrapper toothChartWrapperTest=new ToothChartWrapper();
-			toothChartWrapperTest.Visible=false;
-			//We add the invisible tooth chart to our form so that the device context will initialize properly
-			//and our device creation test will then be accurate.
-			callingForm.Controls.Add(toothChartWrapperTest);
-			toothChartWrapperTest.DeviceFormat=new ToothChartDirectX.DirectXDeviceFormat(directXFormat);
-			toothChartWrapperTest.DrawMode=DrawingMode.DirectX;//Creates the device.
-			if(toothChartWrapperTest.DrawMode!=DrawingMode.DirectX) {
-				//The chart falls back to OpenGL, then Simple 2D, when DirectX cannot start.
-				callingForm.Controls.Remove(toothChartWrapperTest);
-				return false;
-			}
-			//Now we check to be sure that one can draw and retrieve a screen shot from a DirectX control
-			//using the specified device format.
-			try {
-				using Bitmap bitmap=toothChartWrapperTest.GetBitmap();
-			} 
-			catch {
-				callingForm.Controls.Remove(toothChartWrapperTest);
-				return false;
-			}
-			callingForm.Controls.Remove(toothChartWrapperTest);
-			return true;
-		}
-
 		private void butSave_Click(object sender,System.EventArgs e) {
 			//ComputerPrefCur doesn't change until here, so make the old copy exactly when we need it instead of when the form is created.
 			ComputerPref computerPrefOld=ComputerPrefCur.Copy();
 			//ComputerPref computerPref=ComputerPrefs.GetForLocalComputer();
 			if(radioDirectXChart.Checked) {
-				if(!_isRemoteEdit && !TestDirectXFormat(this,_directXFormatSelected)){
+				if(!_isRemoteEdit && !ToothChartWrapper.TestDirectXFormat(this,_directXFormatSelected)){
 					MessageBox.Show(Lan.g(this,"Please choose a different device format, "+
 						"the selected device format will not support the DirectX 3D tooth chart on this computer"));
 					return;
