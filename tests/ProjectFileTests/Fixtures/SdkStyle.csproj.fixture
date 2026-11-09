@@ -12,6 +12,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <DefineConstants>TRACE</DefineConstants>
+    <FixtureReleaseOnly>release</FixtureReleaseOnly>
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="Removed\**" />

@@ -119,8 +119,12 @@ namespace VEDSTests {
 				@"Forms\FormEdsValidation.Designer.cs",@"Forms\FormClaimsSend.Eds.cs",@"Logic\EdsValidationL.cs");
 			//The EDS business classes are compiled with the whole VendorDirect folder (its wildcard in the classic project file, the default glob in
 			//an SDK-style one).
-			List<string> listNotCompiled=ProjectFile.Load(TestDb.FindRepoFile(@"OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj")).GetFilesNotCompiled(@"VendorDirect\Eds");
+			ProjectFile projectFileBusiness=ProjectFile.Load(TestDb.FindRepoFile(@"OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj"));
+			List<string> listNotCompiled=projectFileBusiness.GetFilesNotCompiled(@"VendorDirect\Eds");
 			Assert.AreEqual(0,listNotCompiled.Count,"Not compiled: "+string.Join(", ",listNotCompiled));
+			//By that wildcard or glob, so the folder needs no line of its own in the project file.
+			List<string> listNotByWildcard=projectFileBusiness.GetFilesNotCompiledByWildcard(@"VendorDirect\Eds");
+			Assert.AreEqual(0,listNotByWildcard.Count,"Not compiled by a wildcard: "+string.Join(", ",listNotByWildcard));
 		}
 
 		[TestMethod]
