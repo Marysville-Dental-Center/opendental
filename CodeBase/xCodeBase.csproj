@@ -1,82 +1,18 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="12.0">
+﻿<Project Sdk="Microsoft.NET.Sdk" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProductVersion>9.0.21022</ProductVersion>
-    <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{18F7BC78-4B99-48D3-A1F1-0D13A63E3CF9}</ProjectGuid>
+    <TargetFramework>net48</TargetFramework>
     <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>CodeBase</RootNamespace>
     <AssemblyName>CodeBase</AssemblyName>
-    <StartupObject>
-    </StartupObject>
-    <FileUpgradeFlags>
-    </FileUpgradeFlags>
-    <OldToolsVersion>3.5</OldToolsVersion>
-    <UpgradeBackupLocation>
-    </UpgradeBackupLocation>
-    <PublishUrl>http://localhost/CodeBase/</PublishUrl>
-    <Install>true</Install>
-    <InstallFrom>Web</InstallFrom>
-    <UpdateEnabled>true</UpdateEnabled>
-    <UpdateMode>Foreground</UpdateMode>
-    <UpdateInterval>7</UpdateInterval>
-    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
-    <UpdatePeriodically>false</UpdatePeriodically>
-    <UpdateRequired>false</UpdateRequired>
-    <MapFileExtensions>true</MapFileExtensions>
-    <ApplicationRevision>0</ApplicationRevision>
-    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
-    <IsWebBootstrapper>true</IsWebBootstrapper>
-    <UseApplicationTrust>false</UseApplicationTrust>
-    <BootstrapperEnabled>true</BootstrapperEnabled>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-    <ResGenToolArchitecture>Managed32Bit</ResGenToolArchitecture>
-    <TargetFrameworkProfile />
+    <LangVersion>8.0</LangVersion>
+    <Platforms>AnyCPU;x86</Platforms>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
-    <Prefer32Bit>false</Prefer32Bit>
-    <LangVersion>8.0</LangVersion>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
     <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <Prefer32Bit>false</Prefer32Bit>
-    <LangVersion>8.0</LangVersion>
     <DocumentationFile>bin\Release\CodeBase.xml</DocumentationFile>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
-    <DebugSymbols>true</DebugSymbols>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>TRACE;DEBUG</DefineConstants>
-    <DebugType>full</DebugType>
-    <PlatformTarget>x86</PlatformTarget>
-    <LangVersion>8.0</LangVersion>
-    <ErrorReport>prompt</ErrorReport>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <DocumentationFile>bin\Release\CodeBase.xml</DocumentationFile>
-    <Optimize>true</Optimize>
-    <DebugType>pdbonly</DebugType>
-    <PlatformTarget>x86</PlatformTarget>
-    <LangVersion>8.0</LangVersion>
-    <ErrorReport>prompt</ErrorReport>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.VisualBasic" />
@@ -93,7 +29,6 @@
     <Reference Include="PresentationCore" />
     <Reference Include="System" />
     <Reference Include="System.Data" />
-    <Reference Include="System.Deployment" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.IO.Compression" />
     <Reference Include="System.Management" />
@@ -112,177 +47,50 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Controls\MessageBox.cs" />
-    <Compile Include="Controls\ODWebView2.cs">
-      <SubType>Component</SubType>
+    <Compile Include="..\SharedAssemblyInfo.cs">
+      <Link>Properties\SharedAssemblyInfo.cs</Link>
     </Compile>
-    <Compile Include="Controls\ODWebView2.Designer.cs">
+    <Compile Update="Controls\ODWebView2.Designer.cs">
       <DependentUpon>ODWebView2.cs</DependentUpon>
     </Compile>
-    <Compile Include="Controls\WebView2PageStore.cs" />
-    <Compile Include="Controls\WebView2Policy.cs" />
-    <Compile Include="Controls\OpenGLWinFormsControl.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="Controls\PrintPanel.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Controls\PrintPanel.Designer.cs">
+    <Compile Update="Controls\PrintPanel.Designer.cs">
       <DependentUpon>PrintPanel.cs</DependentUpon>
     </Compile>
-    <Compile Include="Crypto\HmacSha256.cs" />
-    <Compile Include="Crypto\MachineSecret.cs" />
-    <Compile Include="Crypto\SaltedHash.cs" />
-    <Compile Include="Crypto\SecretBox.cs" />
-    <Compile Include="Crypto\Secrets.cs" />
-    <Compile Include="Crypto\TamperHash.cs" />
-    <Compile Include="Progress\FormProgressBase.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Progress\FormProgressExtended.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Progress\FormProgressExtended.designer.cs">
+    <Compile Update="Progress\FormProgressExtended.designer.cs">
       <DependentUpon>FormProgressExtended.cs</DependentUpon>
     </Compile>
-    <Compile Include="Progress\FormProgressStatus.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Progress\FormProgressStatus.designer.cs">
+    <Compile Update="Progress\FormProgressStatus.designer.cs">
       <DependentUpon>FormProgressStatus.cs</DependentUpon>
     </Compile>
-    <Compile Include="Progress\IODProgressExtended.cs" />
-    <Compile Include="Progress\ODProgress.cs" />
-    <Compile Include="Progress\ODProgressBar.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Progress\ODProgressBar.designer.cs">
+    <Compile Update="Progress\ODProgressBar.designer.cs">
       <DependentUpon>ODProgressBar.cs</DependentUpon>
     </Compile>
-    <Compile Include="Progress\ODProgressExtended.cs" />
-    <Compile Include="Progress\ProgressBarHelper.cs" />
-    <Compile Include="Properties\Resources.Designer.cs">
+    <Compile Update="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <Compile Include="Utilities\BridgeNotAvailable.cs" />
-    <Compile Include="Utilities\DateTime_.cs" />
-    <Compile Include="Utilities\DrCephArgs.cs" />
-    <Compile Include="Utilities\Environment_.cs" />
-    <Compile Include="Utilities\JavaScriptUtil.cs" />
-    <Compile Include="Utilities\ODClipboard.cs" />
-    <Compile Include="Utilities\PayConnectResponse.cs" />
-    <Compile Include="Utilities\MessageListHandler.cs" />
-    <Compile Include="Utilities\SoundHelper.cs" />
-    <Compile Include="Utilities\SymbolExtensions.cs" />
-    <Compile Include="Utilities\ConvertWebCore.cs" />
-    <Compile Include="Utilities\VendorDirect\HqHosts.cs" />
-    <Compile Include="Utilities\VendorDirect\LoopbackListener.cs" />
-    <Compile Include="Utilities\VendorDirect\OAuthRedirect.cs" />
-    <Compile Include="Utilities\VendorDirect\OAuthTokenClient.cs" />
-    <Compile Include="Utilities\VendorDirect\Pkce.cs" />
-    <Compile Include="Utilities\VendorDirect\ProductIdentity.cs" />
-    <Compile Include="Utilities\VendorDirect\TokenCache.cs" />
-    <Compile Include="Utilities\VendorDirect\TypeDiscovery.cs" />
-    <Compile Include="Utilities\VendorDirect\VendorHttp.cs" />
-    <Compile Include="Utilities\DateDefaultToday.cs" />
-    <Compile Include="Utilities\DateRange.cs" />
-    <Compile Include="Utilities\DateTimeOD.cs" />
-    <Compile Include="Utilities\EmailUtils.cs" />
-    <Compile Include="Progress\IODProgress.cs" />
-    <Compile Include="Utilities\LoggerOld.cs" />
-    <Compile Include="Utilities\HtmlPage.cs" />
-    <Compile Include="Utilities\ODBuild.cs" />
-    <Compile Include="Utilities\ODClassExtensions.cs" />
-    <Compile Include="Utilities\ODDdeClient.cs" />
-    <Compile Include="Utilities\ODInitialize.cs" />
-    <Compile Include="Utilities\ODInvokeExtensions.cs" />
-    <Compile Include="Utilities\ODNonNullable.cs" />
-    <Compile Include="Utilities\DateSpan.cs" />
-    <Compile Include="Utilities\LimitedSizeQueue.cs" />
-    <Compile Include="Utilities\ODMethodsT.cs" />
-    <Compile Include="Utilities\ODNetworkConnection.cs" />
-    <Compile Include="Utilities\ODprintout.cs" />
-    <Compile Include="Utilities\ODTuple.cs" />
-    <Compile Include="Utilities\ProgramNames.cs" />
-    <Compile Include="Utilities\ServicesHelper.cs" />
-    <Compile Include="Utilities\WindowsApiWrapper.cs" />
-    <Compile Include="Utilities\ODPrimitiveExtensions.cs" />
-    <Compile Include="Utilities\MiscUtils.cs" />
-    <Compile Include="Utilities\ODEnvironment.cs" />
-    <Compile Include="Utilities\ODEvent.cs" />
-    <Compile Include="Utilities\ODException.cs" />
-    <Compile Include="Utilities\ODImaging.cs" />
-    <Compile Include="Utilities\ODFileUtils.cs" />
-    <Compile Include="Utilities\ODZip.cs" />
-    <Compile Include="Utilities\ODMathLib.cs" />
-    <Compile Include="Utilities\Logger.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="..\SharedAssemblyInfo.cs">
-      <Link>Properties\SharedAssemblyInfo.cs</Link>
-    </Compile>
-    <Compile Include="Utilities\MsgBoxCopyPaste.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Utilities\ODThread.cs" />
-    <Compile Include="Utilities\ODThreadAbs.cs" />
-    <Compile Include="Utilities\ODUIExtensions.cs" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Controls\PrintPanel.resx">
+    <!-- The class-based resource names (CodeBase.PrintPanel.resources, ...) come from DependentUpon. -->
+    <EmbeddedResource Update="Controls\PrintPanel.resx">
       <DependentUpon>PrintPanel.cs</DependentUpon>
-      <SubType>Designer</SubType>
     </EmbeddedResource>
-    <EmbeddedResource Include="Progress\FormProgressExtended.resx">
+    <EmbeddedResource Update="Progress\FormProgressExtended.resx">
       <DependentUpon>FormProgressExtended.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Progress\FormProgressStatus.resx">
+    <EmbeddedResource Update="Progress\FormProgressStatus.resx">
       <DependentUpon>FormProgressStatus.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Progress\ODProgressBar.resx">
+    <EmbeddedResource Update="Progress\ODProgressBar.resx">
       <DependentUpon>ODProgressBar.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Properties\Resources.resx">
+    <EmbeddedResource Update="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
-      <SubType>Designer</SubType>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
-    <EmbeddedResource Include="Utilities\MsgBoxCopyPaste.resx">
+    <EmbeddedResource Update="Utilities\MsgBoxCopyPaste.resx">
       <DependentUpon>MsgBoxCopyPaste.cs</DependentUpon>
-      <SubType>Designer</SubType>
     </EmbeddedResource>
   </ItemGroup>
-  <ItemGroup>
-    <None Include="Crypto\README.md" />
-  </ItemGroup>
-  <ItemGroup>
-    <BootstrapperPackage Include="Microsoft.Net.Framework.2.0">
-      <Visible>False</Visible>
-      <ProductName>.NET Framework 2.0 %28x86%29</ProductName>
-      <Install>true</Install>
-    </BootstrapperPackage>
-    <BootstrapperPackage Include="Microsoft.Net.Framework.3.0">
-      <Visible>False</Visible>
-      <ProductName>.NET Framework 3.0 %28x86%29</ProductName>
-      <Install>false</Install>
-    </BootstrapperPackage>
-    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5">
-      <Visible>False</Visible>
-      <ProductName>.NET Framework 3.5</ProductName>
-      <Install>false</Install>
-    </BootstrapperPackage>
-  </ItemGroup>
-  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
-  <PropertyGroup>
-    <PostBuildEvent>
-    </PostBuildEvent>
-  </PropertyGroup>
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
-  </Target>
-  <Target Name="AfterBuild">
-  </Target>
-  -->
 </Project>

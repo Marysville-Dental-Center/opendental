@@ -1,46 +1,30 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
-  DevDbTool: builds a local development database for this codebase from the seed dump in
-  UnitTests\Resources\dump.txt, then upgrades it with the convert scripts in OpenPmsDentalBusiness.
-  Run it through tools\New-DevDatabase.ps1, which builds it on its own. With export-init-sql it also writes
-  db\init\new-database.sql, the SQL file that initializes a new database (tools\New-InitSql.ps1). It is in OpenDental.sln
-  and OpenDental.Local.slnf, so that every solution build compiles it, catches a break early and builds it for the test
-  that regenerates that file (tests\ForkMigrationTests\InitSqlRegenerationTests.cs).
--->
-<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+<Project Sdk="Microsoft.NET.Sdk" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!--
+    DevDbTool: builds a local development database for this codebase from the seed dump in
+    UnitTests\Resources\dump.txt, then upgrades it with the convert scripts in OpenPmsDentalBusiness.
+    Run it through tools\New-DevDatabase.ps1, which builds it on its own. With export-init-sql it also writes
+    db\init\new-database.sql, the SQL file that initializes a new database (tools\New-InitSql.ps1). It is in OpenDental.sln
+    and OpenDental.Local.slnf, so that every solution build compiles it, catches a break early and builds it for the test
+    that regenerates that file (tests\ForkMigrationTests\InitSqlRegenerationTests.cs).
+  -->
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
-    <ProjectGuid>{6B7D0E5A-3C41-4F0B-9E8A-2D5C7A1F9B34}</ProjectGuid>
+    <TargetFramework>net48</TargetFramework>
     <OutputType>Exe</OutputType>
     <RootNamespace>DevDbTool</RootNamespace>
     <AssemblyName>DevDbTool</AssemblyName>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
     <LangVersion>8.0</LangVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
-    <Prefer32Bit>false</Prefer32Bit>
+    <Platforms>x86</Platforms>
+    <!-- The .config is app.config as it is, as in the classic project: the SDK would rewrite it to add the supportedRuntime element app.config
+         already has. -->
+    <GenerateSupportedRuntime>false</GenerateSupportedRuntime>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
-    <PlatformTarget>x86</PlatformTarget>
-    <DebugSymbols>true</DebugSymbols>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
-    <PlatformTarget>x86</PlatformTarget>
+  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
     <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -51,37 +35,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="DevDatabase.cs" />
-    <Compile Include="InitSqlExport.cs" />
-    <Compile Include="InitSqlScrub.cs" />
-    <Compile Include="InitSqlWriter.cs" />
-    <Compile Include="NetworkGuard.cs" />
-    <Compile Include="Options.cs" />
-    <Compile Include="Program.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="SampleData.cs" />
-    <Compile Include="SchemaCheck.cs" />
+    <ProjectReference Include="..\..\ODCrypt\xODCrypt.csproj" />
+    <ProjectReference Include="..\..\CodeBase\xCodeBase.csproj" />
+    <ProjectReference Include="..\..\DataConnectionBase\xDataConnectionBase.csproj" />
+    <ProjectReference Include="..\..\OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="App.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\..\ODCrypt\xODCrypt.csproj">
-      <Project>{c37b8157-f665-4ebe-8fd6-20d1c92a0797}</Project>
-      <Name>xODCrypt</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\CodeBase\xCodeBase.csproj">
-      <Project>{18f7bc78-4b99-48d3-a1f1-0d13a63e3cf9}</Project>
-      <Name>xCodeBase</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\DataConnectionBase\xDataConnectionBase.csproj">
-      <Project>{29c41020-4411-41f2-9061-9b71b5b32b5d}</Project>
-      <Name>xDataConnectionBase</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\..\OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj">
-      <Project>{3d0fc76e-803c-4de2-bdb1-47d63a4e2357}</Project>
-      <Name>OpenPmsDentalBusiness</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
