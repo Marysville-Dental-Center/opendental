@@ -323,11 +323,14 @@ namespace OpenPmsDentalBusiness{
 			bool checkPatEnrollmentYear=PrefC.GetBool(PrefName.InsVerifyFutureDatePatEnrollmentYear);
 			bool checkBenefitAndPatEnrollmentYearOn=(checkBenefitYear && checkPatEnrollmentYear);
 			bool checkBenefitAndPatEnrollmentYearOff=(!checkBenefitYear && !checkPatEnrollmentYear);
+			//AptOrder numbers the rows of each patient plan, verify type and key from the earliest appointment in the range on (INSV2); the outer query
+			//keeps the first. Within one part of the union, since each part joins insverify on one verify type, so no group spans both parts.
 			string mainQuery=@"
 				SELECT insverify.*,
 				patient.LName,patient.FName,patient.Preferred,appointment.PatNum,appointment.AptNum,appointment.AptDateTime,patplan.PatPlanNum,insplan.PlanNum,carrier.CarrierName,
-				COALESCE(clinic.Abbr,'None') AS ClinicName,appointment.ClinicNum,inssub.InsSubNum,carrier.CarrierNum
-				FROM appointment 
+				COALESCE(clinic.Abbr,'None') AS ClinicName,appointment.ClinicNum,inssub.InsSubNum,carrier.CarrierNum,
+				ROW_NUMBER() OVER(PARTITION BY patplan.PatPlanNum,insverify.VerifyType,insverify.FKey ORDER BY appointment.AptDateTime,appointment.AptNum) AS AptOrder
+				FROM appointment
 				LEFT JOIN clinic ON clinic.ClinicNum=appointment.ClinicNum 
 				INNER JOIN patient ON patient.PatNum=appointment.PatNum 
 				INNER JOIN patplan ON patplan.PatNum=appointment.PatNum 
@@ -352,9 +355,19 @@ namespace OpenPmsDentalBusiness{
 					AND (insverify.DateLastVerified<"+POut.Date(datePatEligibilityLastVerified)+@"
 						"+(checkPatEnrollmentYear?@"OR (insverify.DateLastVerified<DATE_FORMAT(appointment.AptDateTime,CONCAT('%Y-',LPAD(MonthRenew,2,'0'),'-01')) 
 							AND DATE_FORMAT(appointment.AptDateTime,CONCAT('%Y-',LPAD(MonthRenew,2,'0'),'-01'))<="+DbHelper.DtimeToDate("appointment.AptDateTime")+")":"")+@"))	";
+			//Only the latest verification of a verify type and key, as Open Dental 23.3.54 to 24.2.1 picked it (JobNum 53236) and GetOneByFKey does: a row of
+			//the same type and key verified later, or on the same date and inserted later, rules a row out (insverifylater.InsVerifyNum IS NULL below), before
+			//the conditions of the list. So a key whose latest verification is not due is not listed for an older row that is. Joined on insverify.FKey,
+			//so MySQL uses that index here too; 24.2.1 joined a subquery over the whole table instead (INSV2).
+			string insVerifyLaterJoin=@"
+				LEFT JOIN insverify insverifylater ON insverifylater.VerifyType=insverify.VerifyType
+					AND insverifylater.FKey=insverify.FKey
+					AND (insverifylater.DateLastVerified>insverify.DateLastVerified
+						OR (insverifylater.DateLastVerified=insverify.DateLastVerified AND insverifylater.InsVerifyNum>insverify.InsVerifyNum)) ";
 			string whereClause=@"
-				WHERE appointment.AptDateTime BETWEEN "+DbHelper.DtimeToDate(POut.Date(dateStart))+" AND "+DbHelper.DtimeToDate(POut.Date(dateEnd.AddDays(1)))+@" 
+				WHERE appointment.AptDateTime BETWEEN "+DbHelper.DtimeToDate(POut.Date(dateStart))+" AND "+DbHelper.DtimeToDate(POut.Date(dateEnd.AddDays(1)))+@"
 				AND appointment.AptStatus IN ("+POut.Int((int)ApptStatus.Scheduled)+","+POut.Int((int)ApptStatus.Complete)+@")
+				AND insverifylater.InsVerifyNum IS NULL
 				"+(userNum==-1 ? "" : "AND insverify.UserNum="+POut.Long(userNum))+@"
 				"+(defNumStatus<1 ? "" : "AND insverify.DefNum="+POut.Long(defNumStatus))+@"
 				"+(excludePatClones ? "AND patientlink.PatNumTo IS NULL" : "")+@"
@@ -364,17 +377,22 @@ namespace OpenPmsDentalBusiness{
 			string command=
 				mainQuery+
 				insVerifyJoin1+
+				insVerifyLaterJoin+
 				whereClause+@"
 				UNION ALL
 				"+
 				mainQuery+
 				insVerifyJoin2+
+				insVerifyLaterJoin+
 				whereClause;
 			//One row per patient plan, verify type and key: a patient plan's eligibility row (FKey=PatPlanNum) and its plan's benefits row (FKey=PlanNum)
-			//share PatPlanNum, and their FKeys are equal whenever the plan's PlanNum equals the PatPlanNum, so without VerifyType the two fell into one group
-			//and one of them was not listed (INSVERIFY). Within a group the row kept is still the first one read: the HAVING only drops a group whose
-			//latest DateLastVerified is a zero date, it does not pick that row.
-			return "SELECT * FROM ("+command+") AS iv GROUP BY PatPlanNum,VerifyType,FKey HAVING MAX(DateLastVerified) ORDER BY AptDateTime";
+			//share PatPlanNum, and their FKeys are equal whenever the plan's PlanNum equals the PatPlanNum, so the verify type keeps them apart (INSVERIFY).
+			//Each row shows the latest verification of its key and the earliest appointment in the range (AptOrder=1, ties by AptNum); Open Dental's
+			//GROUP BY PatPlanNum,FKey HAVING MAX(DateLastVerified) (24.1.71) kept whichever row MariaDB read first (INSV2). DateLastVerified alone is that
+			//HAVING on the one row left of each group: false only for the zero date 0000-00-00, which the program never writes. The rows are ordered in
+			//full, so the grid rows TableToListInsVerifyGridObjects builds from them (the first row of a plan carries its benefits) do not vary either.
+			//The window function needs MariaDB 10.2 or MySQL 8.0; the program's server is MariaDB 10.11.
+			return "SELECT * FROM ("+command+") AS iv WHERE AptOrder=1 AND DateLastVerified ORDER BY AptDateTime,AptNum,PatPlanNum,VerifyType";
 		}
 
 		///<summary>Converts a table of insverify objects into a list of InsVerifyGridObject.</summary>
