@@ -31,3 +31,6 @@ msbuild*.log
 
 # Claude Code worktrees
 .claude/
+
+# The SDK WPF build's temporary markup project, left behind if a build is interrupted
+*_wpftmp.csproj

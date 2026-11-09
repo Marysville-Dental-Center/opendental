@@ -36,6 +36,15 @@
     <!-- No Source Link: the PDBs record no repository URL or commit, and the build does not read the .git folder. -->
     <EnableSourceLink>false</EnableSourceLink>
     <!--
+      For UseWPF projects (WpfControlsOD, ImagingCapture since S1-4): the SDK builds the pages with its own WPF build targets instead of
+      the .NET Framework's, and for those it embeds the generated sources (obj\**\*.g.cs) in the PDB unless this is off; off, as for the
+      classic projects, so the PDB holds no source text. Its markup compiler also writes a SHA-1 checksum of each .xaml file into the
+      generated .g.cs (#pragma checksum, kept in the PDB) unless told otherwise; the .NET Framework's wrote SHA-256, the compiler's own
+      default for the .cs files, so SHA-256 it stays. Both are the compiler's defaults for projects without pages.
+    -->
+    <EmbedUntrackedSources>false</EmbedUntrackedSources>
+    <ChecksumAlgorithm>SHA256</ChecksumAlgorithm>
+    <!--
       AutoGenerateBindingRedirects is not set here. A project that leaves it empty gets it on: the SDK turns it on for
       every .NET Framework exe and test project (Microsoft.NET.Sdk.BeforeCommon.targets), and MSBuild's common targets
       for every project that targets .NET Framework 4.7.2 or later (Microsoft.Common.CurrentVersion.targets), so the

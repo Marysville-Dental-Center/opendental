@@ -14,16 +14,6 @@
     <LangVersion>8.0</LangVersion>
     <Platforms>AnyCPU;x86</Platforms>
     <UseWPF>true</UseWPF>
-    <!--
-      With UseWPF the SDK builds the pages with its own WPF build targets instead of the .NET Framework's, and for those it embeds the
-      generated sources (obj\**\*.g.cs) in the PDB unless this is off. Off, as for the classic project: the PDB holds no source text.
-    -->
-    <EmbedUntrackedSources>false</EmbedUntrackedSources>
-    <!--
-      The SDK's markup compiler writes a SHA-1 checksum of each .xaml file into its generated .g.cs (#pragma checksum, which the PDB keeps)
-      unless told otherwise; the .NET Framework's wrote SHA-256, the compiler's own default for the .cs files.
-    -->
-    <ChecksumAlgorithm>SHA256</ChecksumAlgorithm>
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>

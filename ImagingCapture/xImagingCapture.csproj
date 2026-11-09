@@ -16,9 +16,6 @@
     <LangVersion>7.3</LangVersion>
     <Platforms>AnyCPU;x86</Platforms>
     <UseWPF>true</UseWPF>
-    <!-- As in WpfControlsOD.csproj: no generated sources in the PDB, and SHA-256 checksums of the .xaml files, as the classic build had. -->
-    <EmbedUntrackedSources>false</EmbedUntrackedSources>
-    <ChecksumAlgorithm>SHA256</ChecksumAlgorithm>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">

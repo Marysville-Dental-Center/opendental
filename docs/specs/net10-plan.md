@@ -479,6 +479,16 @@ initializer of a multi-file partial type depends on a field of another file; and
 them first. Each later package (S1-4, S1-5, S1-6, TC-1) gives the same proof for its own multi-file partial types, the program's
 forms and their designer files among them, and compares fingerprints with compiler-generated names normalised.
 
+Also accepted (S1-4, the lead, 2026-11-08): the SDK's own WPF build for `UseWPF` projects. It compiles the pages with
+PresentationBuildTasks 10.0.14, the markup compiler stage 3b uses, instead of the .NET Framework's. The BAML resources keep their
+names, counts and parsed node streams, and the generated partial classes, `InitializeComponent` and pack URIs are the same; the
+BAML bytes differ (Boolean values stored as text, one more assembly record for the implicit Ribbon reference), the
+`GeneratedCode("PresentationBuildTasks")` attributes say 10.0.14.0, and `.g.resources` grows a little. Forcing the old compiler
+(`ImportFrameworkWinFXTargets=true` and no implicit WPF references) would give identical bytes now and have to be undone in 3b, so
+it is not done. `EmbedUntrackedSources=false` and `ChecksumAlgorithm=SHA256` in `Directory.Build.props` keep the PDBs as the
+classic build wrote them. The stage 1 gate's window checks open the WPF windows of WpfControlsOD and the capture windows to confirm
+the pages load and look the same.
+
 **Tooling changes (switch at S1-0).** Lane: the Build Tools 2026 MSBuild and vstest (found with a version range, overridable by
 parameter), `/restore` and locked mode, the SDK pin (and the resolver variables for the per-user band), `OPMS_REQUIRE_BUILD_OUTPUT`. Test
 runners: vstest 18 from Build Tools 2026; paths otherwise unchanged (flat output). Build-Release, New-InitSql, New-DevDatabase and the two
