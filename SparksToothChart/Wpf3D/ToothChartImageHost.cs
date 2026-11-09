@@ -38,7 +38,7 @@ namespace SparksToothChart.Wpf3D {
 		///<summary>The newest scene ShowScene was given: rendered again when a render's result was lost with the handle.</summary>
 		private ToothScene _sceneRequested;
 		private bool _isRenderInFlight;
-		///<summary>Counts the renders started. A result of an older render (one given up when the handle went) is dropped.</summary>
+		///<summary>Counts the renders started. A result of an older render (one given up when the handle went, or by ClearImage) is dropped.</summary>
 		private int _generationRender;
 		private int _countImagesReceived;
 		private int _countReceiveCalls;
@@ -135,8 +135,15 @@ namespace SparksToothChart.Wpf3D {
 
 		///<summary>Drops the image shown, so the control paints the chart's background until its next image arrives. The wrapper calls it before it shows
 		///this control again in place of the live view (the "Draw in software" switch, or a live view that failed): the image it held is from before the
-		///live view (another patient's chart, perhaps) or none, and is not to be shown while the software render of the current data is made.</summary>
+		///live view (another patient's chart, perhaps) or none, and is not to be shown while the software render of the current data is made. Every scene
+		///asked for before the clear goes with it: the render in flight is given up (its generation ends, so its result is dropped when it arrives, and
+		///the next ShowScene starts at once), and so are a scene waiting for it and the scene a new handle would render again. Only a ShowScene after the
+		///clear (the wrapper's rebuild with the current data) is shown.</summary>
 		public void ClearImage() {
+			_generationRender++;
+			_isRenderInFlight=false;
+			_sceneWaiting=null;
+			_sceneRequested=null;
 			Bitmap bitmapOld=_bitmapShown;
 			_bitmapShown=null;
 			_sceneShown=null;

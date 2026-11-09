@@ -279,9 +279,9 @@ namespace SparksToothChart {
 			set{
 				tcData.CursorTool=value;
 				//The embedded .cur files (Pen.cur, EraseCircle.cur, ColorChanger.cur), the arrow for the pointer; MoveText keeps the cursor it had, as
-				//before. Loaded from this assembly whatever the runtime type, so a subclass of the wrapper gets them too. Made once per thread
-				//(ToothChartMouse.GetCursor, ToothChartWpfView.GetCursorWpf): a cursor that cannot be made is the arrow, logged once, so choosing a tool
-				//never throws.
+				//before. Loaded from this assembly whatever the runtime type, so a subclass of the wrapper gets them too. Made once per thread and kept
+				//(ToothChartMouse.GetCursor, ToothChartWpfView.GetCursorWpf): a cursor that cannot be made is the arrow, logged once, and is tried again at
+				//the next choice of its tool, so choosing a tool never throws.
 				try {
 					if(tcData.CursorTool==CursorTool.Pointer) {
 						this.Cursor=Cursors.Default;

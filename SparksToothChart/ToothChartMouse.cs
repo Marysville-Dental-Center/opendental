@@ -186,9 +186,9 @@ namespace SparksToothChart {
 		///WinForms cursors of GetCursor and the live view's WPF cursors), so a test can make the cursors fail to load. Thread-static.</summary>
 		[ThreadStatic]
 		public static Action<CursorTool> ActionOpenCursorForTests;
-		///<summary>The WinForms cursors of the tools on this thread, made once (GetCursor); null until a tool with a cursor file is first chosen.</summary>
+		///<summary>The WinForms cursors of the tools on this thread (GetCursor); null until a tool with a cursor file is first chosen.</summary>
 		[ThreadStatic]
-		private static Dictionary<CursorTool,Cursor> _dictCursorsThread;
+		private static ToothChartCursorCache<Cursor> _cursorCacheThread;
 
 		///<summary>The manifest name of the embedded cursor of a tool, as the wrapper's CursorTool loads it ("SparksToothChart.Pen.cur" and so on), or
 		///null for the pointer and the text mover, which use the arrow.</summary>
@@ -216,40 +216,72 @@ namespace SparksToothChart {
 		}
 
 		///<summary>The WinForms cursor of a tool, from its embedded .cur file (the arrow for the pointer and the text mover). The three cursors are made
-		///together, once per thread, the first time one is asked for, and kept, so a tool change makes no new cursor handle. A cursor that cannot be made
-		///is the arrow, and the failure is logged once (ToothChartFallbackKind.Cursor). Never throws.</summary>
+		///together on this thread the first time one is asked for, and kept, so a tool change makes no new cursor handle. A cursor that cannot be made is
+		///the arrow until a later choice of its tool makes it, and the failure is logged once (ToothChartCursorCache). Never throws.</summary>
 		public static Cursor GetCursor(CursorTool cursorTool) {
-			if(GetCursorResourceName(cursorTool)==null) {
-				return Cursors.Default;
+			if(_cursorCacheThread==null) {
+				_cursorCacheThread=new ToothChartCursorCache<Cursor>(stream => new Cursor(stream),"The tooth chart");
 			}
-			if(_dictCursorsThread==null) {
-				Dictionary<CursorTool,Cursor> dictCursors=new Dictionary<CursorTool,Cursor>();
-				List<string> listFailures=new List<string>();
-				foreach(CursorTool cursorToolMade in ArrayCursorTools) {
-					Cursor cursor=Cursors.Default;
-					try {
-						using(Stream stream=GetCursorStream(cursorToolMade)) {
-							if(stream!=null) {
-								cursor=new Cursor(stream);
-							}
+			return _cursorCacheThread.Get(cursorTool)??Cursors.Default;
+		}
+	}
+
+	///<summary>The cursors of the tools with a cursor file (ToothChartMouse.ArrayCursorTools) on one thread, of one kind: the wrapper's WinForms cursors
+	///(ToothChartMouse.GetCursor) or the live view's WPF cursors (ToothChartWpfView.GetCursorWpf), which share this loop. The three are made from their
+	///embedded .cur files the first time one is asked for, and kept, so a tool change makes no new cursor: WPF's Cursor(Stream) writes the stream to a
+	///temporary file each time it makes a cursor (Path.GetTempFileName, which fails once the user's temp folder holds 65,535 .tmp files). A cursor that
+	///cannot be made is null (the caller's arrow) for now and is tried again, alone, the next time its tool is asked for, so a fault that passes (a temp
+	///folder that is cleared) does not leave the arrow for the rest of the thread's life, which on the UI thread is the whole session. Only the failures
+	///of the first try that fails are logged (ToothChartFallbackKind.Cursor): one line for this thread's cursors of this kind, however often they are
+	///tried. Never throws.</summary>
+	internal sealed class ToothChartCursorCache<TCursor> where TCursor:class {
+		private readonly Dictionary<CursorTool,TCursor> _dictCursorsMade=new Dictionary<CursorTool,TCursor>();
+		private readonly Func<Stream,TCursor> _funcMakeCursor;
+		///<summary>The start of the log line, naming whose cursors these are ("The tooth chart").</summary>
+		private readonly string _textWhose;
+		///<summary>True once the three cursors were first tried; after that only a cursor that failed is tried again, alone.</summary>
+		private bool _isTried;
+		private bool _isFailureLogged;
+
+		///<summary>funcMakeCursor makes a cursor of this kind from a .cur file's stream, or throws.</summary>
+		public ToothChartCursorCache(Func<Stream,TCursor> funcMakeCursor,string textWhose) {
+			_funcMakeCursor=funcMakeCursor;
+			_textWhose=textWhose;
+		}
+
+		///<summary>The cursor of the tool, or null: for the pointer and the text mover (the arrow), and for a tool whose cursor could not be made, which is
+		///tried again at each such call until it is made.</summary>
+		public TCursor Get(CursorTool cursorTool) {
+			if(ToothChartMouse.GetCursorResourceName(cursorTool)==null) {
+				return null;
+			}
+			TCursor cursor;
+			if(_dictCursorsMade.TryGetValue(cursorTool,out cursor)) {
+				return cursor;
+			}
+			CursorTool[] arrayCursorToolsToMake=_isTried?new[] { cursorTool }:ToothChartMouse.ArrayCursorTools;
+			_isTried=true;
+			List<string> listFailures=new List<string>();
+			foreach(CursorTool cursorToolToMake in arrayCursorToolsToMake) {
+				try {
+					using(Stream stream=ToothChartMouse.GetCursorStream(cursorToolToMake)) {
+						if(stream==null) {
+							throw new FileNotFoundException("The embedded cursor file "+ToothChartMouse.GetCursorResourceName(cursorToolToMake)+" is missing.");
 						}
+						_dictCursorsMade[cursorToolToMake]=_funcMakeCursor(stream);
 					}
-					catch(Exception ex) {
-						listFailures.Add(cursorToolMade+" ("+ex.GetType().Name+": "+ex.Message+")");
-					}
-					dictCursors[cursorToolMade]=cursor;
 				}
-				_dictCursorsThread=dictCursors;
-				if(listFailures.Count>0) {
-					ToothChartWrapper.LogFallbackOnce(ToothChartFallbackKind.Cursor,"The tooth chart could not make the cursor of "+string.Join(", ",listFailures)
-						+". It shows the arrow for "+(listFailures.Count==1?"that tool":"those tools")+".");
+				catch(Exception ex) {
+					listFailures.Add(cursorToolToMake+" ("+ex.GetType().Name+": "+ex.Message+")");
 				}
 			}
-			Cursor cursorFound;
-			if(_dictCursorsThread.TryGetValue(cursorTool,out cursorFound)) {
-				return cursorFound;
+			if(listFailures.Count>0 && !_isFailureLogged) {
+				_isFailureLogged=true;
+				ToothChartWrapper.LogFallbackOnce(ToothChartFallbackKind.Cursor,_textWhose+" could not make the cursor of "+string.Join(", ",listFailures)
+					+". It shows the arrow for "+(listFailures.Count==1?"that tool":"those tools")+" until a later choice of the tool makes the cursor.");
 			}
-			return Cursors.Default;
+			_dictCursorsMade.TryGetValue(cursorTool,out cursor);
+			return cursor;
 		}
 	}
 }

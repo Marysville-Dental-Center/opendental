@@ -1,8 +1,6 @@
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.IO;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
@@ -31,10 +29,12 @@ namespace SparksToothChart.Wpf3D {
 	///the window's DPI scale, so one scene unit is one device pixel at any DPI, as the wrapper's pixel size and the mouse expect; the scale is set
 	///again when the DPI changes without a new scene (the window moved to a monitor of another scale, OnDpiChanged of the content's root).
 	///The mouse is the shared ToothChartMouse, on the WPF content's mouse events (captured from button down to button up), at the points DirectX's
-	///handlers would get: the press and release are taken before the capture changes, the capture is released before the shared class's MouseUp
-	///(so the handlers of SegmentDrawn and ToothSelectionsChanged run without WPF's capture), and the MouseMove WPF raises on its own when the capture
-	///changes (no WM_MOUSEMOVE made it) is not handed on. The cursor is the embedded .cur file of the tool, made once per thread (GetCursorWpf). The
-	///content's background is the chart's from the start (TcData). The WPF content takes no keyboard focus: the chart handles no keys.</summary>
+	///handlers would get: the press and release are taken before the capture changes, the capture is released after the shared class's MouseUp, as
+	///WinForms releases DirectX's after its OnMouseUp (so the handlers of SegmentDrawn and ToothSelectionsChanged run with the capture, as DirectX's
+	///did), and a MouseMove WPF raises on its own is not handed on: one inside its capture changes, and one at the device position of the last mouse
+	///event handed on (no WM_MOUSEMOVE made either). The cursor is the embedded .cur file of the tool, made once per thread and kept (GetCursorWpf; one
+	///that could not be made is tried again at the next choice of its tool). The content's background is the chart's from the start (TcData). The WPF
+	///content takes no keyboard focus: the chart handles no keys.</summary>
 	public class ToothChartWpfView:ElementHost {
 		#region Fields
 		///<summary>The meshes and materials of this thread: the live views of one UI thread share them, and they never cross to another thread.</summary>
@@ -42,10 +42,10 @@ namespace SparksToothChart.Wpf3D {
 		private static ToothMeshCache _toothMeshCacheThread;
 		[ThreadStatic]
 		private static ToothMaterialCache _toothMaterialCacheThread;
-		///<summary>The WPF cursors of the pen, the eraser and the colour changer on this thread, made once (GetCursorWpf); null until a tool other than
-		///the pointer is first chosen. A tool whose cursor could not be made is in it as null, the arrow.</summary>
+		///<summary>The WPF cursors of the pen, the eraser and the colour changer on this thread (GetCursorWpf); null until a tool other than the pointer
+		///is first chosen.</summary>
 		[ThreadStatic]
-		private static Dictionary<CursorTool,System.Windows.Input.Cursor> _dictCursorsThread;
+		private static ToothChartCursorCache<System.Windows.Input.Cursor> _cursorCacheThread;
 		///<summary>For tests only, null in the program: runs on this thread at the start of a live view's constructor (with StepCreate) and of its
 		///ShowScene (with StepShowScene), with the view, so a test can make either fail. Thread-static: it reaches only the views of the thread that set
 		///it.</summary>
@@ -75,8 +75,13 @@ namespace SparksToothChart.Wpf3D {
 		private bool _is3DLayerCached;
 		private int _countLayer2DRenders;
 		private int _countPenLayerRenders;
-		///<summary>True while this view takes or releases WPF's mouse capture. WPF raises a MouseMove of its own inside those calls (MouseDevice.Synchronize,
-		///at wherever the cursor is then): no WM_MOUSEMOVE made it, so DirectX never saw it, and it is not handed on (a pen stroke gets no point from it).</summary>
+		private int _countMouseMovesHandedOn;
+		///<summary>The mouse's device position (GetPointDevice) at the last mouse event handed on to the shared class (a press, a move or a release), or
+		///null after the mouse left the content.</summary>
+		private System.Drawing.Point? _pointDeviceLast;
+		///<summary>True while this view takes or releases WPF's mouse capture. WPF moves its mouse inside those calls (the window's mouse provider reports the
+		///real cursor's position when it takes the capture, and MouseDevice.Synchronize runs on each capture change) and can raise a MouseMove of its own
+		///there: no WM_MOUSEMOVE made it, so DirectX never saw it, and it is not handed on (a pen stroke gets no point from it).</summary>
 		private bool _isChangingCapture;
 		#endregion Fields
 
@@ -114,6 +119,7 @@ namespace SparksToothChart.Wpf3D {
 			_gridRoot.MouseDown+=GridRoot_MouseDown;
 			_gridRoot.MouseMove+=GridRoot_MouseMove;
 			_gridRoot.MouseUp+=GridRoot_MouseUp;
+			_gridRoot.MouseLeave+=GridRoot_MouseLeave;
 			Child=_gridRoot;
 			//ElementHost's Child setter sets the content's alignment to Stretch, which centres the content in a host larger than it (a resize before its
 			//rebuild): at a fractional device offset, where the 3D layer's cached image is resampled. Top-left keeps it on whole pixels from 0,0.
@@ -262,6 +268,14 @@ namespace SparksToothChart.Wpf3D {
 				return _countPenLayerRenders;
 			}
 		}
+
+		///<summary>How many of the content's MouseMove events were handed on to the shared mouse class, for tests.</summary>
+		[Browsable(false)]
+		public int CountMouseMovesHandedOn {
+			get {
+				return _countMouseMovesHandedOn;
+			}
+		}
 		#endregion Properties
 
 		#region Showing
@@ -351,42 +365,17 @@ namespace SparksToothChart.Wpf3D {
 		}
 
 		///<summary>The WPF cursor of a tool on this thread, or null (the arrow) for the pointer and the text mover, and for a tool whose cursor could not be
-		///made. The pen's, the eraser's and the colour changer's are made together, once per thread, from their embedded .cur files, the first time
-		///one is asked for, and kept: WPF's Cursor(Stream) writes the stream to a temporary file each time it makes a cursor (Path.GetTempFileName, which
-		///fails once the user's temp folder holds 65,535 .tmp files), so a cursor made on every tool change could make choosing the pen throw. A cursor
-		///that cannot be made is the arrow, and the failure is logged once (ToothChartFallbackKind.Cursor). Never throws.</summary>
+		///made yet. The pen's, the eraser's and the colour changer's are made together on this thread from their embedded .cur files, the first time one is
+		///asked for, and kept: WPF's Cursor(Stream) writes the stream to a temporary file each time it makes a cursor (Path.GetTempFileName, which fails
+		///once the user's temp folder holds 65,535 .tmp files), so a cursor made on every tool change could make choosing the pen throw. A cursor that
+		///cannot be made is the arrow until a later choice of its tool makes it, and the failure is logged once (ToothChartCursorCache, the loop the
+		///wrapper's WinForms cursors share). Never throws.</summary>
 		public static System.Windows.Input.Cursor GetCursorWpf(CursorTool cursorTool) {
-			if(ToothChartMouse.GetCursorResourceName(cursorTool)==null) {
-				return null;
+			if(_cursorCacheThread==null) {
+				_cursorCacheThread=new ToothChartCursorCache<System.Windows.Input.Cursor>(stream => new System.Windows.Input.Cursor(stream),
+					"The "+ToothChartEngine.Wpf3D+" tooth chart's live view");
 			}
-			if(_dictCursorsThread==null) {
-				Dictionary<CursorTool,System.Windows.Input.Cursor> dictCursors=new Dictionary<CursorTool,System.Windows.Input.Cursor>();
-				List<string> listFailures=new List<string>();
-				foreach(CursorTool cursorToolMade in ToothChartMouse.ArrayCursorTools) {
-					System.Windows.Input.Cursor cursor=null;
-					try {
-						using(Stream stream=ToothChartMouse.GetCursorStream(cursorToolMade)) {
-							if(stream!=null) {
-								cursor=new System.Windows.Input.Cursor(stream);
-							}
-						}
-					}
-					catch(Exception ex) {
-						listFailures.Add(cursorToolMade+" ("+ex.GetType().Name+": "+ex.Message+")");
-					}
-					dictCursors[cursorToolMade]=cursor;
-				}
-				_dictCursorsThread=dictCursors;
-				if(listFailures.Count>0) {
-					ToothChartWrapper.LogFallbackOnce(ToothChartFallbackKind.Cursor,"The "+ToothChartEngine.Wpf3D+" tooth chart's live view could not make "
-						+"the cursor of "+string.Join(", ",listFailures)+". It shows the arrow for "+(listFailures.Count==1?"that tool":"those tools")+".");
-				}
-			}
-			System.Windows.Input.Cursor cursorFound;
-			if(_dictCursorsThread.TryGetValue(cursorTool,out cursorFound)) {
-				return cursorFound;
-			}
-			return null;
+			return _cursorCacheThread.Get(cursorTool);
 		}
 
 		///<summary>Detaches the WPF content (Child=null) before the host goes: ElementHost.Dispose leaves it attached to the host's adapter, with its cached
@@ -455,35 +444,58 @@ namespace SparksToothChart.Wpf3D {
 
 		#region Mouse
 		//The shared mouse class, at the position in the chart's pixels: the content is laid out in pixels (under the 1/DPI transform), so GetPosition on
-		//it gives them. DirectX's handlers get each point from its own window message; here a press and a release are read before the capture changes,
-		//because WPF moves its mouse to wherever the cursor is when the capture changes (MouseDevice.Synchronize) and raises a MouseMove for it.
+		//it gives them. DirectX's handlers get each point from its own window message, one WM_MOUSEMOVE for each move of the mouse. Here a press and a
+		//release are read before anything changes, because WPF moves its mouse inside CaptureMouse and ReleaseMouseCapture (_isChangingCapture) and may
+		//raise a MouseMove for it; and a MouseMove is handed on only when the mouse itself moved (GetPointDevice), because WPF also raises one at
+		//an unchanged position when a layout moved the content under the still mouse (its re-synchronisation after a layout pass).
 
 		///<summary>Takes the capture (button down to button up, as a WinForms control has it) after reading the press's point, then the shared class's
 		///MouseDown.</summary>
 		private void GridRoot_MouseDown(object sender,MouseButtonEventArgs e) {
 			System.Drawing.Point location=GetLocation(e);
+			_pointDeviceLast=GetPointDevice(e);
 			ChangeCapture(true);
 			_toothChartMouse.MouseDown(TcData,location,Size);
 		}
 
-		///<summary>The shared class's MouseMove, for a move of the mouse: a MouseMove that WPF raises while this view takes or releases the capture is
-		///WPF's own (no WM_MOUSEMOVE made it, DirectX never saw it) and is not handed on, so a pen stroke gets a point exactly when DirectX's gets one,
-		///on a move of the mouse. A held-still mouse makes no WM_MOUSEMOVE, and WPF raises no MouseMove for a position it already has, so a held-still
-		///pen adds no point.</summary>
+		///<summary>The shared class's MouseMove, for a move of the mouse, so a pen stroke gets a point exactly when DirectX's gets one. Not handed on: a
+		///MouseMove that WPF raises while this view takes or releases the capture (WPF's own: no WM_MOUSEMOVE made it, DirectX never saw it), and one at
+		///the device position of the last mouse event handed on (WPF re-synchronises its mouse after a layout pass, MouseDevice.Synchronize posted by
+		///InputManager's hit-test invalidation, and raises a MouseMove at the unchanged position when the content moved under the mouse; Windows sends no
+		///repeated hardware WM_MOUSEMOVE for a mouse that does not move). Each such move would add a point to a stroke, or let the eraser take another
+		///drawing at the same spot, where DirectX's would not. A held-still mouse makes no WM_MOUSEMOVE, and WPF raises no MouseMove for a position it
+		///already has when nothing moved under it, so a held-still pen adds no point.</summary>
 		private void GridRoot_MouseMove(object sender,System.Windows.Input.MouseEventArgs e) {
 			if(_isChangingCapture) {
 				return;
 			}
+			System.Drawing.Point pointDevice=GetPointDevice(e);
+			if(_pointDeviceLast==pointDevice) {
+				return;
+			}
+			_pointDeviceLast=pointDevice;
+			_countMouseMovesHandedOn++;
 			_toothChartMouse.MouseMove(TcData,GetLocation(e),Size);
 		}
 
-		///<summary>Reads the release's point, releases the capture, then calls the shared class's MouseUp, so its SegmentDrawn and ToothSelectionsChanged
-		///handlers (ControlChart saves the drawing and refills the chart) run without WPF's capture. The MouseMove WPF raises on the release is not
-		///handed on, so it cannot add a point to the stroke that is still in progress until MouseUp.</summary>
+		///<summary>The mouse left the content (without the capture: the captured content keeps the mouse over it): a later move back to the same pixel is a
+		///move of the mouse, for which Windows sends DirectX a WM_MOUSEMOVE, so it is handed on.</summary>
+		private void GridRoot_MouseLeave(object sender,System.Windows.Input.MouseEventArgs e) {
+			_pointDeviceLast=null;
+		}
+
+		///<summary>Reads the release's point, calls the shared class's MouseUp, then releases the capture, as WinForms releases a control's capture after its
+		///OnMouseUp (Control.WmMouseUp, in a finally): the handlers of SegmentDrawn and ToothSelectionsChanged (ControlChart saves the drawing and refills
+		///the chart) run with WPF's capture, as DirectX's ran under the Win32 capture. The MouseMove WPF raises on the release is not handed on.</summary>
 		private void GridRoot_MouseUp(object sender,MouseButtonEventArgs e) {
 			System.Drawing.Point location=GetLocation(e);
-			ChangeCapture(false);
-			_toothChartMouse.MouseUp(TcData,location,Size);
+			_pointDeviceLast=GetPointDevice(e);
+			try {
+				_toothChartMouse.MouseUp(TcData,location,Size);
+			}
+			finally {
+				ChangeCapture(false);
+			}
 		}
 
 		///<summary>Takes or releases WPF's mouse capture for the content, with _isChangingCapture set while WPF raises its own MouseMove inside the call.</summary>
@@ -504,6 +516,20 @@ namespace SparksToothChart.Wpf3D {
 
 		private System.Drawing.Point GetLocation(System.Windows.Input.MouseEventArgs e) {
 			Point point=e.GetPosition(_gridRoot);
+			return new System.Drawing.Point((int)Math.Round(point.X),(int)Math.Round(point.Y));
+		}
+
+		///<summary>The mouse's position in the screen's device pixels, rounded to whole pixels: the position of the mouse itself, which a window message
+		///carries, whatever moved under it. A layout that moves the content under a still mouse changes GetLocation (by as little as a fraction of a
+		///pixel), not this.</summary>
+		private System.Drawing.Point GetPointDevice(System.Windows.Input.MouseEventArgs e) {
+			Point point=e.GetPosition(_gridRoot);
+			try {
+				point=_gridRoot.PointToScreen(point);
+			}
+			catch(InvalidOperationException ex) {
+				ex.ToString();//the content is in no window (no mouse event comes then): its own position
+			}
 			return new System.Drawing.Point((int)Math.Round(point.X),(int)Math.Round(point.Y));
 		}
 

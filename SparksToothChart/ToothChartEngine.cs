@@ -37,7 +37,7 @@ namespace SparksToothChart {
 		///screen instead.</summary>
 		Wpf3DLiveView,
 		///<summary>A tool's cursor (the pen's, the eraser's or the colour changer's) could not be made from its embedded file, and the chart shows the
-		///arrow for that tool.</summary>
+		///arrow for that tool until a later choice of the tool makes the cursor.</summary>
 		Cursor,
 	}
 }
