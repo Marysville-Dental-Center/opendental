@@ -386,7 +386,11 @@ DB-SEC 1, answered on 2026-11-07).
 When a patient's insurance plan and patient plan happened to have the same number in the database, which is common, the Insurance
 Verification List showed only the plan's benefits verification and left out the patient's eligibility verification, and the batch
 insurance verification skipped the patient. Inherited from Open Dental 24.1.71. Both verifications are now listed for every patient, as
-they always were for the others; nothing else about the list changes.
+they always were for the others.
+
+Each row of the list also shows the latest verification of its plan or patient plan, and the patient's earliest appointment in the date
+range, as Open Dental 23.3.54 to 24.2.1 did. Before, a plan with a leftover second verification record could show the older one (and be listed
+as due although it was verified recently), and a patient with several appointments in the range could show any of them.
 
 ## Direct certificates: imported from your Direct provider's file
 
