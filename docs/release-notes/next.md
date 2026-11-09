@@ -403,8 +403,14 @@ longer reaches, so it always failed. It now imports the certificate your Direct 
   purposes and dates; No imports nothing. Every other certificate for the address stays and is listed as kept, with why: a provider's
   separate signing and encryption certificates for one address both stay, and a renewed certificate already on this computer stays when an
   older file is imported by mistake. The private key of a replaced certificate is deleted too when this window imported it, so messages
-  encrypted to it can then be read only after importing its file again; one put there another way keeps its key. An import that fails
-  partway removes what it stored.
+  encrypted to it can then be read only after importing its file again; one put there another way keeps its key. A private key that
+  another certificate on this computer, or in the file, still uses (a renewal with the same key) is never deleted. An import that fails
+  partway removes what it stored. If storing the file's private key fails, nothing is imported, but Windows may have left a private key of
+  the file behind on this computer, which the program cannot find to delete.
+- **Which certificate is used.** With a separate signing and encryption certificate for one address, signed e-mail and Direct messages
+  are signed with the signing one, Direct messages to the address are encrypted to its encryption one, and received ones are decrypted
+  with the encryption one first; of several for the same purpose, the one valid longest. An address with only one certificate is used as
+  before.
 - **The provider's trust anchor** (a `.cer`, `.crt`, `.der` or `.pem` file) is imported into the Direct trust anchors (`NHINDAnchors`)
   after the window shows it and you answer Yes. Messages from addresses whose certificates it issued are then trusted.
 - **Administrator rights and every computer.** The import needs a Windows administrator: start the program with Run as administrator to

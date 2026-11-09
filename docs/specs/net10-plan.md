@@ -1493,8 +1493,10 @@ self-contained (open point O-15, decision 20).
   private key, shows the subject and dates, and replaces an older certificate for the same address only after asking. Tests use
   generated certificates in current-user test stores, as S0-3D's do. As built, "older" means of the same purpose (signing or
   encryption, from the Key Usage and Extended Key Usage) and expiring before the file's certificate, so a provider's separate signing and
-  encryption certificates for one address both stay; the button is labelled Certificate. What the .NET 10 switch
-  needs of this code (`X509CertificateLoader` for SYSLIB0057, `FileSystemAclExtensions`) is in the port note. Left to the owner:
+  encryption certificates for one address both stay; the button is labelled Certificate. The program's own search then signs with the
+  signing one and encrypts and decrypts with the encryption one (the lead's decision of 2026-11-09, third fix round). What the .NET 10
+  switch needs of this code (`X509CertificateLoader` for SYSLIB0057, `FileSystemAclExtensions`, the CAPI key check and the serialized
+  copy of `Undo`, `CngKey` disposal to verify) is in the port note. Left to the owner:
   `ICustomerUpdates` and `CustomerUpdatesProxy`, and the read access of `BUILTIN\Users` to the imported private keys.
 - **O-14. 32-bit vendor components: a helper module or a 64-bit replacement, per vendor (decision 19).** QuickBooks Desktop (QBFC),
   Schick CDR, Topaz signature pads and Guru load 32-bit vendor code in the program's process today. Each gets a module in the 32-bit

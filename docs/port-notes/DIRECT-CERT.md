@@ -18,7 +18,8 @@ How the program uses the stores (S0-3D, `EmailMessages`): `EmailPrivateResolver`
 `NHINDPrivate` that have their private key (`IsPrivateCertWithKey`), and of those the valid ones (`EmailCertificates.IsCertValid`) that name
 the address (subject `E=` blank or the address, and the subject alternative name's rfc822 name the address), or, when the address has none,
 its domain (subject `E=` blank or the domain, and the subject alternative name's DNS name the domain). They sign outgoing e-mail (signed
-sending, O-1), decrypt received Direct messages and sign Direct messages. The trust anchors of `NHINDAnchors` decide which senders are
+sending, O-1), decrypt received Direct messages and sign Direct messages (since the third fix round, the one for each purpose: Also
+changed, below). The trust anchors of `NHINDAnchors` decide which senders are
 trusted (`IsSenderTrusted`, the Direct agent's `TrustAnchorResolver`). The three stores are opened through one seam (`CertStoreLocation` and
 the three names), which the tests point at stores of the current user.
 
@@ -76,10 +77,28 @@ the window:
 - **What an import stores and takes back.** Import reads the file again with `PersistKeySet`, which writes the keys of all of the file's
   certificates. The keys of the certificates it does not import (another address's, one already in the store) are deleted again at once.
   When the import stops before its certificates are all in the store (the store refuses one, or anything else fails), it removes the ones it
-  added (and puts back a copy without a usable key that one of them took the place of) and deletes every key it stored
+  added (and puts back, as it was, a copy without a usable key that one of them took the place of) and deletes every key it stored
   (`PrivateImportRun.Undo`); the message says "Nothing was imported." and lists, under "Not removed from this computer again", what could
-  not be taken back. A key it does not use that can't be deleted after a successful import is named in the warning. When .NET's import
-  itself throws, it gives no certificate, so the import knows of no key to delete; Windows' PFX import is left to clean up after itself.
+  not be taken back. A key it does not use that can't be deleted after a successful import is named in the warning; so is a replaced
+  certificate the store did not remove, also when something stops the import after its certificates were added (the warning then ends
+  with "The import stopped after the certificate was added"). When .NET's import itself throws, it gives no certificate, so the import
+  knows of no key to delete, and Windows may have stored one of the file's keys before it failed: the message says "Nothing was imported.
+  Windows may have left a private key of the file behind on this computer, which the program cannot find to delete."
+- **A key that two certificates share.** One `.pfx` can give two of its certificates one key: a renewal with the same key next to last
+  year's certificate, written as OpenSSL writes a key with its certificate and further ones (one key bag, the first certificate named by
+  its local key id). Windows stores that key once, in one key container, for every certificate of the file with its public key. Before a
+  key container is deleted (a key of the file the import does not use, the key of a replaced certificate this window imported, `Undo`'s
+  keys), its unique name (`GetKeyContainerName`: CAPI or CNG, the provider, user or machine, and `CspKeyContainerInfo.UniqueKeyContainerName`
+  or `CngKey.UniqueName`) is compared with those of the certificates the import adds and of every certificate of the store after the
+  change; only a container none of them uses is deleted, and each container once (`DeleteKeysNotInUse`). Read without storing
+  (`EphemeralKeySet`, Check), such a file gives the key to the first certificate only, so Check shows the renewed one. A file in which both
+  certificates name the key bag by its local key id is refused by .NET Framework's `EphemeralKeySet` read ("The file could not be
+  opened"); nothing is written.
+- **CAPI and CNG keys.** A `.pfx` that names no key provider (OpenSSL writes none) is stored by .NET Framework in a CAPI key container
+  ("Microsoft Enhanced Cryptographic Provider v1.0"); one that names the CNG provider (Windows' own export) in a CNG key. .NET Framework's
+  `GetRSAPrivateKey` opens a CAPI key through CNG, as an `RSACng` whose `Key.Delete` leaves the CAPI container, so the import looks for a
+  CAPI key first (`GetCapiRsaPrivateKey`, the certificate's `PrivateKey` as `RSACryptoServiceProvider`) to delete it, name its container
+  and find its file (`%ProgramData%\Microsoft\Crypto\RSA\MachineKeys`) for the users' read access.
 - **The users of the computer.** In production the program runs as the signed-in Windows user, who must be able to use the key to sign and
   decrypt, so the import gives `BUILTIN\Users` read access to the new private key file, as `OpenPmsDentalDbSettings.ClientCertificateStore`
   does for the database client certificate. If that fails, the import still succeeds and the window says how to give the access in
@@ -111,6 +130,19 @@ the window:
 
 ## Also changed
 
+- **The certificate for each use** (third fix round, item 2). `GetCertFromPrivateStore` (the signed e-mail's certificate) takes, of the
+  valid certificates for the address (else for its domain, as before), the one for signing valid longest (`EmailCertificates.GetPreferred`,
+  by `GetPurpose`; one for signing and encryption is for each; the latest `NotAfter`, the first in store order among equal ones), and
+  without one for signing the first valid one, as before. The Direct agent signs with every certificate its private resolver gives for the
+  sender, encrypts to every one its public resolver gives for a recipient, and tries the receiver's in turn until one decrypts; the
+  resolvers now give, by `EmailCertificateUse` (not stored): `Signing`, the sender's for signing valid longest; `Encrypting`, the
+  recipient's for encryption (keyEncipherment or keyAgreement) valid longest; `Decrypting`, the receiver's for encryption valid longest
+  first, then the others; each without one of that purpose every valid certificate, as before (`EmailCertificates.SelectForUse`).
+  `SendEmailDirect` makes its agent with `Signing` and `DecryptIncomingMessage` with `Decrypting` (a new overload of
+  `GetDirectAgentForEmailAddress`); the agent's public resolver is always `Encrypting`, and the other callers (the trust check, the store
+  refreshes, the stores' own lists) get every certificate, as before. With one certificate of either purpose nothing changes; with two of
+  the same purpose for one address (an old and a renewed one, both valid), the agent now signs with, or encrypts to, the one valid
+  longest instead of both. Nothing else of S0-3D's send and receive changed.
 - `EmailCertificates.IsForAddress` and `IsForDomain`: the name rule of `GetCertificatesForAddress` and `GetCertificatesForDomain`, one copy
   that the import uses too.
 - `EmailCertificates.GetCertRfc822Name` and `GetCertDnsName` found the subject alternative name by its friendly name, which Windows localizes
@@ -121,14 +153,17 @@ the window:
 
 ## Tests
 
-`tests/LibraryUpdateTests/DirectCertificateImportTests.cs` (15 tests; the project, SDK-style since S1-6, compiles every `.cs` file of its
-folder by the default glob, so no item was added), with the stores of S0-3D's tests (`DirectTestStores`: three stores of the current user
-with names of their own, made and deleted by the test; the real `NHINDPrivate` and `NHINDAnchors` of the computer are never opened).
+`tests/LibraryUpdateTests/DirectCertificateImportTests.cs` (22 tests) and `tests/LibraryUpdateTests/DirectCertificatePurposeTests.cs` (4
+tests, third fix round); the project, SDK-style since S1-6, compiles every `.cs` file of its folder by the default glob, so no item was
+added. They use the stores of S0-3D's tests (`DirectTestStores`: three stores of the current user with names of their own, made and
+deleted by the test; the real `NHINDPrivate` and `NHINDAnchors` of the computer are never opened).
 Generated certificates only (`DirectTestPki`): a test CA, certificates it issued for a test Direct address with their private keys and a
 given Key Usage and Extended Key Usage, one for another address, an expired one, one not yet valid, a `.pfx` without the key, a `.pfx` with
-several certificates, a domain certificate, and one with an extension of a private OID; the files are written to a temp folder of the test
-and deleted, the password is made at run time and kept in memory only. Every key the import stores is deleted afterwards. The failure tests
-use two seams of the import that are null in the program (`ActionAfterKeysStoredForTests`, `ActionBeforeStoreAddForTests`).
+several certificates, a domain certificate, one with an extension of a private OID, certificates of one key (`issuedSameKey`) and a `.pfx`
+in which they share one key bag (`WritePfxSharedKey`, built with BouncyCastle's ASN.1 types of `Required dlls`, with or without a key
+provider); the files are written to a temp folder of the test and deleted, the password is made at run time and kept in memory only. Every
+key the import or a test stores is deleted afterwards. The failure tests use four seams of the import that are null in the program
+(`ActionBeforeKeysStoredForTests`, `ActionAfterKeysStoredForTests`, `ActionBeforeStoreAddForTests`, `ActionBeforeStoreRemoveForTests`).
 
 - `ImportPrivateFile_PutsTheCertificateIntoThePrivateStoreWithAKeyThatCannotBeExported`: Check shows subject, issuer, serial, dates, the
   purpose, what it names and the key, and makes no store; Import adds the address's certificate only (not the CA of the file), marked, with
@@ -171,6 +206,26 @@ use two seams of the import that are null in the program (`ActionAfterKeysStored
   all three keys are deleted. Something else fails after the keys were stored: the same. A key that can't be deleted again is named under
   "Not removed from this computer again". On success the other address's key is deleted and the imported one stays; an unused key that
   can't be deleted is named in the warning.
+- `ImportPrivateFile_KeepsTheKeyARenewalWithTheSameKeyShares` (third round, item 1): a `.pfx` with a renewed certificate and last year's of
+  one key, one key bag, for a CAPI key (no provider named, as OpenSSL writes it) and a CNG key. Check offers the renewed one; the import
+  gives both certificates one key container, adds the renewed one, warns of nothing and does not delete the shared key, and the renewed one
+  signs. With last year's in the store (imported here from its own file): it is replaced, its own key deleted, the renewed one signs.
+  Stopped right after the keys were stored, and refused by the store: the shared key is deleted once, nothing is named as not deleted.
+- `ImportPrivateFile_ReplacingKeepsTheKeyAKeptCertificateShares` (item 1): a signing and an encryption certificate of one key in the store,
+  both marked as imported here, CAPI and CNG. A renewed signing certificate replaces the signing one; the encryption one is kept and so is
+  the key it shares with the replaced one: it still decrypts, and nothing is warned of.
+- `ImportPrivateFile_KeepsTheWarningsWhenItStopsAfterAdding` (item 3): two older certificates to replace and another address's key that
+  can't be deleted; the store refuses to remove the first replaced certificate and something else stops the import at the second. Warning
+  holds the key's line, the first one's and "The import stopped after the certificate was added: ...", in that order; the new certificate
+  is in, neither replaced one was removed.
+- `KeyChecks_NeverThrowButLetTheCriticalExceptionsThrough` (item 4): `IsKeyUsable`, `TryDeletePrivateKey` and `GetKeyContainerName` of null
+  answer instead of throwing; `IsCriticalException` is true for `OutOfMemoryException` and `StackOverflowException` (and, by the source,
+  `ThreadAbortException`) and false for the others; each of the three has one catch, `when(!IsCriticalException(ex))`.
+- `ImportPrivateFile_UndoPutsBackTheKeylessCopyItOverwrote` (item 5): the store holds a copy without its key of both certificates of the
+  file; the first added takes its copy's place with its key, the store refuses the second. Afterwards the store holds both copies without a
+  key and without the import's friendly name, and every key the import stored is deleted.
+- `ImportPrivateFile_SaysWindowsMayHaveLeftAKeyWhenStoringTheKeysFails` (item 6): the `PersistKeySet` import fails: the message in full,
+  nothing in the store.
 - `GetLogText_IsPlainEnglishWithInvariantDates` (item 6): the same text under en-US, th-TH and ar-SA (other calendars), de-DE and fr-CA;
   no `Lans.g` in it.
 - `CheckPrivateFile_ReadsACertificateWithAnExtensionWindowsHasNoNameFor`: the OID fix above.
@@ -187,15 +242,32 @@ use two seams of the import that are null in the program (`ActionAfterKeysStored
   left in the designer), the thumbprints passed, the log entries, the password cleared, Import off until Check, the password box, Edit
   Email Address's call and its user name check (`GetAddressError` after the blank check and before the window opens, with the message that
   names Username or email address); in the business layer never the Exportable flag, both anchor paths with `EphemeralKeySet` and no import
-  with the default key flags (item 2), every key object of `GetRSAPrivateKey` and `GetECDsaPrivateKey` in a `using` and every certificate
-  of `ReadStore` disposed (item 5), the machine key set and the users' read access only for the Local Computer.
+  with the default key flags (second round, item 2; third round, item 8: every `Import(...)` names key flags that are not `DefaultKeySet`,
+  which the check also finds in samples of one argument, two, and `DefaultKeySet` over two lines), every key object of `GetRSAPrivateKey`
+  and `GetECDsaPrivateKey` (eight) and every `CngKey` (four) in a `using` and every certificate of `ReadStore` disposed (second round, item
+  5), the CAPI key looked for first in `TryDeletePrivateKey`, `GetKeyContainerName` and `GetMachinePrivateKeyFilePath`, the machine key set
+  and the users' read access only for the Local Computer.
 - `Stores_AreTheLocalComputersNhindStoresInProduction`.
+
+`DirectCertificatePurposeTests` (third round, item 2), through the program's own Direct agent (`GetDirectAgentForEmailAddress` with the use
+`SendEmailDirect` and `DecryptIncomingMessage` give it), without a database or a mail server:
+
+- `GetCertFromPrivateStore_PrefersTheSigningCertificateValidLongest`: with only an encryption certificate, it; then the signing one though
+  the encryption one lasts longer; of two signing ones the one valid longest; one for both counts; one not valid yet does not.
+- `Resolvers_GiveTheAgentTheCertificateForItsUse`: a signing and two encryption certificates for one address: `Any` gives all three,
+  `Signing` the signing one, `Encrypting` the encryption one valid longest, `Decrypting` that one first and then the other two; the other
+  lookups give all; an address with only a signing certificate gets it for every use.
+- `DirectSend_SignsWithTheSigningCertificateAndEncryptsToTheEncryptionOne`: both offices have a signing-only and an encryption-only
+  certificate, each encryption one valid longer: the message is encrypted to the receiver's encryption certificate only (one recipient of
+  the enveloped data), and the receive decrypts it and finds one signature, the sender's signing certificate.
+- `DirectSend_WithOneCertificateOfEitherPurpose_IsAsBefore`: the sender has only an encryption certificate and the receiver only a
+  signing one: signed with the sender's, encrypted to the receiver's, decrypted, as before.
 
 Changed: `DirectRestoredTests.Windows_HaveTheirDirectControlsAgain` (the new call; the window no longer reads certificate names itself)
 and `NoHqTests.CustomerUpdates_VendorMembersAreRemoved` (the two deleted members).
 
-Not tested here: the Local Computer stores, the machine key set and the users' read access, which need administrator rights (the launch
-checks below).
+Not tested here: the Local Computer stores, the machine key set and the users' read access (for a CNG and a CAPI key), which need
+administrator rights (the launch checks below).
 
 ## Launch checks for the lead
 
@@ -204,9 +276,9 @@ a real provider's file. A test CA and the certificates it issues can be made in 
 never trusted anywhere):
 
 ```powershell
-$ca = New-SelfSignedCertificate -Subject "CN=Direct Test CA, O=Example Test HISP" -KeyUsage CertSign,CRLSign,DigitalSignature `
+$ca = New-SelfSignedCertificate -Type Custom -Subject "CN=Direct Test CA, O=Example Test HISP" -KeyUsage CertSign,CRLSign,DigitalSignature `
   -TextExtension @("2.5.29.19={critical}{text}ca=1&pathlength=0") -CertStoreLocation Cert:\CurrentUser\My -NotAfter (Get-Date).AddDays(60)
-$cert = New-SelfSignedCertificate -Subject "CN=Direct Test, E=direct@hisp.example.test" -Signer $ca `
+$cert = New-SelfSignedCertificate -Type Custom -Subject "CN=Direct Test, E=direct@hisp.example.test" -Signer $ca `
   -KeyUsage DigitalSignature,KeyEncipherment `
   -TextExtension @("2.5.29.17={text}email=direct@hisp.example.test","2.5.29.37={text}1.3.6.1.5.5.7.3.4") `
   -CertStoreLocation Cert:\CurrentUser\My -NotAfter (Get-Date).AddDays(30)
@@ -215,19 +287,24 @@ Export-PfxCertificate -Cert $cert -FilePath .\direct-test.pfx -Password $passwor
 Export-Certificate -Cert $ca -FilePath .\direct-test-ca.cer
 ```
 
-`-KeyUsage DigitalSignature,KeyEncipherment` and the e-mail protection Extended Key Usage (1.3.6.1.5.5.7.3.4) make a certificate for
-signing and encryption, as most providers issue it; `-KeyUsage DigitalSignature` alone makes a signing certificate and
-`-KeyUsage KeyEncipherment` alone an encryption certificate (check 4); `-NotAfter` sets its end. `-ChainOption BuildChain` puts the test
-CA's certificate into the `.pfx`, as providers often give the chain (the import leaves it out: it names no address); the CA's `.cer` is the
-test trust anchor. Afterwards remove the certificates from `CurrentUser\My` with their keys (`Remove-Item` with `-DeleteKey`), delete the
-files and forget the password.
+`-Type Custom` keeps New-SelfSignedCertificate's default extensions (server authentication and a DNS name) out, so the certificate has
+only the extensions given. `-KeyUsage DigitalSignature,KeyEncipherment` and the e-mail protection Extended Key Usage (1.3.6.1.5.5.7.3.4)
+make a certificate for signing and encryption, as most providers issue it; `-KeyUsage DigitalSignature` alone makes a signing certificate
+and `-KeyUsage KeyEncipherment` alone an encryption certificate (check 4); `-NotAfter` sets its end. The key is a CNG key, and the `.pfx`
+names its provider; `-Provider "Microsoft Enhanced RSA and AES Cryptographic Provider" -KeySpec KeyExchange` makes a CAPI key instead,
+as Windows stores a provider's file that names no provider (check 1). `-ChainOption BuildChain` puts the test CA's certificate into the
+`.pfx`, as providers often give the chain (the import leaves it out: it names no address); the CA's `.cer` is the test trust anchor.
+Afterwards remove the certificates from `CurrentUser\My` with their keys (`Remove-Item Cert:\CurrentUser\My\<thumbprint> -DeleteKey`
+for each), delete the files and forget the password.
 
 1. Setup > E-mail, an address `direct@hisp.example.test`: Certificate opens the window with the address and the note that the
    certificate is stored for the user name as typed. Pick the `.pfx`, type the password, Check: the subject, issuer, serial, dates,
    "Purpose: signing and encryption", "For the address", "Private key: yes". Import: the message, and "On this computer now" lists it.
    In certlm.msc, NHINDPrivate > Certificates holds it, without the test CA; Manage Private Keys shows Users with Read; All Tasks > Export
    offers no "Yes, export the private key". The security log has the Setup entry with the address's number, the valid-to date as
-   `yyyy-MM-dd`, the replaced and kept counts, and no address.
+   `yyyy-MM-dd`, the replaced and kept counts, and no address. Do the same for a second address with a certificate of a CAPI key
+   (`-Provider "Microsoft Enhanced RSA and AES Cryptographic Provider" -KeySpec KeyExchange`): no warning after the import, its key file is
+   in `%ProgramData%\Microsoft\Crypto\RSA\MachineKeys`, and Manage Private Keys shows Users with Read.
 2. A wrong password, the `.cer` in the certificate box, a `.pfx` for another address: each refused with its message, nothing added.
 3. Import a second generated `.pfx` for the same address and purposes, valid longer than the first (`-NotAfter`): the question says the
    store has a certificate for this address or its domain, for a purpose of a certificate in the file, that expires before it, lists the
@@ -235,7 +312,7 @@ files and forget the password.
    import nothing."; No imports nothing; Yes replaces it, and the first one's key file is gone from `%ProgramData%\Microsoft\Crypto` (it
    was imported here). Then Check the first `.pfx` again: nothing is offered, and the details list the second as kept, "for the same
    purpose and valid as long as or longer than the one in the file"; Import asks nothing, its message says the same, and both are in
-   NHINDPrivate. Remove the first again in certlm.msc.
+   NHINDPrivate. Remove the first again with its key, in PowerShell: `Remove-Item Cert:\LocalMachine\NHINDPrivate\<thumbprint> -DeleteKey`.
 4. A signing-only and an encryption-only certificate for one address (`-KeyUsage DigitalSignature` and `-KeyUsage KeyEncipherment`):
    import one, then Check the other: nothing is offered and the first is listed as kept "for another purpose"; Import: both are in
    NHINDPrivate. Import a renewed signing-only certificate (valid longer): only the signing one is offered, the encryption one is kept.
@@ -243,12 +320,15 @@ files and forget the password.
    email address, and the window does not open.
 6. As a standard Windows user afterwards: point the address's outgoing server (SMTP) at a local capture server on 127.0.0.1 that keeps
    the messages it receives (never a real mail server, and no real recipient), save the address, send a signed e-mail from it, and check
-   in the captured message that it is signed with the imported certificate (its key is readable by Users).
+   in the captured message that it is signed with the imported certificate (its key is readable by Users). With check 4's signing-only
+   and encryption-only certificates of one address in NHINDPrivate, the message from that address is signed with the signing-only one
+   (save the message's `smime.p7s` and `certutil -dump` it: the signer's serial number is the signing certificate's).
 7. The `.cer` in the trust anchor box, Import...: the details and the question; Yes adds it to NHINDAnchors, and "On this computer now"
    says it is trusted. Importing it again says it is already a trust anchor.
 8. Without Run as administrator: Import says that Windows refused and how to import; nothing is added.
-9. Remove the test certificates and anchors from NHINDPrivate and NHINDAnchors in certlm.msc afterwards, and put the address's outgoing
-   server back.
+9. Remove the test certificates with their keys afterwards, in PowerShell: `Remove-Item Cert:\LocalMachine\NHINDPrivate\<thumbprint>
+   -DeleteKey` for each certificate of NHINDPrivate, and `Remove-Item Cert:\LocalMachine\NHINDAnchors\<thumbprint>` for the test anchor
+   (it has no key); then put the address's outgoing server back.
 
 ## For the .NET 10 switch package
 
@@ -268,9 +348,18 @@ What this code needs when the business library moves to .NET 10 (stage 3b); noth
 - **Key file rights.** `File.GetAccessControl` and `File.SetAccessControl` (`GrantUsersReadToPrivateKey`) are not on .NET's `File`; they
   are extension methods of `FileInfo` in `FileSystemAclExtensions` (`new FileInfo(pathKey).GetAccessControl()` and
   `.SetAccessControl(fileSecurity)`, namespace `System.IO`, in the shared framework on Windows, no package).
-- **CNG keys.** On .NET, `RSACng.Key` and `ECDsaCng.Key` return a new `CngKey` on every call, which the caller disposes;
-  `GetMachinePrivateKeyFilePath` already does, and `TryDeletePrivateKey`'s `Key.Delete()` disposes it. .NET imports a PKCS#12 key into
-  CNG unless the file names a CAPI provider, so the CAPI branches stay for the files that do.
+- **CNG keys.** On .NET, `RSACng.Key` and `ECDsaCng.Key` are documented to return a new `CngKey` on every call, which the caller
+  disposes; `GetMachinePrivateKeyFilePath` and `GetKeyContainerName` already do, and `TryDeletePrivateKey`'s `Key.Delete()` disposes it.
+  Not checked on .NET (no .NET build of this code yet): verify it at the switch, with the disposal tests of this package. .NET imports a
+  PKCS#12 key into CNG unless the file names a CAPI provider, so the CAPI branches stay for the files that do.
+- **CAPI keys.** .NET Framework's `GetRSAPrivateKey` opens a CAPI key through CNG (an `RSACng` whose `Key.Delete` leaves the container), so
+  `GetCapiRsaPrivateKey` reads the certificate's `PrivateKey`, which is obsolete on .NET (SYSLIB0028). .NET's `GetRSAPrivateKey` is said to
+  give an `RSACryptoServiceProvider` for a CAPI key, which the existing branches handle; verify that at the switch (the CAPI case of
+  `ImportPrivateFile_KeepsTheKeyARenewalWithTheSameKeyShares`) and then drop `GetCapiRsaPrivateKey`.
+- **The copy `Undo` puts back** is kept as a serialized certificate (`Export(X509ContentType.SerializedCert)`) and read back with
+  `new X509Certificate2(byte[])`, obsolete on .NET (SYSLIB0057); `X509CertificateLoader` does not load a serialized certificate. Keep the
+  constructor there with the warning suppressed and a comment, or add the bytes to the store with `CertAddSerializedElementToStore`;
+  `ImportPrivateFile_UndoPutsBackTheKeylessCopyItOverwrote` tests either.
 - Unchanged: `EphemeralKeySet` is supported on Windows; the store names, `X509Store` and the chain check (`EmailCertificates.IsCertValid`)
   work as they do now.
 
@@ -341,29 +430,54 @@ would be chosen. (Done in the third fix round, item 2.)
 
 ## Third fix round (branch `dev/directcert-2`, 2026-11-09)
 
-The second round's review passed; the lead decided these before the merge, each with a test. The plan (this section, filled in with the
-commits and tests when they are done):
+The second round's review passed; the lead decided these before the merge (2026-11-09), each with a test. The plan of the round is
+709a65f99; the business layer 76f4050a2 and 7cab838be (what the tests found), the tests 78777bf2e, these documents the commit after them.
 
 1. **Key safety.** One `.pfx` can give two of its certificates one key (a renewal with the same key): Windows stores the key once, in one
    key container, for both. The import deleted the key of a certificate of the file it does not use (and the key of a replaced
    certificate, and in `Undo` every key it stored) without looking whether another certificate still uses that container, so the imported
-   certificate could lose its key. Before a container is deleted, its unique name (`CngKey.UniqueName`, `CspKeyContainerInfo.UniqueKeyContainerName`)
-   is compared with those of every certificate the import adds, keeps or leaves in the store; only a container none of them uses is
-   deleted, and each container once.
+   certificate could lose its key. Now, before a container is deleted, its unique name (`GetKeyContainerName`) is compared with those of
+   the certificates the import adds and of every certificate of the store after the change (kept, already there, not removed); only a
+   container none of them uses is deleted, and each container once (A key that two certificates share, above). Tests:
+   `ImportPrivateFile_KeepsTheKeyARenewalWithTheSameKeyShares` (for a CAPI and a CNG key, the imported certificate still signs) and
+   `ImportPrivateFile_ReplacingKeepsTheKeyAKeptCertificateShares`.
 2. **The lookup chooses by purpose** (the owner question, decided by the lead). Signing (`GetCertFromPrivateStore`, and the Direct agent's
    sender certificate) prefers a valid certificate for signing, encryption (a recipient's certificate the agent encrypts to) and decryption
    (the office's own certificates the agent decrypts with) one for encryption; of several of that purpose, the one valid longest; without
-   one, any valid certificate for the address, as before. Nothing else of S0-3D's send and receive changes.
+   one, any valid certificate for the address, as before (Also changed, above). Nothing else of S0-3D's send and receive changed. Tests:
+   the four of `DirectCertificatePurposeTests`; S0-3D's own (`DirectCertificateTests`, `DirectMessagingDbTests`, `SignedSendTests`) pass
+   unchanged.
 3. **The warnings after a stop.** When anything throws after the certificates were added, the warnings already collected (a key not
-   deleted, a replaced certificate not removed) still reach the result's Warning.
-4. **"Never throws".** `IsKeyUsable` and `TryDeletePrivateKey` catch every exception except the critical ones (`OutOfMemoryException`,
-   `StackOverflowException`, `ThreadAbortException`) and say not usable or not deleted.
-5. **A test of `Undo`** putting back the store's copy without a key that an added certificate took the place of.
-6. **A failed `PersistKeySet` import** says that Windows may have left a private key of the file behind, and the release notes say so.
-7. **The documents.** The launch checks' recipe makes its certificates with `-Type Custom`; checks 3 and 9 remove the certificates with
-   `Remove-Item Cert:\LocalMachine\NHINDPrivate\<thumbprint> -DeleteKey`; the test count matches the tests; the .NET 10 note on
-   `RSACng.Key` and `ECDsaCng.Key` says to verify it at the switch.
-8. **The source check of the key flags** also finds an `Import` with more than one argument and `DefaultKeySet` or no flags.
+   deleted, a replaced certificate not removed) reach Warning before "The import stopped after the certificate was added". Test:
+   `ImportPrivateFile_KeepsTheWarningsWhenItStopsAfterAdding`.
+4. **"Never throws".** `IsKeyUsable` (with its `CanSign` and `CanDecrypt`), `TryDeletePrivateKey` and the new `GetKeyContainerName` catch
+   every exception except the critical ones (`IsCriticalException`: `OutOfMemoryException`, `StackOverflowException`,
+   `ThreadAbortException`) and say not usable, not deleted or no name. Test: `KeyChecks_NeverThrowButLetTheCriticalExceptionsThrough`.
+5. **A test of `Undo`** putting back the store's copy without a key that an added certificate took the place of:
+   `ImportPrivateFile_UndoPutsBackTheKeylessCopyItOverwrote`. It found that the copy put back had the added certificate's key and friendly
+   name: the store's add gives its object of the old entry the new one's properties. `Undo` now puts back a serialized copy taken before
+   the add.
+6. **A failed `PersistKeySet` import** says "Nothing was imported. Windows may have left a private key of the file behind on this computer,
+   which the program cannot find to delete.", and the release notes say the same. Test: `ImportPrivateFile_SaysWindowsMayHaveLeftAKeyWhenStoringTheKeysFails`
+   (a seam, `ActionBeforeKeysStoredForTests`, makes the import fail).
+7. **The documents.** The launch checks' recipe makes its certificates with `-Type Custom` (and says how to make a CAPI key, check 1);
+   checks 3 and 9 remove the certificates with `Remove-Item Cert:\LocalMachine\NHINDPrivate\<thumbprint> -DeleteKey`; the test counts are
+   the `[TestMethod]` counts (the second round's note said 15 of 16); the .NET 10 note on `RSACng.Key` and `ECDsaCng.Key` says to verify it
+   at the switch, and two notes are added (the CAPI key, the serialized copy).
+8. **The source check of the key flags** finds every `Import(...)` with one argument, two (no flags) or `DefaultKeySet`, also over lines,
+   and shows that it finds them in samples. Test: `Window_ImportsThroughTheBusinessLayerAndAsksFirst`.
+
+Found by the tests, fixed in 7cab838be:
+
+- **A CAPI key was never deleted.** .NET Framework stores a `.pfx` that names no key provider (as OpenSSL writes it, so most providers'
+  files) in a CAPI key container, and its `GetRSAPrivateKey` opens that through CNG: `RSACng.Key.Delete` returned without deleting the
+  container, so no unused, replaced or undone key of such a file was deleted, and `GetMachinePrivateKeyFilePath` looked for the key in the
+  CNG folder (the users' read access would have failed with "The private key file was not found"). The CAPI key is looked for first (CAPI
+  and CNG keys, above). The tests' key files of the first runs, which this had left in the user's key store, were deleted.
+- `TryDeletePrivateKey`'s reason is trimmed: Windows' texts end with a line break, which left a blank line in Warning.
+
+Not changed, noticed on the way: `OpenPmsDentalDbSettings.ClientCertificateStore.DeletePrivateKey` and its key file path have the same CAPI
+case (the database client certificate of a `.pfx` that names no provider); that is the connection settings tool's, not this package's.
 
 Left as they are (owner questions): `ICustomerUpdates` and `CustomerUpdatesProxy`, and the read access of `BUILTIN\Users` to the imported
 private keys.
