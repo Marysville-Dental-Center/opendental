@@ -726,6 +726,11 @@ of 2026-11-08: "1. As recommended 2. Ship dlls we need. Use Helix. It's decided.
 - **The recording of today's chart (O-32 and O-33, asked with TC-0's results).** Keep all of it in the repository (715 pictures,
   about 81 MB), since the old engines cannot record again once they are gone. DirectX stays recorded without edge smoothing for the
   tests, and about 10 smoothed pictures go in the gallery to show the look offices see.
+- **Gallery G1 and O-34 (answered on 2026-11-09: "G1 go with recommended").** The 145 re-recorded pictures are approved (the white
+  centre line and the highlight boxes on the pixels DirectX fills). O-34: the program keeps drawing every WPF window in software, and
+  the quick live view is the default on-screen chart, with a per-computer "Draw in software" switch for the smoothed picture (b1).
+  The dashboard's copy of the chart is made in the background by a later package, TC-3b, before the WPF chart becomes every
+  computer's chart.
 
 ---
 
@@ -755,6 +760,18 @@ The questions of the EHR plan, [specs/ehr-rebuild-plan.md](specs/ehr-rebuild-pla
   counsel answers E-8 and E-9).
 
 ---
+
+## Pending items answered on 2026-11-09 ("The rest as recommended", "Do headless window test")
+
+- **The database TLS script** (`tools/Enable-LocalDbTls.ps1`, DB-TLS) runs with `-WithClientCertificate`. You run it elevated, when
+  the lead says the database is idle.
+- **The Insurance Verification list** loses a row when a plan's number equals a patient plan's number; it is fixed in its own
+  package (INSVERIFY).
+- **The database client certificate store** gets the same key-deletion fix as the Direct certificates, in the Direct certificate
+  follow-up package, which also records the two Direct answers that keep the behaviour as built and removes the empty customer-updates
+  shell.
+- **The stage 1 window checks** are done by a headless test (WINCHK-HEADLESS) instead of a session driving the desktop, because
+  the PC's screen stays locked. Checks only a person at the screen can do are listed in its report for a later on-screen pass.
 
 ## Not asked again (already settled)
 
