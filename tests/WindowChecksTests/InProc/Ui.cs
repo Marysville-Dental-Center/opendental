@@ -70,13 +70,19 @@ namespace WindowChecksTests.InProc {
 				}
 				catch(Exception ex) {
 					posted.Exception=ex;
-					CheckResultCur?.Fail(description+" threw "+ex.GetType().Name+": "+ex.Message);
+					CheckResultCur?.Fail(description+" threw "+ex.GetType().Name+": "+ex.Message+" "+Frames(ex));
 				}
 				finally {
 					posted.ManualResetEventDone.Set();
 				}
 			}));
 			return posted;
+		}
+
+		///<summary>The first frames of the exception's stack, for a failure's evidence.</summary>
+		public static string Frames(Exception ex) {
+			string stack=(ex.GetBaseException().StackTrace??"").Replace("\r","");
+			return "["+string.Join(" / ",stack.Split('\n').Select(x => x.Trim()).Where(x => x!="").Take(5))+"]";
 		}
 
 		public class Posted {
@@ -194,6 +200,46 @@ namespace WindowChecksTests.InProc {
 			return "\""+title+"\" ("+typeName+")";
 		}
 
+		///<summary>The WPF Frm (FrmODBase) a FormFrame hosts in its ElementHost, or null. On the window's thread.</summary>
+		public static System.Windows.FrameworkElement GetFrmOnThread(Control control) {
+			if(control==null || control.GetType().Name!="FormFrame") {
+				return null;
+			}
+			System.Windows.Forms.Integration.ElementHost elementHost=AllControls(control).OfType<System.Windows.Forms.Integration.ElementHost>().FirstOrDefault();
+			return elementHost?.Child as System.Windows.FrameworkElement;
+		}
+
+		///<summary>The WPF Frm of the window (a FormFrame), or null.</summary>
+		public System.Windows.FrameworkElement GetFrm(IntPtr hwnd) {
+			return Invoke(() => GetFrmOnThread(Control.FromHandle(hwnd)));
+		}
+
+		///<summary>Renders a WPF element (a Frm) with RenderTargetBitmap.</summary>
+		public ShotInfo ShotElement(System.Windows.FrameworkElement frameworkElement,string fileName) {
+			return Invoke(() => {
+				int width=(int)Math.Ceiling(frameworkElement.ActualWidth);
+				int height=(int)Math.Ceiling(frameworkElement.ActualHeight);
+				if(width<=0 || height<=0) {
+					return new ShotInfo { FileName=fileName,Error="the WPF element has no size" };
+				}
+				System.Windows.Media.Imaging.RenderTargetBitmap renderTargetBitmap=new System.Windows.Media.Imaging.RenderTargetBitmap(width,height,96,96,
+					System.Windows.Media.PixelFormats.Pbgra32);
+				System.Windows.Media.DrawingVisual drawingVisual=new System.Windows.Media.DrawingVisual();
+				using(System.Windows.Media.DrawingContext drawingContext=drawingVisual.RenderOpen()) {
+					drawingContext.DrawRectangle(System.Windows.Media.Brushes.White,null,new System.Windows.Rect(0,0,width,height));
+					drawingContext.DrawRectangle(new System.Windows.Media.VisualBrush(frameworkElement),null,new System.Windows.Rect(0,0,width,height));
+				}
+				renderTargetBitmap.Render(drawingVisual);
+				System.Windows.Media.Imaging.PngBitmapEncoder pngBitmapEncoder=new System.Windows.Media.Imaging.PngBitmapEncoder();
+				pngBitmapEncoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(renderTargetBitmap));
+				using System.IO.MemoryStream memoryStream=new System.IO.MemoryStream();
+				pngBitmapEncoder.Save(memoryStream);
+				memoryStream.Position=0;
+				using Bitmap bitmap=new Bitmap(memoryStream);
+				return WindowChecksTests.Shot.Bitmap(bitmap,fileName);
+			});
+		}
+
 		public Form GetForm(IntPtr hwnd) {
 			return Invoke(() => Control.FromHandle(hwnd) as Form);
 		}
@@ -208,7 +254,9 @@ namespace WindowChecksTests.InProc {
 			return Invoke(() => {
 				Control control=Control.FromHandle(hwnd);
 				if(control!=null) {
-					return control.GetType().Name;
+					//A WPF Frm runs in a FormFrame (a WinForms form with an ElementHost): name both.
+					System.Windows.FrameworkElement frm=GetFrmOnThread(control);
+					return control.GetType().Name+(frm==null ? "" : "/"+frm.GetType().Name);
 				}
 				System.Windows.Window window=System.Windows.Interop.HwndSource.FromHwnd(hwnd)?.RootVisual as System.Windows.Window;
 				if(window==null) {

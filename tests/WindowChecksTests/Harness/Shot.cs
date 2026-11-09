@@ -49,7 +49,12 @@ namespace WindowChecksTests {
 					g.Clear(Color.Magenta);
 					IntPtr hdc=g.GetHdc();
 					try {
-						if(!Native.PrintWindow(hwnd,hdc,Native.PW_RENDERFULLCONTENT)) {
+						//PrintWindow waits for the window's thread; a hung window must not hang the check.
+						System.Threading.Tasks.Task<bool> task=System.Threading.Tasks.Task.Run(() => Native.PrintWindow(hwnd,hdc,Native.PW_RENDERFULLCONTENT));
+						if(!task.Wait(20000)) {
+							shotInfo.Error="PrintWindow did not return within 20 s (the window does not answer)";
+						}
+						else if(!task.Result) {
 							shotInfo.Error="PrintWindow failed";
 						}
 					}

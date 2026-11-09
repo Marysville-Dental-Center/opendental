@@ -66,6 +66,8 @@ namespace WindowChecksTests {
 		public static extern IntPtr SendMessageTimeoutText(IntPtr hwnd,int msg,IntPtr wParam,StringBuilder lParam,int flags,int timeout,out IntPtr result);
 		[DllImport("user32.dll",CharSet=CharSet.Unicode,EntryPoint="SendMessageTimeoutW")]
 		public static extern IntPtr SendMessageTimeout(IntPtr hwnd,int msg,IntPtr wParam,IntPtr lParam,int flags,int timeout,out IntPtr result);
+		[DllImport("user32.dll",CharSet=CharSet.Unicode,EntryPoint="SendMessageTimeoutW")]
+		public static extern IntPtr SendMessageTimeoutString(IntPtr hwnd,int msg,IntPtr wParam,string lParam,int flags,int timeout,out IntPtr result);
 		[DllImport("user32.dll",CharSet=CharSet.Unicode,EntryPoint="PostMessageW")]
 		public static extern bool PostMessage(IntPtr hwnd,int msg,IntPtr wParam,IntPtr lParam);
 		[DllImport("user32.dll")]

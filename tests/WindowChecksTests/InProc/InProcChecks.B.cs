@@ -67,7 +67,9 @@ namespace WindowChecksTests.InProc {
 
 		///<summary>The OperatoryNum of the operatory with this abbreviation, from the program's cache.</summary>
 		private static string ScratchOpNum(string abbr) {
-			Operatory operatory=Operatories.GetDeepCopy().FirstOrDefault(x => x.Abbrev==abbr || x.OpName==abbr);
+			string key=new string(abbr.Where(char.IsLetterOrDigit).ToArray()).ToLowerInvariant();
+			Operatory operatory=Operatories.GetDeepCopy().FirstOrDefault(x => new string((x.Abbrev??"").Where(char.IsLetterOrDigit).ToArray()).ToLowerInvariant()==key
+				|| new string((x.OpName??"").Where(char.IsLetterOrDigit).ToArray()).ToLowerInvariant()==key);
 			return operatory==null ? "?" : operatory.OperatoryNum.ToString();
 		}
 
