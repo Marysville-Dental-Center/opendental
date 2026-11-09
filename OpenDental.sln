@@ -319,6 +319,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProjectFileTests", "tests\P
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EhrTests", "tests\EhrTests\EhrTests.csproj", "{EA5CA88B-0C35-4647-87A2-B71E90E5A435}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "INSVERIFYTests", "tests\INSVERIFYTests\INSVERIFYTests.csproj", "{F4A7B35B-73E8-4C6F-A98B-11FD8FC54EA2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -1560,6 +1562,14 @@ Global
 		{EA5CA88B-0C35-4647-87A2-B71E90E5A435}.Release|Any CPU.Build.0 = Release|x86
 		{EA5CA88B-0C35-4647-87A2-B71E90E5A435}.Release|x86.ActiveCfg = Release|x86
 		{EA5CA88B-0C35-4647-87A2-B71E90E5A435}.Release|x86.Build.0 = Release|x86
+		{F4A7B35B-73E8-4C6F-A98B-11FD8FC54EA2}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{F4A7B35B-73E8-4C6F-A98B-11FD8FC54EA2}.Debug|Any CPU.Build.0 = Debug|x86
+		{F4A7B35B-73E8-4C6F-A98B-11FD8FC54EA2}.Debug|x86.ActiveCfg = Debug|x86
+		{F4A7B35B-73E8-4C6F-A98B-11FD8FC54EA2}.Debug|x86.Build.0 = Debug|x86
+		{F4A7B35B-73E8-4C6F-A98B-11FD8FC54EA2}.Release|Any CPU.ActiveCfg = Release|x86
+		{F4A7B35B-73E8-4C6F-A98B-11FD8FC54EA2}.Release|Any CPU.Build.0 = Release|x86
+		{F4A7B35B-73E8-4C6F-A98B-11FD8FC54EA2}.Release|x86.ActiveCfg = Release|x86
+		{F4A7B35B-73E8-4C6F-A98B-11FD8FC54EA2}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
