@@ -65,8 +65,14 @@ namespace ToothChartImageTests {
 			//test, TestAssemblySetup, the live view's documentation, the plan's notes and the times of the gallery change with it.
 			string main=SourceText.GetMethod(SourceText.ReadCode(@"OpenPmsDental\Main Modules\ProgramEntry.cs"),"static void Main(string[] args) {");
 			string body=main.Substring(main.IndexOf('{')+1).TrimStart();
+			//EHR-3's stylesheet child exits first (/ehr-render: no window, no WPF, docs/port-notes/EHR-3.md); the render mode is the first
+			//statement after it, before any window exists.
+			const string ehrRenderExit="if(args.Length==2 && args[0]==\"/ehr-render\") { Environment.Exit(EhrRenderChild.Run(args[1])); }";
+			if(body.StartsWith(ehrRenderExit)) {
+				body=body.Substring(ehrRenderExit.Length).TrimStart();
+			}
 			StringAssert.StartsWith(body,"System.Windows.Media.RenderOptions.ProcessRenderMode=System.Windows.Interop.RenderMode.SoftwareOnly;",
-				"The program's first statement draws every WPF window in software.");
+				"The program's first statement (after the stylesheet child's exit) draws every WPF window in software.");
 			List<string> listOthers=new List<string>();
 			foreach(string folder in new[] { "OpenPmsDental","WpfControlsOD","SparksToothChart","CodeBase","OpenPmsDentalBusiness" }) {
 				foreach(string relative in SourceText.GetCsFiles(folder)) {
