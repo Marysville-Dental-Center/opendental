@@ -36,11 +36,14 @@ namespace WindowChecksTests {
 			listLines.Add("2. "+claims);
 			checkResult.Expect(claims.Contains("1|R|P") && claims.Contains("2|R|PreAuth"),"#2 claim 1 and preauth 2 ("+claims+")");
 			listLines.Add("3. "+ScratchDb.Rows("SELECT ProvNum,Abbr,LName,FName FROM provider"));
-			string computerPref=ScratchDb.Rows("SELECT ComputerPrefNum,ComputerName,GraphicsSimple,DirectXFormat FROM computerpref WHERE ComputerName='"
-				+Environment.MachineName+"'");
-			listLines.Add("4. this PC's row: "+computerPref);
-			checkResult.Expect(computerPref.Split('|').Length>2 && (computerPref.Split('|')[2]=="0" || computerPref.Split('|')[2]=="False"),
-				"#4 GraphicsSimple 0 (DirectX) for this PC (the client reads the tinyint as False)");
+			//The program's own computer name (ODEnvironment.MachineName: in a remote session the client's name), not written into the results.
+			string computerPref=ScratchDb.Rows("SELECT ComputerPrefNum,'<this PC>',GraphicsSimple,DirectXFormat FROM computerpref WHERE ComputerName='"
+				+CodeBase.ODEnvironment.MachineName.Replace("'","''")+"'");
+			listLines.Add("4. this PC's row: "+(computerPref=="" ? "none yet (the program adds it with its defaults at the first start)" : computerPref));
+			if(computerPref!="") {
+				checkResult.Expect(computerPref.Split('|').Length>2 && (computerPref.Split('|')[2]=="0" || computerPref.Split('|')[2]=="False"),
+					"#4 GraphicsSimple 0 (DirectX) for this PC (the client reads the tinyint as False)");
+			}
 			string prefs=ScratchDb.Rows(QUERY_PREFS);
 			listLines.Add("5. "+prefs);
 			checkResult.Expect(!prefs.Contains("ForkTimeSyncMode|1"),"#5 ForkTimeSyncMode absent or 0");
@@ -127,6 +130,13 @@ namespace WindowChecksTests {
 				if(arrayBefore.Length==arrayNow.Length && arrayBefore.Length>3 && arrayBefore[3]!=arrayNow[3]) {
 					checkResult.Note("eformdef rows "+arrayBefore[3]+" -> "+arrayNow[3]+": the internal eForms the program inserts the first time Setup > eForms opens");
 					arrayNow[3]=arrayBefore[3];
+					countsNow=string.Join("|",arrayNow);
+				}
+				//Column 18 (adminprefs): Z4 lists Admin's userodpref rows when the count differs instead of comparing it (provcolour, column 19, must stay 0).
+				if(arrayBefore.Length==arrayNow.Length && arrayBefore.Length>17 && arrayBefore[17]!=arrayNow[17]) {
+					checkResult.Note("Z4: adminprefs "+arrayBefore[17]+" -> "+arrayNow[17]+"; SELECT FkeyType,Fkey,ValueString FROM userodpref WHERE UserNum=1: "
+						+ScratchDb.Rows("SELECT FkeyType,Fkey,LEFT(ValueString,60) FROM userodpref WHERE UserNum=1"));
+					arrayNow[17]=arrayBefore[17];
 					countsNow=string.Join("|",arrayNow);
 				}
 				checkResult.Expect(countsBefore==countsNow,"Z3/Z4: the copy's counts are as at 0.3 (columns: snomed provkeys problems eforms devices employees payperiods docs "

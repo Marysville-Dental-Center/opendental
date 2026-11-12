@@ -131,10 +131,8 @@ namespace WindowChecksTests.InProc {
 				if(InspectWindow(ui,checkResult,openedClassic,"FormRpPrintPreview",null,close:false)) {
 					System.Threading.Thread.Sleep(2500);
 					checkResult.AddShot(ui.Shot(openedClassic.Hwnd,"I3-classic.png"),"The classic preview");
-					AddBitmapShot(ui,checkResult,() => {
-						object toothChartWrapper=Ui.GetField(controlTreat,"_toothChartWrapper");
-						return toothChartWrapper==null ? null : (Image)Ui.Call(toothChartWrapper,"GetBitmap");
-					},"I3-classic-chart.png","The chart the classic printout draws (ControlTreat.PrepImageForPrinting's chart)");
+					//The classic printout draws its chart into the MigraDoc document while it is made; that chart is not kept, so its look is read in the picture.
+					checkResult.ForPerson("the chart on the classic preview's page (I3-classic.png)");
 					checkResult.Expect(ui.Close(openedClassic.Hwnd),"The classic preview closes");
 				}
 				openedClassic.Posted.Wait();
@@ -394,8 +392,12 @@ namespace WindowChecksTests.InProc {
 			}
 			IntPtr hwndPerio=openedPerio.Hwnd;
 			int countBefore=Count("SELECT COUNT(*) FROM perioexam WHERE PatNum=1");
+			List<IntPtr> listBeforeAdd=ui.GetWindows();
 			ui.Post("Perio > Add",() => Ui.Call(Control.FromHandle(hwndPerio),"butAdd_Click",null,EventArgs.Empty)).Wait();
-			ui.CloseStrayWindows(checkResult);
+			foreach(IntPtr hwndNew in ui.GetWindows().Where(x => !listBeforeAdd.Contains(x))) {
+				checkResult.Fail("Add showed: "+ui.DescribeWindow(hwndNew));
+				ui.Close(hwndNew);
+			}
 			_perioExamNum=PIn.Long(DataCore.GetScalar("SELECT MAX(PerioExamNum) FROM perioexam WHERE PatNum=1"));
 			checkResult.Expect(Count("SELECT COUNT(*) FROM perioexam WHERE PatNum=1")==countBefore+1,"Add: a new exam (PerioExamNum "+_perioExamNum+"), selected");
 			Ui.Opened openedGraphical=OpenByButton(ui,hwndPerio,"butGraphical");

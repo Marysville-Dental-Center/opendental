@@ -65,7 +65,8 @@ namespace WindowChecksTests {
 			}
 			//I11: start-up with no DirectX format saved.
 			CheckResult checkResultI11=new CheckResult("I11","Start-up with no DirectX format saved");
-			string computerName=Environment.MachineName;
+			//The program's own computer name (ODEnvironment.MachineName: the client's name in a remote session), whose computerpref row it reads.
+			string computerName=CodeBase.ODEnvironment.MachineName;
 			string formatBefore=ScratchDb.Scalar("SELECT DirectXFormat FROM computerpref WHERE ComputerName='"+computerName+"'");
 			ScratchDb.Exec("UPDATE computerpref SET DirectXFormat='' WHERE ComputerName='"+computerName+"'");
 			Stopwatch stopwatch=Stopwatch.StartNew();

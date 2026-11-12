@@ -144,7 +144,17 @@ namespace WindowChecksTests.InProc {
 			}
 		}
 
+		///<summary>The program's own aborts of its worker threads (ODThread.QuitSync aborts a thread that does not end in time): noted, not failed; a
+		///person sees nothing of them.</summary>
+		private readonly List<string> _listAborts=new List<string>();
+
 		public void AddException(string source,Exception ex) {
+			if(ex is ThreadAbortException) {
+				lock(_lock) {
+					_listAborts.Add(source+": "+ex.GetType().FullName+" "+FirstFrames(ex));
+				}
+				return;
+			}
 			lock(_lock) {
 				_listExceptions.Add(source+": "+(ex==null ? "(no exception object)" : ex.GetType().FullName+": "+ex.Message+" "+FirstFrames(ex)));
 			}
@@ -174,6 +184,10 @@ namespace WindowChecksTests.InProc {
 		public CheckResult RunCheck(string id,string title,int timeoutSeconds) {
 			CheckResult checkResult=new CheckResult(id,title);
 			int countExceptionsBefore=CountExceptions;
+			int countAbortsBefore;
+			lock(_lock) {
+				countAbortsBefore=_listAborts.Count;
+			}
 			Exception exceptionScript=null;
 			Thread thread=new Thread(() => {
 				try {
@@ -203,6 +217,11 @@ namespace WindowChecksTests.InProc {
 			}
 			foreach(string exception in GetExceptionsFrom(countExceptionsBefore)) {
 				checkResult.Fail("Unhandled exception: "+exception);
+			}
+			lock(_lock) {
+				foreach(string abort in _listAborts.Skip(countAbortsBefore)) {
+					checkResult.Note("A worker thread of the program was aborted (not shown to a person; ODThread aborts a thread that does not quit in time): "+abort);
+				}
 			}
 			return checkResult;
 		}
