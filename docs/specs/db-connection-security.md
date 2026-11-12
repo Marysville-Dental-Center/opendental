@@ -389,7 +389,7 @@ server of its own (section 5.1).
 | `OpenPmsDental.exe` (eCW diagnostics, RDL allocators, self-update) | yes | Rule. The eCW diagnostics build `Server=`+the eCW server property with `SslMode=none`, so they reach a loopback eCW database only. |
 | Backup to another server (`FormBackup`'s archive tab, `MiscData.MakeABackup(serverName,user,pass)`) | yes | Rule, with the user and password typed there and this computer's office CA and certificate. |
 | `ODR.dll` | yes | The program's string (the thread's), or `DbConnectionConfig` + `BuildSimpleConnectionString`. |
-| `RdlEngine.dll` | yes | `RdlEngineConfig.CheckConnection` hook. (`Definition/DataSource.cs` is not compiled.) |
+| `RdlEngine.dll` | yes | `RdlEngineConfig.CheckConnection` hook; the MySqlConnector connection itself through the `RdlEngineConfig.CreateConnection` hook (`DbConnectionSecurity.NewReportConnection`, DB-SEC 3). (`Definition/DataSource.cs` is not compiled.) |
 | `OpenPmsDentalDbSettings.exe` | yes | Rule: Test connection and `/test` build with the tool's own values (`DbSettingsRunner.TestConnection`). |
 | `ServiceManager.exe` | yes | Rule: test connection through `DataConnection.SetDb` with this computer's CA and certificate. The service configuration files it writes are for services this fork does not ship and are unchanged. |
 | `UpdateFileCopier.exe` | yes | Passes on what the program gave it; no password for a network server. |
@@ -451,24 +451,33 @@ Both answered by the owner on 2026-11-07 (`docs/owner-questions.md`, "The progra
    target account needs `CREATE`, `INSERT` and `SELECT` on the backup database, as for a backup on the same server. Tested on two
    scratch databases of the local MariaDB (`tests/DbConnectionSecurityTests/BackupToAnotherServerTests.cs`).
 
-Open, from the MySqlConnector 2.6.2 upgrade (S2-2 of the .NET 10 move, `docs/port-notes/S2-2.md` section 3.6), to be decided before that
-package merges:
+From the MySqlConnector 2.6.2 upgrade (S2-2 of the .NET 10 move, `docs/port-notes/S2-2.md` section 3.6), **decided by the lead on
+2026-11-11 as (c), because it keeps the owner's rule Q5 unchanged; built in S2-2's follow-up round** (`net10/s22v-1`). The owner can still
+choose otherwise (`docs/owner-questions.md`, DB-SEC 3):
 
-3. (DB-SEC 3) **Q5 no longer holds for password logins.** Since MySqlConnector 2.4, `VerifyCA` and `VerifyFull` with `SslCa` no longer
-   fail the TLS handshake for a server certificate outside the office CA: the driver logs in over that session and refuses only after the
-   server's OK packet, unless the login had a password and the server proves that it knows the account's stored hash (MariaDB 11.4's
-   check for self-signed servers), which the driver then accepts with any certificate. No option of 2.6.2 turns this off, and the driver
-   ignores a connection's own certificate callback while `SslCa` is set. Both exposures are chosen by an attacker in the middle of the
-   network, whatever the office server's version: (1) with the account's stored hash (a copy of `mysql.user`, a backup of the data
-   directory) it is accepted with any certificate and sees every query and row, and learns SHA1(password), enough to log in to the real
-   server; (2) without the hash it still receives the account's challenge response to its own scramble, which can be tested against a
-   dictionary offline. Affected: every password login over the network (the main connection in password mode or with both a certificate and
-   a password; the backup to another server; the read-only and reporting servers with a CA preference, `VerifyCA`). Not affected: the main
-   connection with the client certificate alone (empty password), which is refused after the login and sends no secret. The choices: (a)
-   accept the risk and record it here as an exception to Q5; (b) only client-certificate logins (empty password) for servers over the
-   network; (c) the program verifies the server itself before the login (no `SslCa` for the driver, `SslMode=Required` and the
-   connection's own certificate callback for the chain to the office CA, the host name and revocation). Today's behaviour is pinned by
-   `tests/DbConnectionSecurityTests/UnverifiedServerTests.cs` (a fake server on a loopback port), which changes with the decision.
+3. (DB-SEC 3) **Q5 no longer held for password logins with the driver's own check.** Since MySqlConnector 2.4, `VerifyCA` and `VerifyFull`
+   with `SslCa` no longer fail the TLS handshake for a server certificate outside the office CA: the driver logs in over that session and
+   refuses only after the server's OK packet, unless the login had a password and the server proves that it knows the account's stored hash
+   (MariaDB 11.4's check for self-signed servers, `ValidateFingerprint`), which the driver then accepts with any certificate. No option of
+   2.6.2 turns this off, and the driver ignores a connection's own certificate callback while `SslCa` is set. Both exposures were chosen by
+   an attacker in the middle of the network, whatever the office server's version: (1) with the account's stored hash it was accepted with
+   any certificate; (2) without it, it still received the account's challenge response to its own scramble. The choices were (a) accept the
+   risk as an exception to Q5; (b) only client-certificate logins over the network; (c) the program verifies the server itself before the
+   login. **Decided: (c).** For every connection over the network with a CA (the program's own account, `VerifyFull` with the office CA;
+   a read-only or reporting server with its CA preference, `VerifyCA`), the driver no longer gets `SslCa`:
+   `DbConnectionSecurity.GetDriverConnectionString` hands it `SslMode=Required` and the connection gets its own
+   `RemoteCertificateValidationCallback` (`OfficeCaServerVerifier`), which MySqlConnector 2.6.2 passes to the TLS handshake; when it returns
+   false the handshake fails and `HandshakeResponse41` (the login) is never sent. The check: the chain, built by Windows' chain engine with
+   the office CA file as its only trusted roots, ends at a certificate of that file byte for byte; no element has an error (dates,
+   signatures, server-authentication usage, revocation); under `VerifyFull` the certificate names one of the connection's hosts by Windows'
+   SSL policy (the rules `VerifyFull` used); revocation as the driver asked for it (online under `VerifyFull`, none under `VerifyCA`), a
+   revoked certificate refused, an unknown status (no CRL distribution point) not. The connection string the rule checks keeps
+   `SslMode=VerifyFull` and `SslCa` (section 2.2 is unchanged); only the driver's copy differs. Loopback connections and strings without a
+   CA go to the driver as before. Because the session never carries the driver's policy errors, `ValidateFingerprint` is never reached, so
+   the same change closes the MariaDB 11.4 stored-hash path. Client certificates (`CertificateStoreLocation`, `CertificateThumbprint`, CAPI
+   and CNG keys) are separate options and go to the driver unchanged. The RDL engine's MySqlConnector connections are made by the program
+   too (`RdlEngineConfig.CreateConnection`). Pinned by `tests/DbConnectionSecurityTests/UnverifiedServerTests.cs` (fake servers on a
+   loopback port: nothing of the login reaches a server outside the office CA) and `OfficeCaServerVerifierTests.cs` (the check itself).
 
 ## 9. The rights of the program's database account (S2)
 
