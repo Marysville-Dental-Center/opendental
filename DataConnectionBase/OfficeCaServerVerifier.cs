@@ -328,9 +328,9 @@ namespace DataConnectionBase {
 					Marshal.WriteIntPtr(pArrayOids,pOid);
 					CERT_CHAIN_PARA certChainPara=new CERT_CHAIN_PARA();
 					certChainPara.cbSize=Marshal.SizeOf(typeof(CERT_CHAIN_PARA));
-					certChainPara.dwType=USAGE_MATCH_TYPE_AND;
-					certChainPara.cUsageIdentifier=1;
-					certChainPara.rgpszUsageIdentifier=pArrayOids;
+					certChainPara.RequestedUsage.dwType=USAGE_MATCH_TYPE_AND;
+					certChainPara.RequestedUsage.Usage.cUsageIdentifier=1;
+					certChainPara.RequestedUsage.Usage.rgpszUsageIdentifier=pArrayOids;
 					if(!CertGetCertificateChain(_hEngine,certificate.Handle,IntPtr.Zero,_hStoreAdditional,ref certChainPara,flags,IntPtr.Zero,
 						out _pChainContext))
 					{
@@ -437,11 +437,23 @@ namespace DataConnectionBase {
 				public int dwExclusiveFlags;
 			}
 
-			///<summary>CERT_CHAIN_PARA up to RequestedUsage (a CERT_USAGE_MATCH: dwType and a CERT_ENHKEY_USAGE).</summary>
+			///<summary>CERT_CHAIN_PARA up to RequestedUsage. The nested structs are declared as Windows declares them (and as dotnet/runtime's
+			///Interop.Crypt32 does): in a 64-bit process CERT_USAGE_MATCH is aligned to 8 bytes, so RequestedUsage starts at 8 and the struct is 32
+			///bytes, not the 24 a flat declaration gives. 16 bytes in a 32-bit process. DbConnectionSecurityTests checks the sizes and offsets.</summary>
 			[StructLayout(LayoutKind.Sequential)]
 			private struct CERT_CHAIN_PARA {
 				public int cbSize;
+				public CERT_USAGE_MATCH RequestedUsage;
+			}
+
+			[StructLayout(LayoutKind.Sequential)]
+			private struct CERT_USAGE_MATCH {
 				public int dwType;
+				public CERT_ENHKEY_USAGE Usage;
+			}
+
+			[StructLayout(LayoutKind.Sequential)]
+			private struct CERT_ENHKEY_USAGE {
 				public int cUsageIdentifier;
 				public IntPtr rgpszUsageIdentifier;
 			}
