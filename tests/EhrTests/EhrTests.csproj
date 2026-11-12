@@ -16,10 +16,7 @@
        touched. -->
   <ItemGroup>
     <!-- MySqlConnector (EHR-1): Support/ScratchDb.cs creates, loads and drops the ehr1_ scratch database on the local MariaDB itself, as
-         tests/InventoryTests does. -->
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
+         tests/InventoryTests does. It comes as a package through the projects below. -->
     <!-- PresentationCore, PresentationFramework, System.Xaml and WindowsBase: the program's windows derive from types that use WPF. -->
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />

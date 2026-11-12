@@ -26,9 +26,7 @@
     <DebugType>pdbonly</DebugType>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
+    <PackageReference Include="MySqlConnector" />
     <!-- Newtonsoft.Json, the version of Directory.Packages.props. -->
     <PackageReference Include="Newtonsoft.Json" />
     <Reference Include="System" />

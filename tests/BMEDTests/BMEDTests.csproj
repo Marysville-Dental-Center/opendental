@@ -11,11 +11,6 @@
     <DisableImplicitConfigurationDefines>true</DisableImplicitConfigurationDefines>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-  <ItemGroup>
     <!-- Scratch database helpers shared with the fork migration tests (database names start with forkmig_). -->
     <Compile Include="..\ForkMigrationTests\TestDb.cs">
       <Link>TestDb.cs</Link>

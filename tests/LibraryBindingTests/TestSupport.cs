@@ -221,6 +221,8 @@ namespace LibraryBindingTests {
 			{ "MimeKit",new[] { "MimeKit.dll" } },
 			{ "Microsoft.Identity.Client",new[] { "Microsoft.Identity.Client.dll" } },
 			{ "Microsoft.IdentityModel.Abstractions",new[] { "Microsoft.IdentityModel.Abstractions.dll" } },
+			//S2-2: the database client, 2.6.2 (lib\net48), whose file "Required dlls" holds until S2-4.
+			{ "MySqlConnector",new[] { "MySqlConnector.dll" } },
 			{ "Newtonsoft.Json",new[] { "Newtonsoft.Json.dll" } },
 			{ "SSH.NET",new[] { "Renci.SshNet.dll" } },
 			{ "Microsoft.Bcl.AsyncInterfaces",new[] { "Microsoft.Bcl.AsyncInterfaces.dll" } },

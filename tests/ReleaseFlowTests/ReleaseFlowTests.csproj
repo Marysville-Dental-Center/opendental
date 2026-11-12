@@ -3,9 +3,6 @@
        Database tests use scratch databases on the local MariaDB (127.0.0.1:3306, root, blank password) with synthetic data only, and are
        inconclusive when no server answers or RELEASEFLOW_TEST_DB=skip. Every .cs file under this folder is compiled. -->
   <ItemGroup>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
     <Reference Include="System.Configuration.Install" />
     <Reference Include="System.IO.Compression" />
   </ItemGroup>

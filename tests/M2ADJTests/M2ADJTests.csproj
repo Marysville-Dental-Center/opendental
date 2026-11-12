@@ -4,11 +4,6 @@
        definition.Supp. Database tests use scratch MariaDB databases with unique names and synthetic rows only. Every .cs file under this folder
        is compiled. -->
   <ItemGroup>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\..\CodeBase\xCodeBase.csproj" />
     <ProjectReference Include="..\..\DataConnectionBase\xDataConnectionBase.csproj" />
     <ProjectReference Include="..\..\OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj" />

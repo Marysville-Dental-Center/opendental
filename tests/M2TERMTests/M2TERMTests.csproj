@@ -4,9 +4,6 @@
        sit over, the report export keys that stay as they were, and the Blue Book estimate log. Database tests use a scratch MariaDB database with a unique per-run name and synthetic rows only.
        Every .cs file under this folder is compiled. -->
   <ItemGroup>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <ItemGroup>

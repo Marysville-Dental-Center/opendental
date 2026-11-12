@@ -4,9 +4,6 @@
        import, sheet import), and a source check that nothing writes a patient row around those two methods. Database tests use a scratch
        MariaDB database on 127.0.0.1:3306 with a unique name and synthetic rows only. Every .cs file under this folder is compiled. -->
   <ItemGroup>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="System.Xaml" />

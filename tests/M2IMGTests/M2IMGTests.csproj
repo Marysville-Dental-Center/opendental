@@ -11,9 +11,6 @@
     <Reference Include="Microsoft.Web.WebView2.WinForms">
       <HintPath>..\..\Required dlls\Microsoft.Web.WebView2.WinForms.dll</HintPath>
     </Reference>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <ItemGroup>

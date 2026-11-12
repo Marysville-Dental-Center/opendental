@@ -23,11 +23,12 @@
         "type": "Project",
         "dependencies": {
           "CodeBase": "[1.0.0, )",
-          "Microsoft.Bcl.AsyncInterfaces": "[10.0.14, )",
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "[8.0.2, )",
-          "Microsoft.Extensions.Logging.Abstractions": "[8.0.3, )",
+          "Microsoft.Bcl.AsyncInterfaces": "[10.0.15, )",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.15, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[10.0.15, )",
+          "MySqlConnector": "[2.6.2, )",
           "System.Buffers": "[4.6.1, )",
-          "System.Diagnostics.DiagnosticSource": "[8.0.1, )",
+          "System.Diagnostics.DiagnosticSource": "[10.0.15, )",
           "System.Memory": "[4.6.3, )",
           "System.Numerics.Vectors": "[4.6.1, )",
           "System.Runtime.CompilerServices.Unsafe": "[6.1.2, )",
@@ -52,7 +53,7 @@
       "migradoc.documentobjectmodel": {
         "type": "Project",
         "dependencies": {
-          "Microsoft.Extensions.Logging.Abstractions": "[8.0.3, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[10.0.15, )",
           "PdfSharp.Shared": "[1.0.0, )",
           "PdfSharp.System": "[1.0.0, )"
         }
@@ -60,7 +61,7 @@
       "migradoc.rendering-gdi": {
         "type": "Project",
         "dependencies": {
-          "Microsoft.Extensions.Logging.Abstractions": "[8.0.3, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[10.0.15, )",
           "MigraDoc.DocumentObjectModel": "[1.0.0, )",
           "PdfSharp-gdi": "[1.0.0, )",
           "PdfSharp.Charting-gdi": "[1.0.0, )",
@@ -76,6 +77,7 @@
         "dependencies": {
           "CodeBase": "[1.0.0, )",
           "DataConnectionBase": "[1.0.0, )",
+          "MySqlConnector": "[2.6.2, )",
           "OpenPmsDentalBusiness": "[1.0.0, )"
         }
       },
@@ -88,6 +90,7 @@
           "ImagingDeviceManager": "[1.0.0, )",
           "MigraDoc.DocumentObjectModel": "[1.0.0, )",
           "MigraDoc.Rendering-gdi": "[1.0.0, )",
+          "MySqlConnector": "[2.6.2, )",
           "Newtonsoft.Json": "[13.0.4, )",
           "ODCrypt": "[1.0.0, )",
           "ODR": "[1.0.0, )",
@@ -117,6 +120,7 @@
           "Microsoft.Identity.Client": "[4.92.0, )",
           "Microsoft.IdentityModel.Abstractions": "[8.14.0, )",
           "MimeKit": "[4.18.2, )",
+          "MySqlConnector": "[2.6.2, )",
           "Newtonsoft.Json": "[13.0.4, )",
           "ODCrypt": "[1.0.0, )",
           "OpenPmsDentalStorage": "[1.0.0, )",
@@ -130,7 +134,8 @@
         "type": "Project",
         "dependencies": {
           "CodeBase": "[1.0.0, )",
-          "DataConnectionBase": "[1.0.0, )"
+          "DataConnectionBase": "[1.0.0, )",
+          "MySqlConnector": "[2.6.2, )"
         }
       },
       "openpmsdentalgraph": {
@@ -138,6 +143,7 @@
         "dependencies": {
           "CodeBase": "[1.0.0, )",
           "DataConnectionBase": "[1.0.0, )",
+          "MySqlConnector": "[2.6.2, )",
           "Newtonsoft.Json": "[13.0.4, )",
           "OpenPmsDentalBusiness": "[1.0.0, )",
           "PdfSharp-gdi": "[1.0.0, )"
@@ -147,7 +153,7 @@
         "type": "Project",
         "dependencies": {
           "CodeBase": "[1.0.0, )",
-          "Microsoft.Bcl.AsyncInterfaces": "[10.0.14, )",
+          "Microsoft.Bcl.AsyncInterfaces": "[10.0.15, )",
           "SSH.NET": "[2026.0.0, )"
         }
       },
@@ -160,7 +166,7 @@
       "pdfsharp-gdi": {
         "type": "Project",
         "dependencies": {
-          "Microsoft.Extensions.Logging.Abstractions": "[8.0.3, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[10.0.15, )",
           "PdfSharp.Shared": "[1.0.0, )",
           "PdfSharp.System": "[1.0.0, )",
           "System.Memory": "[4.6.3, )"
@@ -177,14 +183,14 @@
       "pdfsharp.shared": {
         "type": "Project",
         "dependencies": {
-          "Microsoft.Extensions.Logging.Abstractions": "[8.0.3, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[10.0.15, )",
           "System.Memory": "[4.6.3, )"
         }
       },
       "pdfsharp.system": {
         "type": "Project",
         "dependencies": {
-          "Microsoft.Extensions.Logging.Abstractions": "[8.0.3, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[10.0.15, )",
           "PdfSharp.Shared": "[1.0.0, )",
           "System.Memory": "[4.6.3, )"
         }
@@ -301,9 +307,9 @@
       },
       "Microsoft.Bcl.AsyncInterfaces": {
         "type": "CentralTransitive",
-        "requested": "[10.0.14, )",
-        "resolved": "10.0.14",
-        "contentHash": "HCu9NbiXDh9++j4eRNRHCOiKPw/7I5UEJlFIRaDM3v0+ttZaH8p8rjxSWfNgP2cGv5JAa4EZnmc/nlcUOTFlpA==",
+        "requested": "[10.0.15, )",
+        "resolved": "10.0.15",
+        "contentHash": "FgW54xgaEM6RGqJQxJpxYJ9RzqXyCtZya77B1VdAJLIepgwuTLvbwdcJgyJNbD7gHiYEnbiI/u0P8x1xBTbU0A==",
         "dependencies": {
           "System.Threading.Tasks.Extensions": "4.6.3"
         }
@@ -321,23 +327,24 @@
       },
       "Microsoft.Extensions.DependencyInjection.Abstractions": {
         "type": "CentralTransitive",
-        "requested": "[8.0.2, )",
-        "resolved": "8.0.2",
-        "contentHash": "3iE7UF7MQkCv1cxzCahz+Y/guQbTqieyxyaWKhrRO91itI9cOKO76OHeQDahqG4MmW5umr3CcCvGmK92lWNlbg==",
+        "requested": "[10.0.15, )",
+        "resolved": "10.0.15",
+        "contentHash": "KczR2nV7ooeimtZxAawPht/FJUHnX+uoWy7y4pba+iaRQBwUM2NwtiqZg+/FpZDHUf2RkkzveGkhMTWDNzmDUA==",
         "dependencies": {
-          "Microsoft.Bcl.AsyncInterfaces": "8.0.0",
-          "System.Threading.Tasks.Extensions": "4.5.4"
+          "Microsoft.Bcl.AsyncInterfaces": "10.0.15",
+          "System.Threading.Tasks.Extensions": "4.6.3"
         }
       },
       "Microsoft.Extensions.Logging.Abstractions": {
         "type": "CentralTransitive",
-        "requested": "[8.0.3, )",
-        "resolved": "8.0.3",
-        "contentHash": "dL0QGToTxggRLMYY4ZYX5AMwBb+byQBd/5dMiZE07Nv73o6I5Are3C7eQTh7K2+A4ct0PVISSr7TZANbiNb2yQ==",
+        "requested": "[10.0.15, )",
+        "resolved": "10.0.15",
+        "contentHash": "s5xzXGWqqlmmThMnQ1rnmL7QLwbluB2JqX9NaK8C9HPuHzN7kfmiddTRbwts5rQssATkh2B18RrofjeUD8g14A==",
         "dependencies": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.2",
-          "System.Buffers": "4.5.1",
-          "System.Memory": "4.5.5"
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.15",
+          "System.Buffers": "4.6.1",
+          "System.Diagnostics.DiagnosticSource": "10.0.15",
+          "System.Memory": "4.6.3"
         }
       },
       "Microsoft.Identity.Client": {
@@ -369,6 +376,18 @@
           "System.Memory": "4.6.3"
         }
       },
+      "MySqlConnector": {
+        "type": "CentralTransitive",
+        "requested": "[2.6.2, )",
+        "resolved": "2.6.2",
+        "contentHash": "dlTc/tsBa42szdvpj4nrHvQVUb0gsMwR9HT6J0Zz2OSqfP0CdYlGw+qQPqCpbnO97idfvclSjKYtM6y5QaBQaQ==",
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.2",
+          "Microsoft.Extensions.Logging.Abstractions": "8.0.2",
+          "System.Diagnostics.DiagnosticSource": "8.0.1",
+          "System.Threading.Tasks.Extensions": "4.6.3"
+        }
+      },
       "Newtonsoft.Json": {
         "type": "CentralTransitive",
         "requested": "[13.0.4, )",
@@ -394,12 +413,12 @@
       },
       "System.Diagnostics.DiagnosticSource": {
         "type": "CentralTransitive",
-        "requested": "[8.0.1, )",
-        "resolved": "8.0.1",
-        "contentHash": "vaoWjvkG1aenR2XdjaVivlCV9fADfgyhW5bZtXT23qaEea0lWiUljdQuze4E31vKM7ZWJaSUsbYIKE3rnzfZUg==",
+        "requested": "[10.0.15, )",
+        "resolved": "10.0.15",
+        "contentHash": "FiaK64a1hYTWYZTxr98yieZxO6aBujVr2SGuYQURv0AKzz0bsIENYTm8On/s70Llp+JXzgtW8jg6kf59zDZwuw==",
         "dependencies": {
-          "System.Memory": "4.5.5",
-          "System.Runtime.CompilerServices.Unsafe": "6.0.0"
+          "System.Memory": "4.6.3",
+          "System.Runtime.CompilerServices.Unsafe": "6.1.2"
         }
       },
       "System.Formats.Asn1": {

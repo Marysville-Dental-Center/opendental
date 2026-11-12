@@ -11,11 +11,6 @@
   </PropertyGroup>
   <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
   <ItemGroup>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\SyntheticData.csproj" />
     <!-- Only to cross-check the enum numbers that already existed in 24.3; the tool itself does not use the business layer. -->
     <ProjectReference Include="..\..\..\OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj" />

@@ -6,9 +6,6 @@
        fork migrations and dropped afterwards, and a scratch A-to-Z folder in the temp folder; they are skipped (inconclusive) when the server does
        not answer or when S0F_TEST_DB=skip. No window of the program is shown. Synthetic data only. Every .cs file under this folder is compiled. -->
   <ItemGroup>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
     <!-- PresentationCore, PresentationFramework, System.Xaml and WindowsBase: InputBox (WpfControlsOD) is a WPF window class. -->
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />

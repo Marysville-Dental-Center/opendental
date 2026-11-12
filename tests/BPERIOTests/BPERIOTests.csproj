@@ -3,9 +3,6 @@
        "Recession" term option and the birthdate on the printed Graphical Perio Chart. Database tests use a scratch MariaDB database with the
        current reference schema (Open Dental 26.1.70) and synthetic rows only. Every .cs file under this folder is compiled. -->
   <ItemGroup>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="System.Windows.Forms" />

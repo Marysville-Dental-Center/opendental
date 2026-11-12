@@ -23,9 +23,7 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- The program's MySQL client (MySql.Data is not shipped). -->
-    <Reference Include="MySqlConnector">
-      <HintPath>..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
+    <PackageReference Include="MySqlConnector" />
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />

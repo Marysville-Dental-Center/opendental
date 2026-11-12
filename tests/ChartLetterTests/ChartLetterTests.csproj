@@ -2,9 +2,6 @@
   <!-- Tests for chart letters (package A-CL in docs/specs/port-backlog.md): the .docx merge, hashes and statuses, the progress notes rows, the
        Imaging tree exclusion and the versioning on scratch MariaDB databases with synthetic data. Every .cs file under this folder is compiled. -->
   <ItemGroup>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
     <Reference Include="System.IO.Compression" />
   </ItemGroup>
   <ItemGroup>
