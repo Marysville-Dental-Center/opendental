@@ -132,11 +132,15 @@ namespace WindowChecksTests.InProc {
 					return "";
 				}
 				listUser.SetSelected(index,true);
+				//With UserNameManualEntry on, OK reads the typed name instead of the list.
+				((TextBox)Ui.GetField(formLogOn,"textUser")).Text=listNames[index];
 				((TextBox)Ui.GetField(formLogOn,"textPassword")).Text="";
 				return string.Join(", ",listNames);
 			});
 			if(!checkResult.Expect(listed!="","The log-on window lists "+userName,listed)) {
-				ui.Close(hwndLogOn);
+				//Never cancelled (see LogOnAsAdmin): back to Admin.
+				LogOnAsAdmin(ui,hwndLogOn,checkResult);
+				posted.Wait(60000);
 				return false;
 			}
 			List<IntPtr> listBeforeOk=ui.GetWindows();
@@ -146,6 +150,9 @@ namespace WindowChecksTests.InProc {
 					checkResult.Fail("Log on as "+userName+" showed: "+ui.DescribeWindow(hwnd));
 					ui.Close(hwnd);
 				}
+				//The log-on window is still open: back to Admin, never cancelled.
+				LogOnAsAdmin(ui,hwndLogOn,checkResult);
+				posted.Wait(60000);
 				return false;
 			}
 			posted.Wait(60000);
@@ -159,6 +166,64 @@ namespace WindowChecksTests.InProc {
 			bool isPatient=ui.Invoke(() => FormOpenDental.PatNumCur==1);
 			return checkResult.Expect(userAfter==userName && isPatient,"Log Off, log on as "+userName+" (blank password): logged on, patient #1 still selected",
 				"user "+userAfter+", patient #1 "+isPatient);
+		}
+
+		///<summary>The way out of a log-on window the harness cannot use. It is never cancelled: a log-on window closed with anything but OK makes
+		///FormOpenDental.ShowLogOn call Application.Exit, and the main window's FormClosed then ends the process with Environment.Exit, which in
+		///process is the test host (no later check, no AssemblyCleanup, no Z, the scratch copy left behind). Instead the message boxes a failed OK left
+		///over it are answered, Admin is selected with a blank password (the harness's own start-up log-on) and OK is clicked, so the program goes
+		///back to a known user. Returns whether the log-on window went; when it did not, it is left open for Stop, which detaches the main window's
+		///closing first.</summary>
+		public static bool LogOnAsAdmin(Ui ui,IntPtr hwndLogOn,CheckResult checkResult) {
+			if(!Native.IsWindow(hwndLogOn)) {
+				return true;
+			}
+			//"Login failed", "Invalid username, password ...": message boxes over the log-on window.
+			foreach(IntPtr hwnd in ui.GetWindows().Where(x => x!=hwndLogOn && Native.IsDialogClass(x))) {
+				checkResult?.Note("Over the log-on window: "+ui.DescribeWindow(hwnd)+"; answered");
+				if(!Native.ClickDialogButton(hwnd,"OK")) {
+					Native.CancelDialog(hwnd);
+				}
+				ui.WaitGone(hwnd);
+			}
+			string problem=ui.Invoke(() => {
+				Form formLogOn=Control.FromHandle(hwndLogOn) as Form;
+				if(formLogOn==null || formLogOn.IsDisposed) {
+					return "the log-on window is gone";
+				}
+				OpenPmsDental.UI.ListBox listUser=(OpenPmsDental.UI.ListBox)Ui.GetField(formLogOn,"listUser");
+				List<string> listNames=listUser.Items.GetAll<string>();
+				int index=listNames.FindIndex(x => x.Trim().ToLower()=="admin");
+				if(index<0) {
+					return "Admin is not listed ("+string.Join(", ",listNames)+")";
+				}
+				listUser.SetSelected(index,true);
+				((TextBox)Ui.GetField(formLogOn,"textUser")).Text=listNames[index];
+				((TextBox)Ui.GetField(formLogOn,"textPassword")).Text="";
+				return "";
+			});
+			if(problem=="the log-on window is gone") {
+				return true;
+			}
+			if(problem!="") {
+				checkResult?.Fail("The log-on window could not go back to Admin: "+problem+"; left open (never cancelled)");
+				return false;
+			}
+			ui.Post("Log on as Admin: OK",() => Ui.Call(Control.FromHandle(hwndLogOn),"butOK_Click",null,EventArgs.Empty));
+			bool isGone=ui.WaitGone(hwndLogOn,30000);
+			if(!isGone) {
+				foreach(IntPtr hwnd in ui.GetWindows().Where(x => x!=hwndLogOn && Native.IsDialogClass(x))) {
+					checkResult?.Note("Log on as Admin showed: "+ui.DescribeWindow(hwnd)+"; answered");
+					if(!Native.ClickDialogButton(hwnd,"OK")) {
+						Native.CancelDialog(hwnd);
+					}
+					ui.WaitGone(hwnd);
+				}
+				checkResult?.Fail("Log on as Admin (blank password) did not close the log-on window; left open (never cancelled)");
+				return false;
+			}
+			checkResult?.Note("The log-on window went back to Admin (blank password) instead of being cancelled; user now "+CurUserName(ui));
+			return true;
 		}
 
 		///<summary>Setup > Chart > EHR, waited for; zero when it did not open.</summary>

@@ -287,6 +287,11 @@ namespace WindowChecksTests.InProc {
 				Native.CancelDialog(hwnd);
 				return WaitGone(hwnd);
 			}
+			//The log-on window is never closed: closed without OK, FormOpenDental.ShowLogOn calls Application.Exit and the main window's FormClosed
+			//ends the process (the test host) with Environment.Exit. It logs on as Admin instead.
+			if(GetWindowTypeName(hwnd)=="FormLogOn") {
+				return InProcChecks.LogOnAsAdmin(this,hwnd,CheckResultCur);
+			}
 			//Posted, because closing may itself open a message ("Save changes?"), which must not block this thread.
 			FormMain.BeginInvoke((Action)(() => {
 				try {
@@ -329,8 +334,14 @@ namespace WindowChecksTests.InProc {
 					return;
 				}
 				foreach(IntPtr hwnd in listWindows) {
+					if(!Native.IsWindow(hwnd)) {
+						continue;//Gone with an earlier one (a message box over the log-on window).
+					}
 					checkResult?.Note("Closed a window left open: "+DescribeWindow(hwnd));
-					Close(hwnd);
+					if(!Close(hwnd) && GetWindowTypeName(hwnd)=="FormLogOn") {
+						//Not cancelled (see Close); Stop ends the window's thread with the main window's closing detached.
+						return;
+					}
 				}
 			}
 		}

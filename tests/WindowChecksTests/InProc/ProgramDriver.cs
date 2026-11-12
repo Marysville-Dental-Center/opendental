@@ -5,7 +5,9 @@
 // print them, and close them. Every unhandled exception (Application.ThreadException, AppDomain.UnhandledException, ODThread's, WPF's
 // Dispatcher) is collected and fails the check that was running.
 // The main window is never closed through the program's own closing (its FormClosed ends the process with Environment.Exit): Stop removes
-// those handlers and ends the window's thread, and the AppDomain is unloaded.
+// those handlers and ends the window's thread, and the AppDomain is unloaded. They are removed before the harness closes any window left open
+// (Stop, a timed-out or stopped check), and the log-on window is never cancelled (Ui.Close logs on as Admin instead), because a cancelled log-on
+// window reaches the program's exit too.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -28,6 +30,8 @@ namespace WindowChecksTests.InProc {
 		private string _startError="";
 		private readonly List<string> _listExceptions=new List<string>();
 		private readonly object _lock=new object();
+		///<summary>Set on the window's thread once the main window's FormClosing and FormClosed handlers are removed (DetachMainClosing).</summary>
+		private volatile bool _isMainClosingDetached;
 		public Ui UiCur;
 
 		public override object InitializeLifetimeService() {
@@ -209,10 +213,12 @@ namespace WindowChecksTests.InProc {
 				}
 				catch(Exception) {
 				}
+				DetachMainClosing(checkResult);
 				UiCur.CloseStrayWindows(checkResult);
 			}
 			if(exceptionScript!=null) {
 				checkResult.Fail("The check's script stopped: "+exceptionScript.GetType().Name+": "+exceptionScript.Message+" "+FirstFrames(exceptionScript));
+				DetachMainClosing(checkResult);
 				UiCur.CloseStrayWindows(checkResult);
 			}
 			foreach(string exception in GetExceptionsFrom(countExceptionsBefore)) {
@@ -232,6 +238,8 @@ namespace WindowChecksTests.InProc {
 				return "not started";
 			}
 			try {
+				//First, so that no window closed below can reach the program's own exit (Environment.Exit would end the test host).
+				DetachMainClosing(null);
 				UiCur?.CloseStrayWindows(null);
 				_formMain.BeginInvoke((Action)(() => {
 					RemoveEventHandlers(_formMain,"EVENT_FORMCLOSING");
@@ -246,6 +254,29 @@ namespace WindowChecksTests.InProc {
 				return "The window's thread did not end within "+timeoutSeconds+" s.";
 			}
 			return "";
+		}
+
+		///<summary>Removes the main window's FormClosing and FormClosed handlers on the window's thread and waits for it (up to 30 s; a hung thread
+		///is noted). Done before the harness closes windows left open (a timed-out or stopped check, Stop): a log-on window closed without OK makes
+		///FormOpenDental.ShowLogOn call Application.Exit, and FormOpenDental_FormClosed ends with Environment.Exit, which in process ends the test
+		///host. The rest of the session's checks never close the main window, so they do not need them.</summary>
+		private void DetachMainClosing(CheckResult checkResult) {
+			if(_isMainClosingDetached || _formMain==null) {
+				return;
+			}
+			try {
+				IAsyncResult asyncResult=_formMain.BeginInvoke((Action)(() => {
+					RemoveEventHandlers(_formMain,"EVENT_FORMCLOSING");
+					RemoveEventHandlers(_formMain,"EVENT_FORMCLOSED");
+					_isMainClosingDetached=true;
+				}));
+				if(!asyncResult.AsyncWaitHandle.WaitOne(TimeSpan.FromSeconds(30))) {
+					checkResult?.Note("The main window's closing could not be detached within 30 s (its thread did not run the call)");
+				}
+			}
+			catch(Exception ex) {
+				checkResult?.Note("The main window's closing was not detached: "+ex.GetType().Name+": "+ex.Message);
+			}
 		}
 
 		private static void RemoveEventHandlers(Component component,string keyName) {
