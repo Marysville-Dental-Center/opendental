@@ -2,8 +2,9 @@
   <!-- Tests for the client-side database connection security (docs/specs/db-connection-security.md): the rule for loopback and network
        servers, the refusal messages, the connection strings, the DPAPI helper, FreeDentalConfig.xml read and write (old-style files too) and
        the connection settings tool's switches and secrets file. Nothing connects anywhere but the local MariaDB at 127.0.0.1:3306 (scratch
-       databases named test_dbsec_*) and the tests' own fake server on a loopback port (UnverifiedServerTests); every network case only
-       checks the built settings and the refusal, which comes before any connection.
+       databases named test_dbsec_*) and the tests' own fake servers on a loopback port (UnverifiedServerTests, reached as "localhost."); every
+       other network case only checks the built settings and the refusal, which comes before any connection. The certificates of the server
+       check (OfficeCaServerVerifierTests, TestCertificateAuthority) are made in memory; nothing is added to a certificate store.
        Every .cs file under this folder is compiled. -->
   <ItemGroup>
     <Reference Include="System.Security" />

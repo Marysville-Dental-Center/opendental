@@ -1,21 +1,27 @@
-// What MySqlConnector 2.6.2 does with a server whose certificate is outside the office CA (docs/port-notes/S2-2.md, section 3.6; owner decision
-// Q5 and the open point DB-SEC 3 of docs/specs/db-connection-security.md, section 8). Since 2.4 the driver no longer fails the TLS handshake for
-// such a certificate under VerifyCA and VerifyFull: it notes the policy errors, logs in over that TLS session, and refuses the connection only
-// after the server's OK packet, unless the login had a password and the server proves in that OK packet that it knows the account's stored hash
-// (ServerSession.ValidateFingerprint). These tests pin the three facts that follow, with a fake server on a loopback port of the test that has
-// its own self-signed certificate (an attacker in the middle presents whatever certificate it likes, whatever server the office runs):
-// 1. A password login is refused, but only after the driver has sent the account's mysql_native_password challenge response, built on the
-//    fake server's scramble, which a dictionary attack can test offline. 2.3.7 failed the TLS handshake first and sent nothing.
-// 2. A login without a password (the client certificate as the only credential) is refused too, and sends no secret.
-// 3. A password login is accepted by a server that holds only the account's stored hash (the mysql.user value, from a copy of the table or a
-//    backup of the data directory), whatever its certificate.
-// The real-server tests (DevDbTlsServerTests.AnotherCa_IsRefused_SoTheServerIsReallyVerified, TlsCertificateLoginTests) show the refusal of
-// another CA; they cannot show 3, because MariaDB 10.11 sends no such proof. If a later driver verifies the server before it logs in, or no
-// longer accepts the proof, 1 or 3 fails here: update the port note, the spec's DB-SEC 3 and these tests together.
-// Nothing here connects anywhere but the fake server on 127.0.0.1. Licensed under the GNU General Public License, version 2 or later. See LICENSE
-// in the repository root.
+// What the program does with a database server whose certificate is outside the office CA, since DB-SEC 3 was decided as (c)
+// (docs/specs/db-connection-security.md section 8, docs/port-notes/S2-2.md section 3.6). MySqlConnector 2.6.2 with SslCa logs in first and
+// decides on the certificate after the server's OK packet, and accepts a server that proves the account's stored hash with any certificate
+// (ServerSession.ValidateFingerprint). So the program never hands SslCa to the driver for a server over the network: the driver gets
+// SslMode=Required and the program's own check (OfficeCaServerVerifier) as the connection's certificate callback, which fails the TLS handshake
+// before the login (HandshakeResponse41) is sent. These tests connect through the program's own factories (DbConnectionSecurity.NewMySqlConnection
+// and NewMySqlConnectionWithoutPooling, with the program's own strings) to a fake server on a loopback port of the test, reached by the name
+// "localhost." (with its trailing dot: a name on the network for the connection rule, which Windows resolves to this computer), and show:
+// 1. A password login (VerifyFull, and a read-only server's VerifyCA) to a server with its own self-signed certificate is refused in the TLS
+//    handshake: the fake server never receives a login, so no challenge response reaches it. (With the driver's own check it received the
+//    account's challenge response, which a dictionary attack can test offline.)
+// 2. A fake server that holds the account's stored hash is refused the same way: it never gets the chance to prove it. (With the driver's own
+//    check it was accepted with any certificate.)
+// 3. A login with the client certificate alone is refused the same way.
+// 4. A server with a certificate of the office CA that names another host is refused under VerifyFull, and accepted under VerifyCA, which
+//    checks the chain only (S1).
+// 5. A server with a certificate of the office CA that names the host is accepted, and the fake server completes a real login (it reads the
+//    user and the challenge response, answers OK, and receives the driver's SET NAMES and COM_QUIT).
+// If a later driver or change of the program sends the login before the certificate is decided, 1 to 3 fail here: update the port note and the
+// spec's DB-SEC 3 with them. Nothing here connects anywhere but the fake server on 127.0.0.1; every certificate is made in memory.
+// Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -26,6 +32,7 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using DataConnectionBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MySqlConnector;
@@ -34,39 +41,74 @@ namespace DbConnectionSecurityTests {
 	[TestClass]
 	public class UnverifiedServerTests {
 		private const string USER="opmsd";
+		///<summary>A name for this computer that the connection rule reads as the network (it is not "localhost" exactly), so the program's
+		///string for a server over the network is built and checked for it, and Windows' resolver answers it with loopback addresses only.
+		///</summary>
+		private const string HOST_DOT="localhost.";
 		private string _folder;
+		private TestCertificateAuthority _caOffice;
 		private string _pathOfficeCa;
+		private string _officeCaPathOld;
 
 		[TestInitialize]
 		public void SetUp() {
 			_folder=TestHelpers.NewTempFolder();
-			_pathOfficeCa=TestHelpers.WriteCaPem(_folder);
+			_caOffice=TestCertificateAuthority.CreateRoot("CN=Synthetic Office CA "+Guid.NewGuid().ToString("N"));
+			_pathOfficeCa=_caOffice.WritePem(_folder,"office-ca.pem");
+			_officeCaPathOld=DataConnection.OfficeCaPath;
+			DataConnection.OfficeCaPath=_pathOfficeCa;
 		}
 
 		[TestCleanup]
 		public void CleanUp() {
+			DataConnection.OfficeCaPath=_officeCaPathOld;
+			_caOffice.Dispose();
 			TestHelpers.DeleteFolder(_folder);
 		}
 
-		///<summary>The program's own string for its database account on a server over the network (VerifyFull with the office CA), with this
-		///password, pointed at the fake server. sslMode VerifyCA is the read-only and reporting servers' mode with a CA preference (S1).</summary>
-		private string GetConnectionString(FakeServer fakeServer,string password,MySqlSslMode sslMode) {
-			string connectionString=DataConnection.BuildSimpleConnectionString(DatabaseType.MySql,TestHelpers.NETWORK_HOST,"s22_unverified",USER,
-				password,sslCa:_pathOfficeCa,certificateThumbprint:"");
+		///<summary>Inconclusive unless "localhost." resolves to loopback addresses only, so a test can never connect anywhere but this computer.
+		///</summary>
+		private static void AssertHostDotIsThisComputer() {
+			Assert.IsFalse(DbConnectionSecurity.IsLoopbackConnectorServer(HOST_DOT),"The rule reads "+HOST_DOT+" as a name on the network.");
+			IPAddress[] arrayIpAddresses;
+			try {
+				arrayIpAddresses=Dns.GetHostAddresses(HOST_DOT);
+			}
+			catch(SocketException ex) {
+				Assert.Inconclusive(HOST_DOT+" does not resolve here ("+ex.Message+"); the tests need it to reach their fake server.");
+				return;
+			}
+			if(arrayIpAddresses.Length==0 || arrayIpAddresses.Any(x => !IPAddress.IsLoopback(x))) {
+				Assert.Inconclusive(HOST_DOT+" resolves to "+string.Join(", ",arrayIpAddresses.Select(x => x.ToString()))+", not to this computer only.");
+			}
+		}
+
+		///<summary>The program's string for its own account on a server over the network (BuildSimpleConnectionString: VerifyFull, the office CA
+		///of DataConnection.OfficeCaPath, no client certificate), for the fake server, outside the pool so each test's fake server sees its own
+		///connection end.</summary>
+		private static string GetMainConnectionString(FakeServer fakeServer,string password) {
+			string connectionString=DataConnection.BuildSimpleConnectionString(DatabaseType.MySql,HOST_DOT+":"+fakeServer.Port,"s22v_unverified",USER,
+				password,certificateThumbprint:"");
 			MySqlConnectionStringBuilder builder=new MySqlConnectionStringBuilder(connectionString);
 			Assert.AreEqual(MySqlSslMode.VerifyFull,builder.SslMode,"The program's string for a server over the network.");
-			//The fake server stands where the office server would be; the CA stays the office CA (this computer may have one of its own).
-			builder.Server="127.0.0.1";
-			builder.Port=(uint)fakeServer.Port;
-			builder.SslCa=_pathOfficeCa;
-			builder.SslMode=sslMode;
 			builder.Pooling=false;
 			builder.ConnectionTimeout=10;
 			return builder.ConnectionString;
 		}
 
-		///<summary>The connection's refusal: a MySqlException 1042 with an AuthenticationException that names the chain error.</summary>
-		private static void AssertRefusedForTheCertificate(Exception ex,string label) {
+		///<summary>A read-only or reporting server's string with its CA preference (BuildPreferenceServerConnectionString: VerifyCA), as the
+		///program builds it; NewMySqlConnectionWithoutPooling connects it outside the pool.</summary>
+		private string GetPreferenceConnectionString(FakeServer fakeServer,string password) {
+			string connectionString=DataConnection.BuildPreferenceServerConnectionString(HOST_DOT+":"+fakeServer.Port,"s22v_unverified",USER,password,
+				_pathOfficeCa);
+			Assert.AreEqual(MySqlSslMode.VerifyCA,new MySqlConnectionStringBuilder(connectionString).SslMode);
+			return connectionString;
+		}
+
+		///<summary>The refusal of a server in the TLS handshake: MySqlException 1042 ("SSL Authentication Error", which IsConnectionLost treats as
+		///before) with the AuthenticationException of SslStream for the rejected certificate, and the program's check (the connection's callback)
+		///says why. No secret in it.</summary>
+		private static void AssertRefusedInTheHandshake(Exception ex,string label,MySqlConnection mySqlConnection,string partOfRefusal) {
 			MySqlException mySqlException=null;
 			AuthenticationException authenticationException=null;
 			for(Exception exceptionInner=ex;exceptionInner!=null;exceptionInner=exceptionInner.InnerException) {
@@ -76,92 +118,165 @@ namespace DbConnectionSecurityTests {
 			Assert.IsNotNull(mySqlException,label+": "+ex);
 			Assert.AreEqual(1042,mySqlException.Number,label+": "+ex);
 			Assert.IsNotNull(authenticationException,label+": "+ex);
-			StringAssert.Contains(authenticationException.Message,"RemoteCertificateChainErrors",label);
+			Assert.IsTrue(authenticationException.Message.IndexOf("remote certificate",StringComparison.OrdinalIgnoreCase)>=0,
+				label+": "+authenticationException.Message);
 			Assert.IsFalse(ex.ToString().Contains(TestHelpers.SECRET),label+": the password in a message.");
+			Assert.IsNotNull(mySqlConnection.RemoteCertificateValidationCallback,label+": the program's check is the connection's callback.");
+			OfficeCaServerVerifier verifier=(OfficeCaServerVerifier)mySqlConnection.RemoteCertificateValidationCallback.Target;
+			StringAssert.Contains(verifier.LastRefusal,partOfRefusal,label);
 		}
 
-		[TestMethod]
-		public void PasswordLogin_ServerOutsideTheOfficeCa_IsRefused_ButOnlyAfterTheChallengeResponseWasSent() {
-			foreach(MySqlSslMode sslMode in new[] { MySqlSslMode.VerifyFull,MySqlSslMode.VerifyCA }) {
-				using(FakeServer fakeServer=new FakeServer(storedHash:null)) {
-					using(MySqlConnection mySqlConnection=new MySqlConnection(GetConnectionString(fakeServer,TestHelpers.SECRET,sslMode))) {
-						Exception ex=TestHelpers.AssertThrows<Exception>(() => mySqlConnection.Open());
-						AssertRefusedForTheCertificate(ex,sslMode.ToString());
-					}
-					fakeServer.Wait();
-					Assert.IsTrue(fakeServer.IsTls,sslMode+": the login went over TLS.");
-					Assert.AreEqual(USER,fakeServer.UserReceived,sslMode+": the login reached the server whose certificate was refused.");
-					//What a server in the middle keeps: the challenge response to its own scramble. Testing a password against it needs nothing
-					//else, which is an offline dictionary attack. A wrong guess does not match.
-					Assert.AreEqual(20,fakeServer.ArrayAuthResponse.Length,sslMode+": MySqlConnector 2.6.2 sends the challenge response before it refuses "
-						+"the certificate (docs/port-notes/S2-2.md, section 3.6). If nothing was sent, the driver verifies first again: update the port note "
-						+"and DB-SEC 3.");
-					CollectionAssert.AreEqual(GetNativePasswordResponse(TestHelpers.SECRET,fakeServer.ArrayScramble),fakeServer.ArrayAuthResponse,
-						sslMode+": the response checks against the password.");
-					CollectionAssert.AreNotEqual(GetNativePasswordResponse("Synthetic-Wrong-Guess",fakeServer.ArrayScramble),fakeServer.ArrayAuthResponse,
-						sslMode.ToString());
-					CollectionAssert.AreEqual(new[] { FakeServer.CLOSED },fakeServer.ListCommandsAfterOk,sslMode+": after the OK packet the client closed "
-						+"the connection without a command.");
-				}
+		///<summary>What the fake server saw of a refused connection: the client asked for TLS, then ended the connection without sending anything
+		///over it, so nothing of the login arrived. The server's side of the TLS handshake may complete first: SslStream on .NET Framework calls
+		///the certificate callback when its side of the handshake is done, and on a refusal closes the connection instead of returning it to the
+		///driver.</summary>
+		private static void AssertNothingOfTheLoginArrived(FakeServer fakeServer,string label) {
+			fakeServer.Wait();
+			Assert.IsTrue(fakeServer.IsTlsRequested,label+": the client asked for TLS.");
+			Assert.IsNull(fakeServer.UserReceived,label+": no login reached the server.");
+			Assert.IsNull(fakeServer.ArrayAuthResponse,label+": no challenge response reached the server.");
+			if(fakeServer.IsTlsEstablished) {
+				CollectionAssert.AreEqual(new[] { FakeServer.CLOSED },fakeServer.ListCommandsAfterOk,label+": the client closed the TLS session without "
+					+"a login.");
+			}
+			else {
+				Assert.IsNotNull(fakeServer.TlsFailure,label+": the TLS handshake ended.");
 			}
 		}
 
+		private static X509Certificate2 IssueServerCertificate(TestCertificateAuthority ca,string dnsName) {
+			return ca.Issue("CN="+dnsName,new[] { dnsName },null,withPrivateKey:true);
+		}
+
 		[TestMethod]
-		public void CertificateOnlyLogin_ServerOutsideTheOfficeCa_IsRefused_AndNoSecretIsSent() {
-			//The driver decides on the empty password alone (CertificateErrorNoPassword), so the client certificate, which would have to be in
-			//LocalMachine\My for the program's string, is left out here.
-			using(FakeServer fakeServer=new FakeServer(storedHash:null)) {
-				using(MySqlConnection mySqlConnection=new MySqlConnection(GetConnectionString(fakeServer,"",MySqlSslMode.VerifyFull))) {
+		public void PasswordLogin_ServerOutsideTheOfficeCa_IsRefusedInTheHandshake_BeforeAnyLogin() {
+			AssertHostDotIsThisComputer();
+			//VerifyFull: the program's own account (password mode, Q2's fallback, the backup to another server's typed account).
+			using(FakeServer fakeServer=new FakeServer(certificate:null,storedHash:null)) {
+				string connectionStringFake=GetMainConnectionString(fakeServer,TestHelpers.SECRET);
+				using(MySqlConnection mySqlConnection=DbConnectionSecurity.NewMySqlConnection(connectionStringFake)) {
 					Exception ex=TestHelpers.AssertThrows<Exception>(() => mySqlConnection.Open());
-					AssertRefusedForTheCertificate(ex,"No password");
+					AssertRefusedInTheHandshake(ex,"VerifyFull",mySqlConnection,"does not chain to the office CA");
 				}
-				fakeServer.Wait();
-				Assert.AreEqual(USER,fakeServer.UserReceived);
-				Assert.AreEqual(0,fakeServer.ArrayAuthResponse.Length,"Without a password the login carries no challenge response.");
-				CollectionAssert.AreEqual(new[] { FakeServer.CLOSED },fakeServer.ListCommandsAfterOk);
+				AssertNothingOfTheLoginArrived(fakeServer,"VerifyFull");
+			}
+			//VerifyCA: a read-only or reporting server with its CA preference.
+			using(FakeServer fakeServer=new FakeServer(certificate:null,storedHash:null)) {
+				string connectionStringFake=GetPreferenceConnectionString(fakeServer,TestHelpers.SECRET);
+				using(MySqlConnection mySqlConnection=DbConnectionSecurity.NewMySqlConnectionWithoutPooling(connectionStringFake)) {
+					Exception ex=TestHelpers.AssertThrows<Exception>(() => mySqlConnection.Open());
+					AssertRefusedInTheHandshake(ex,"VerifyCA",mySqlConnection,"does not chain to the office CA");
+				}
+				AssertNothingOfTheLoginArrived(fakeServer,"VerifyCA");
 			}
 		}
 
 		[TestMethod]
-		public void PasswordLogin_ServerThatHasOnlyTheStoredHash_IsAccepted_WithACertificateOutsideTheOfficeCa() {
-			//The open point DB-SEC 3: owner decision Q5 does not hold for this case with MySqlConnector 2.6.2, and there is no option to turn it off.
-			//When the decision is made, this test changes with it (a refusal here, if the program stops sending passwords over the network or
-			//verifies the server itself).
-			using(FakeServer fakeServer=new FakeServer(storedHash:GetStoredHash(TestHelpers.SECRET))) {
-				using(MySqlConnection mySqlConnection=new MySqlConnection(GetConnectionString(fakeServer,TestHelpers.SECRET,MySqlSslMode.VerifyFull))) {
+		public void PasswordLogin_ServerThatHasTheStoredHash_IsRefused_BeforeItCanProveIt() {
+			AssertHostDotIsThisComputer();
+			//MariaDB 11.4's proof (ValidateFingerprint) is in the OK packet after the login; the handshake fails before, so it is never read.
+			using(FakeServer fakeServer=new FakeServer(certificate:null,storedHash:GetStoredHash(TestHelpers.SECRET))) {
+				string connectionStringFake=GetMainConnectionString(fakeServer,TestHelpers.SECRET);
+				using(MySqlConnection mySqlConnection=DbConnectionSecurity.NewMySqlConnection(connectionStringFake)) {
+					Exception ex=TestHelpers.AssertThrows<Exception>(() => mySqlConnection.Open());
+					AssertRefusedInTheHandshake(ex,"Stored hash",mySqlConnection,"does not chain to the office CA");
+				}
+				AssertNothingOfTheLoginArrived(fakeServer,"Stored hash");
+			}
+			//The same with a certificate of the office CA for another host: the proof cannot stand in for the host name either.
+			using(FakeServer fakeServer=new FakeServer(IssueServerCertificate(_caOffice,"other.example.test"),GetStoredHash(TestHelpers.SECRET))) {
+				string connectionStringFake=GetMainConnectionString(fakeServer,TestHelpers.SECRET);
+				using(MySqlConnection mySqlConnection=DbConnectionSecurity.NewMySqlConnection(connectionStringFake)) {
+					Exception ex=TestHelpers.AssertThrows<Exception>(() => mySqlConnection.Open());
+					AssertRefusedInTheHandshake(ex,"Stored hash, another host",mySqlConnection,"does not name the host localhost");
+				}
+				AssertNothingOfTheLoginArrived(fakeServer,"Stored hash, another host");
+			}
+		}
+
+		[TestMethod]
+		public void CertificateOnlyLogin_ServerOutsideTheOfficeCa_IsRefusedInTheHandshake() {
+			AssertHostDotIsThisComputer();
+			//The program's certificate mode: no password, the client certificate as the credential. The program's string names it by thumbprint in
+			//LocalMachine\My, which a test may not use, so the connection takes the same driver string and check that NewMySqlConnection gives it
+			//(GetDriverConnectionString) and its client certificate, made in memory, from ProvideClientCertificatesCallback.
+			using(X509Certificate2 x509Certificate2Client=_caOffice.Issue("CN=synthetic-workstations",null,null,isServerAuth:false,isClientAuth:true,
+				withPrivateKey:true))
+			using(FakeServer fakeServer=new FakeServer(certificate:null,storedHash:null))
+			{
+				OfficeCaServerVerifier verifier;
+				string driverStringFake=DbConnectionSecurity.GetDriverConnectionString(GetMainConnectionString(fakeServer,""),out verifier);
+				Assert.IsNotNull(verifier);
+				Assert.AreEqual("",new MySqlConnectionStringBuilder(driverStringFake).Password);
+				bool isClientCertificateAsked=false;
+				using(MySqlConnection mySqlConnection=new MySqlConnection(driverStringFake)) {
+					mySqlConnection.RemoteCertificateValidationCallback=verifier.ValidateServerCertificate;
+					mySqlConnection.ProvideClientCertificatesCallback=x509CertificateCollection => {
+						isClientCertificateAsked=true;
+						x509CertificateCollection.Add(x509Certificate2Client);
+						return new ValueTask();
+					};
+					Exception ex=TestHelpers.AssertThrows<Exception>(() => mySqlConnection.Open());
+					AssertRefusedInTheHandshake(ex,"Client certificate only",mySqlConnection,"does not chain to the office CA");
+				}
+				Assert.IsTrue(isClientCertificateAsked,"The driver took the client certificate for the handshake.");
+				StringAssert.Contains(verifier.LastRefusal,"does not chain to the office CA");
+				AssertNothingOfTheLoginArrived(fakeServer,"Client certificate only");
+			}
+		}
+
+		[TestMethod]
+		public void ServerOfTheOfficeCaForAnotherHost_IsRefusedUnderVerifyFull_AcceptedUnderVerifyCA() {
+			AssertHostDotIsThisComputer();
+			using(FakeServer fakeServer=new FakeServer(IssueServerCertificate(_caOffice,"other.example.test"),storedHash:null)) {
+				string connectionStringFake=GetMainConnectionString(fakeServer,TestHelpers.SECRET);
+				using(MySqlConnection mySqlConnection=DbConnectionSecurity.NewMySqlConnection(connectionStringFake)) {
+					Exception ex=TestHelpers.AssertThrows<Exception>(() => mySqlConnection.Open());
+					AssertRefusedInTheHandshake(ex,"Another host, VerifyFull",mySqlConnection,"does not name the host localhost");
+				}
+				AssertNothingOfTheLoginArrived(fakeServer,"Another host, VerifyFull");
+			}
+			//A read-only server's VerifyCA checks the chain, not the name (S1): the login runs.
+			using(FakeServer fakeServer=new FakeServer(IssueServerCertificate(_caOffice,"other.example.test"),storedHash:null)) {
+				string connectionStringFake=GetPreferenceConnectionString(fakeServer,TestHelpers.SECRET);
+				using(MySqlConnection mySqlConnection=DbConnectionSecurity.NewMySqlConnectionWithoutPooling(connectionStringFake)) {
 					mySqlConnection.Open();
-					Assert.AreEqual(System.Data.ConnectionState.Open,mySqlConnection.State,"MySqlConnector 2.6.2 accepts the server once it proves the "
-						+"stored hash (docs/port-notes/S2-2.md, section 3.6). If it is refused now, the driver changed: update the port note and DB-SEC 3.");
-					mySqlConnection.Close();
+					Assert.AreEqual(System.Data.ConnectionState.Open,mySqlConnection.State);
 				}
-				fakeServer.Wait();
-				//With the stored hash, the challenge response also gives SHA1(password): what a mysql_native_password login to the real server needs.
-				byte[] arrayStoredHash=GetStoredHashBytes(GetStoredHash(TestHelpers.SECRET));
-				byte[] arrayMask;
-				byte[] arrayPasswordSha1;
-				using(SHA1 sha1=SHA1.Create()) {
-					arrayMask=sha1.ComputeHash(fakeServer.ArrayScramble.Concat(arrayStoredHash).ToArray());
-					arrayPasswordSha1=sha1.ComputeHash(Encoding.UTF8.GetBytes(TestHelpers.SECRET));
-				}
-				CollectionAssert.AreEqual(arrayPasswordSha1,fakeServer.ArrayAuthResponse.Select((x,i) => (byte)(x^arrayMask[i])).ToArray());
-				//The session ran: the driver set its character set (SET NAMES) over the fake server's TLS session and ended with COM_QUIT.
-				Assert.IsTrue(fakeServer.ListCommandsAfterOk.Count>=2,string.Join(" | ",fakeServer.ListCommandsAfterOk));
-				StringAssert.StartsWith(fakeServer.ListCommandsAfterOk[0],"SET NAMES",string.Join(" | ",fakeServer.ListCommandsAfterOk));
-				Assert.AreEqual(FakeServer.QUIT,fakeServer.ListCommandsAfterOk[fakeServer.ListCommandsAfterOk.Count-1]);
+				AssertLoginRan(fakeServer,"Another host, VerifyCA");
 			}
 		}
 
 		[TestMethod]
-		public void PasswordLogin_ServerWithAWrongProof_IsRefused() {
-			//The proof is checked: a server with another account's hash is refused as without a proof.
-			using(FakeServer fakeServer=new FakeServer(storedHash:GetStoredHash("Synthetic-Other-Password"))) {
-				using(MySqlConnection mySqlConnection=new MySqlConnection(GetConnectionString(fakeServer,TestHelpers.SECRET,MySqlSslMode.VerifyFull))) {
-					Exception ex=TestHelpers.AssertThrows<Exception>(() => mySqlConnection.Open());
-					AssertRefusedForTheCertificate(ex,"Wrong proof");
+		public void ServerOfTheOfficeCaThatNamesTheHost_IsAccepted_AndTheLoginRuns() {
+			AssertHostDotIsThisComputer();
+			using(FakeServer fakeServer=new FakeServer(IssueServerCertificate(_caOffice,"localhost"),storedHash:null)) {
+				string connectionStringFake=GetMainConnectionString(fakeServer,TestHelpers.SECRET);
+				using(MySqlConnection mySqlConnection=DbConnectionSecurity.NewMySqlConnection(connectionStringFake)) {
+					Assert.AreEqual(MySqlSslMode.Required,new MySqlConnectionStringBuilder(mySqlConnection.ConnectionString).SslMode,
+						"The driver's string: the program decides on the certificate.");
+					mySqlConnection.Open();
+					Assert.AreEqual(System.Data.ConnectionState.Open,mySqlConnection.State);
+					OfficeCaServerVerifier verifier=(OfficeCaServerVerifier)mySqlConnection.RemoteCertificateValidationCallback.Target;
+					Assert.AreEqual("",verifier.LastRefusal);
 				}
-				fakeServer.Wait();
-				CollectionAssert.AreEqual(new[] { FakeServer.CLOSED },fakeServer.ListCommandsAfterOk);
+				AssertLoginRan(fakeServer,"Names the host");
 			}
+		}
+
+		///<summary>The fake server saw a whole login over TLS: the user, a 20-byte challenge response that checks against the password (and not
+		///against a wrong guess), and after its OK packet the driver's SET NAMES and COM_QUIT.</summary>
+		private static void AssertLoginRan(FakeServer fakeServer,string label) {
+			fakeServer.Wait();
+			Assert.IsTrue(fakeServer.IsTlsEstablished,label+": TLS.");
+			Assert.AreEqual(USER,fakeServer.UserReceived,label);
+			Assert.AreEqual(20,fakeServer.ArrayAuthResponse.Length,label);
+			CollectionAssert.AreEqual(GetNativePasswordResponse(TestHelpers.SECRET,fakeServer.ArrayScramble),fakeServer.ArrayAuthResponse,label);
+			CollectionAssert.AreNotEqual(GetNativePasswordResponse("Synthetic-Wrong-Guess",fakeServer.ArrayScramble),fakeServer.ArrayAuthResponse,label);
+			string commands=string.Join(" | ",fakeServer.ListCommandsAfterOk);
+			Assert.IsTrue(fakeServer.ListCommandsAfterOk.Count>=2,label+": "+commands);
+			StringAssert.StartsWith(fakeServer.ListCommandsAfterOk[0],"SET NAMES",label+": "+commands);
+			Assert.AreEqual(FakeServer.QUIT,fakeServer.ListCommandsAfterOk[fakeServer.ListCommandsAfterOk.Count-1],label+": "+commands);
 		}
 
 		///<summary>The value mysql.user keeps for a mysql_native_password account, as PASSWORD() gives it: "*" and the hex of SHA1(SHA1(password)).
@@ -195,12 +310,13 @@ namespace DbConnectionSecurityTests {
 			}
 		}
 
-		///<summary>A fake MySQL server for one connection on a free port of 127.0.0.1, with a self-signed certificate of its own (outside the office
-		///CA). It sends the initial handshake (MariaDB 10.11's version string, mysql_native_password, TLS offered), takes the client's TLS request
-		///and the TLS handshake, records the login (user and challenge response), and answers with an OK packet whatever the login was. With a
-		///stored hash it adds MariaDB 11.4's proof to the OK packet's information: 0x01 and the hex of SHA256(SHA1(SHA1(password)) + scramble +
-		///SHA256(certificate)), the proof MySqlConnector's ValidateFingerprint checks. Then it answers each query with OK and records what the
-		///client sent until COM_QUIT or the end of the connection.</summary>
+		///<summary>A fake MySQL server for one connection on a free port of 127.0.0.1. It sends the initial handshake (MariaDB 10.11's version
+		///string, mysql_native_password, TLS offered), takes the client's TLS request and the TLS handshake with its certificate (a self-signed one
+		///of its own when none is given: outside the office CA), records the login (user and challenge response), and answers with an OK packet
+		///whatever the login was. With a stored hash it adds MariaDB 11.4's proof to the OK packet's information: 0x01 and the hex of
+		///SHA256(SHA1(SHA1(password)) + scramble + SHA256(certificate)), the proof MySqlConnector's ValidateFingerprint checks. Then it answers
+		///each query with OK and records what the client sent until COM_QUIT or the end of the connection. A TLS handshake the client refuses is
+		///recorded (TlsFailure), not an error of the fake server.</summary>
 		private sealed class FakeServer:IDisposable {
 			//CLIENT_LONG_PASSWORD, FOUND_ROWS, LONG_FLAG, CONNECT_WITH_DB, PROTOCOL_41, SSL, TRANSACTIONS, SECURE_CONNECTION, MULTI_STATEMENTS,
 			//MULTI_RESULTS, PLUGIN_AUTH. No SESSION_TRACK, so the OK packet's information is the rest of the packet.
@@ -211,9 +327,11 @@ namespace DbConnectionSecurityTests {
 			private readonly string _storedHash;
 			public readonly byte[] ArrayScramble=new byte[20];
 			public readonly int Port;
+			public volatile bool IsTlsRequested;
+			public volatile bool IsTlsEstablished;
+			public string TlsFailure;
 			public string UserReceived;
 			public byte[] ArrayAuthResponse;
-			public bool IsTls;
 			public const string CLOSED="(closed)";
 			public const string QUIT="(COM_QUIT)";
 			///<summary>What the client sent after the login's OK packet: each query's text (answered with OK), then QUIT, or CLOSED when the client
@@ -221,7 +339,9 @@ namespace DbConnectionSecurityTests {
 			public readonly List<string> ListCommandsAfterOk=new List<string>();
 			public Exception ExceptionServer;
 
-			public FakeServer(string storedHash) {
+			///<summary>certificate: the server certificate with its private key (the fake server owns it and resets it at the end); null for a
+			///self-signed one of its own.</summary>
+			public FakeServer(X509Certificate2 certificate,string storedHash) {
 				_storedHash=storedHash;
 				//Printable bytes, as a server's scramble is.
 				using(RandomNumberGenerator randomNumberGenerator=RandomNumberGenerator.Create()) {
@@ -230,7 +350,7 @@ namespace DbConnectionSecurityTests {
 				for(int i=0;i<ArrayScramble.Length;i++) {
 					ArrayScramble[i]=(byte)(0x21+ArrayScramble[i]%0x5e);
 				}
-				_x509Certificate2=CreateCertificate();
+				_x509Certificate2=certificate??CreateSelfSignedCertificate();
 				_tcpListener=new TcpListener(IPAddress.Loopback,0);
 				_tcpListener.Start();
 				Port=((IPEndPoint)_tcpListener.LocalEndpoint).Port;
@@ -238,13 +358,13 @@ namespace DbConnectionSecurityTests {
 				_thread.Start();
 			}
 
-			///<summary>A self-signed server certificate for db.example.test and 127.0.0.1, with a private key SChannel can use (a PFX round trip).
-			///</summary>
-			private static X509Certificate2 CreateCertificate() {
+			///<summary>A self-signed server certificate for localhost, db.example.test and 127.0.0.1, with a private key SChannel can use (a PFX
+			///round trip).</summary>
+			private static X509Certificate2 CreateSelfSignedCertificate() {
 				using(RSA rsa=RSA.Create(2048)) {
-					CertificateRequest certificateRequest=new CertificateRequest("CN="+TestHelpers.NETWORK_HOST,rsa,HashAlgorithmName.SHA256,
-						RSASignaturePadding.Pkcs1);
+					CertificateRequest certificateRequest=new CertificateRequest("CN=localhost",rsa,HashAlgorithmName.SHA256,RSASignaturePadding.Pkcs1);
 					SubjectAlternativeNameBuilder subjectAlternativeNameBuilder=new SubjectAlternativeNameBuilder();
+					subjectAlternativeNameBuilder.AddDnsName("localhost");
 					subjectAlternativeNameBuilder.AddDnsName(TestHelpers.NETWORK_HOST);
 					subjectAlternativeNameBuilder.AddIpAddress(IPAddress.Loopback);
 					certificateRequest.CertificateExtensions.Add(subjectAlternativeNameBuilder.Build());
@@ -281,12 +401,29 @@ namespace DbConnectionSecurityTests {
 						Assert.IsNotNull(arraySslRequest,"No TLS request.");
 						Assert.AreEqual(32,arraySslRequest.Length,"The TLS request.");
 						Assert.AreEqual(0x800u,BitConverter.ToUInt32(arraySslRequest,0)&0x800,"The client asks for TLS.");
+						IsTlsRequested=true;
 						SslStream sslStream=new SslStream(stream,false);
-						sslStream.AuthenticateAsServer(_x509Certificate2,false,SslProtocols.Tls12,false);
-						IsTls=true;
+						try {
+							sslStream.AuthenticateAsServer(_x509Certificate2,false,SslProtocols.Tls12,false);
+						}
+						catch(Exception ex) when(ex is AuthenticationException || ex is IOException || ex is Win32Exception) {
+							//The client refused the server's certificate and ended the handshake: nothing more comes.
+							TlsFailure=ex.GetType().Name+": "+ex.Message;
+							return;
+						}
+						IsTlsEstablished=true;
 						stream=sslStream;
-						byte[] arrayLogin=ReadPacket(stream,out sequence);
-						Assert.IsNotNull(arrayLogin,"No login after the TLS handshake.");
+						byte[] arrayLogin;
+						try {
+							arrayLogin=ReadPacket(stream,out sequence);
+						}
+						catch(IOException) {
+							arrayLogin=null;
+						}
+						if(arrayLogin==null) {
+							ListCommandsAfterOk.Add(CLOSED);//The client closed the connection without a login.
+							return;
+						}
 						ReadLogin(arrayLogin);
 						WritePacket(stream,(byte)(sequence+1),GetOkPacket(isLogin:true));
 						while(true) {
@@ -311,10 +448,10 @@ namespace DbConnectionSecurityTests {
 						}
 					}
 				}
-				catch(SocketException) when(UserReceived==null && !IsTls) {
+				catch(SocketException) when(!IsTlsRequested) {
 					//Dispose stopped the listener before a client came: the test failed earlier and says why.
 				}
-				catch(ObjectDisposedException) when(UserReceived==null && !IsTls) {
+				catch(ObjectDisposedException) when(!IsTlsRequested) {
 				}
 				catch(Exception ex) {
 					ExceptionServer=ex;
@@ -351,8 +488,9 @@ namespace DbConnectionSecurityTests {
 				offset=end+1;
 				int length=arrayLogin[offset];
 				Assert.IsTrue(length<251 && offset+1+length<=arrayLogin.Length,"The login's challenge response.");
-				ArrayAuthResponse=new byte[length];
-				Array.Copy(arrayLogin,offset+1,ArrayAuthResponse,0,length);
+				byte[] arrayAuthResponse=new byte[length];
+				Array.Copy(arrayLogin,offset+1,arrayAuthResponse,0,length);
+				ArrayAuthResponse=arrayAuthResponse;
 			}
 
 			private byte[] GetOkPacket(bool isLogin) {

@@ -414,9 +414,15 @@ namespace DbConnectionSecurityTests {
 			new[] { @"tests\DbConnectionSecurityTests\TlsCertificateLoginTests.cs","NewMySqlConnection","connectionString" },
 			new[] { @"tests\DbConnectionSecurityTests\TlsCertificateLoginTests.cs","MySqlConnection","builderNoCertificate.ConnectionString" },
 			new[] { @"tests\DbConnectionSecurityTests\TlsCertificateLoginTests.cs","MySqlConnection","builderOtherCa.ConnectionString" },
-			//S2-2's review: the program's string for a server over the network, pointed at the tests' own fake server on a loopback port, whose
-			//certificate is outside the office CA on purpose. It never reaches the local test server.
-			new[] { @"tests\DbConnectionSecurityTests\UnverifiedServerTests.cs","MySqlConnection","GetConnectionString(fakeServer," },
+			//S2-2's follow-up (DB-SEC 3): the program's strings for a server over the network ("localhost." and the fake server's port), through
+			//the program's factories or the driver string they give, to the tests' own fake servers on a loopback port, whose certificates are
+			//outside the office CA or name another host on purpose. They never reach the local test server.
+			new[] { @"tests\DbConnectionSecurityTests\UnverifiedServerTests.cs","NewMySqlConnection","connectionStringFake" },
+			new[] { @"tests\DbConnectionSecurityTests\UnverifiedServerTests.cs","MySqlConnection","driverStringFake" },
+			//S2-2's follow-up: what the driver gets for the program's strings, only created and never opened (servers over the network, and a
+			//loopback string without TLS).
+			new[] { @"tests\DbConnectionSecurityTests\DriverConnectionStringTests.cs","NewMySqlConnection","connectionString" },
+			new[] { @"tests\DbConnectionSecurityTests\DriverConnectionStringTests.cs","NewMySqlConnection","\"Server=127.0.0.1;Port=3306;SslMode=None\"" },
 		};
 
 		///<summary>The folders the scan reads: the tests, the dev tools, the legacy test projects and the developer tools of _arrayDevToolFolders.

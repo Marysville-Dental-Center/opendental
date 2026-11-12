@@ -33,12 +33,13 @@ namespace DataConnectionBase {
 	///   for none). A revoked certificate is refused; a revocation status Windows cannot find (a certificate without a CRL distribution point,
 	///   as the server guide's certificates are, or a CRL server that does not answer) is not a refusal, as the driver never refused for it.
 	///   X509Chain with AllowUnknownCertificateAuthority cannot be used for this: Windows checks no revocation for a chain to a root that is not
-	///   trusted (OfficeCaServerVerifierTests shows it), which is also why the driver's SslCa check never saw a revocation.
+	///   trusted (docs/port-notes/S2-2.md section 3.6), which is also why the driver's SslCa check never saw a revocation.
 	///3. Under VerifyFull the certificate must name one of the connection's hosts, by Windows' SSL policy (CERT_CHAIN_POLICY_SSL), the rules
 	///   SslStream applied for VerifyFull: the DNS names and IP addresses of the subject alternative names, the common name only when the
 	///   certificate has no subject alternative name. A trailing dot of a host name is left out. Under VerifyCA the name is not checked.
-	///A refusal returns false and keeps its reason in LastRefusal; it never throws into the handshake. Nothing here reads or changes a
-	///certificate store of the computer. See DbConnectionSecurity.GetDriverConnectionString for where it is used.</summary>
+	///A refusal returns false and keeps its reason in LastRefusal; it never throws into the handshake. Nothing is added to a certificate
+	///store of the computer (the stores of the check are in memory; Windows' chain engine still finds intermediates and the Disallowed list in
+	///the computer's stores, as SslStream did, but never a root). See DbConnectionSecurity.GetDriverConnectionString for where it is used.</summary>
 	public sealed class OfficeCaServerVerifier {
 		///<summary>The extended key usage of a TLS server certificate.</summary>
 		public const string OID_SERVER_AUTHENTICATION="1.3.6.1.5.5.7.3.1";
