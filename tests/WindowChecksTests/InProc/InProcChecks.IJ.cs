@@ -1,6 +1,7 @@
 // Groups I and J's in-process scripts (the parts this harness reaches): the tooth chart (the filling entered as Enter Treatment does it, the
 // refill, Show Big, Save to Images, Graphics > DirectX) and EHR-0 and EHR-1 (Show Features with its confirmation and restart messages, the
-// SNOMED CT window, the time check's absence, the e-mail Send drop-down and the certificate registration's Send Code).
+// SNOMED CT window, the e-mail Send drop-down and the Direct certificate window's import buttons). The rest of I and J is in InProcChecks.I.cs
+// and InProcChecks.J.cs.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;

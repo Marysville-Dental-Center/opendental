@@ -1,5 +1,6 @@
-// Groups F, G and H of the checklist: the dashboard (in process), the reports (in process; G2's RDL file is copied into the scratch copy's A to Z
-// folder before the program starts, as the Custom Reports menu is built at start-up, and deleted afterwards), and RdlDesigner (out of process).
+// Groups F, G and H of the checklist: the dashboard and its graph cells' menus (in process), the reports (in process; G2's RDL file is copied into the scratch copy's A to Z
+// folder before the program starts, as the Custom Reports menu is built at start-up, and deleted afterwards), and RdlDesigner (out of process,
+// its classic menu chosen by WM_COMMAND).
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;

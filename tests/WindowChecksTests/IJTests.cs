@@ -1,6 +1,7 @@
 // Groups I and J of the checklist: the tooth chart and EHR-0/EHR-1. What this harness reaches runs in process (the chart's handlers, Show
-// Features, the EHR setup, the e-mail windows) or out of process (I8's WPF chart start, I11's start-up with no DirectX format); the rest is
-// recorded for an on-screen pass with the reason.
+// Features, the Setup Wizard, the EHR setup with the 0.4 test users and their log-offs, the print previews, the dashboard widget, the e-mail
+// windows) or out of process (I8's WPF chart start, I11's start-up with no DirectX format). Every check after the first start of a group runs in
+// a new session where the checklist says "exit; start".
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
