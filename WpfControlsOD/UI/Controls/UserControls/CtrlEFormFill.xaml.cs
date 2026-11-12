@@ -512,6 +512,8 @@ namespace OpenPmsDental {
 				if(frameworkElement.ActualHeight<=0 || frameworkElement.ActualWidth<=0){
 					//Every field in this row is hidden by conditional logic (SetVisibilities collapses each field, not the row), so the row has no height
 					//and nothing shows on the screen. Nothing to print.
+					//Open Dental 24.3.1 skipped every 0 height row here (after the page break, before the sig box); 24.3.5 dropped that skip when it
+					//refactored the page break check, so these rows reached DrawFrameworkElement and threw. This puts the 24.3.1 skip back.
 					_printedStackPanelChildren=i;
 					continue;
 				}
