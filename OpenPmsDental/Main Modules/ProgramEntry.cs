@@ -18,6 +18,8 @@ namespace OpenPmsDental {
 	static class ProgramEntry {
 		[STAThread]
 		static void Main(string[] args) {
+			//The stylesheet child of EhrStylesheetStarter (docs/port-notes/EHR-3.md): first, with no window, database, ODInitialize or Application call.
+			if(args.Length==2 && args[0]=="/ehr-render") { Environment.Exit(EhrRenderChild.Run(args[1])); }
 			System.Windows.Media.RenderOptions.ProcessRenderMode=System.Windows.Interop.RenderMode.SoftwareOnly;
 			//Application.EnableVisualStyles() uses version 6 of comctl32.dll instead of version 5.
 			//See https://support.microsoft.com/en-us/topic/system-accessviolationexception-occurs-with-tooltips-in-windows-forms-application-71a775b2-8a03-6846-f810-76930766cda0?ui=en-us&rs=en-us&ad=us

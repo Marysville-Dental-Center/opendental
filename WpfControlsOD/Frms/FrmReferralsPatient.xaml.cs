@@ -244,7 +244,9 @@ namespace OpenPmsDental {
 					}
 				}
 				emailMessage.Attachments.Add(EmailAttaches.CreateAttach("ccd.xml",Encoding.UTF8.GetBytes(ccd)));//Create summary of care attachment, can throw exceptions
-				emailMessage.Attachments.Add(EmailAttaches.CreateAttach("ccd.xsl",Encoding.UTF8.GetBytes(EhrSummaryCcds.GetEhrResource("CCD"))));//Create xsl attachment, can throw exceptions
+				foreach(KeyValuePair<string,string> pairFile in EhrSummaryCcds.GetCcdStylesheetFiles(doIncludeLicense:false)) {//ccd.xsl and its two companions, can throw exceptions
+					emailMessage.Attachments.Add(EmailAttaches.CreateAttach(pairFile.Key,Encoding.UTF8.GetBytes(pairFile.Value)));
+				}
 			}
 			catch {
 				//We are just trying to be helpful so it doesn't really matter if something failed above. 
