@@ -87,7 +87,11 @@ namespace WindowChecksTests {
 			}
 			string folderRelease=WinChkEnv.ReleaseFolder;
 			string pathBefore=Path.Combine(WinChkEnv.OutFolder,"release-files-before.txt");
-			if(File.Exists(pathBefore)) {
+			if(!Directory.Exists(folderRelease)) {
+				//Not built in this worktree (a run of groups without A): nothing can be left in it.
+				checkResult.Note("Z2: no <rel> folder ("+folderRelease+"); nothing to compare with release-files-before.txt");
+			}
+			else if(File.Exists(pathBefore)) {
 				List<string> listBefore=File.ReadAllLines(pathBefore).ToList();
 				List<string> listNow=Directory.GetFiles(folderRelease,"*",SearchOption.AllDirectories).Select(x => x.Substring(folderRelease.Length+1)).ToList();
 				List<string> listNew=listNow.Except(listBefore).ToList();
