@@ -3,6 +3,7 @@
 // recorded for an on-screen pass with the reason.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -90,55 +91,109 @@ namespace WindowChecksTests {
 		[TestMethod]
 		public void J1toJ17_Ehr() {
 			WinChkFixture.Begin("J");
+			List<CheckResult> listResults=new List<CheckResult>();
 			CheckResult checkResultJ1;
 			using(InProcHost inProcHost=InProcHost.Start("chart")) {
 				checkResultJ1=inProcHost.Run("J1","Show Features: EHR on");
 			}
-			CheckResult checkResultJ3;
-			CheckResult checkResultJ15;
+			//Exit and start with EHR on: J1's Chart, J2's wizard, J3's SNOMED window and data row, the 0.4 users, J4 to J13 with their log-offs, J15.
 			using(InProcHost inProcHost=InProcHost.Start("chart")) {
 				CheckResult checkResultChart=inProcHost.Run("JCHART","Chart after the start");
 				checkResultJ1.Expect(checkResultChart.ListVerified.Contains("EHR button present"),"Exit, start, log on: the Chart toolbar has EHR");
 				ATests.Merge(checkResultJ1,checkResultChart);
-				checkResultJ3=inProcHost.Run("J3","SNOMED tools hidden without rows");
-				checkResultJ15=inProcHost.Run("J15","Direct messaging options");
+				Results.Write(checkResultJ1);
+				listResults.Add(checkResultJ1);
+				foreach(string[] arrayCheck in new[] { new[] { "J2","Setup Wizard, unsaved" },new[] { "J3","SNOMED tools hidden without rows" } }) {
+					CheckResult checkResult=inProcHost.Run(arrayCheck[0],arrayCheck[1]);
+					Results.Write(checkResult);
+					listResults.Add(checkResult);
+				}
+				CheckResult checkResultUsers=inProcHost.Run("JUSERS","0.4 test users");
+				Results.Log("JUSERS: "+checkResultUsers.Status+": "+checkResultUsers.Summary);
+				foreach(string[] arrayCheck in new[] { new[] { "J4","EHR window, no row" },new[] { "J5","EHR setup without Setup" },
+					new[] { "J6","SNOMED tools hidden without Setup" },new[] { "J7","Add a provider row" },new[] { "J8","A name no provider has" },
+					new[] { "J9","SNOMED tools with Setup; map refused" },new[] { "J10","EHR window with a row" },new[] { "J11","CPOE" },
+					new[] { "J12","Change and delete the row; the log" },new[] { "J13","Map to ICD9 with Problem Definition Edit" } })
+				{
+					CheckResult checkResult;
+					if(checkResultUsers.Status==CheckStatus.Failed) {
+						checkResult=new CheckResult(arrayCheck[0],arrayCheck[1]);
+						checkResult.Fail("The 0.4 test users were not made: "+checkResultUsers.Summary);
+					}
+					else {
+						checkResult=inProcHost.Run(arrayCheck[0],arrayCheck[1]);
+						if(arrayCheck[0]=="J4") {
+							ATests.Merge(checkResult,checkResultUsers);
+						}
+					}
+					Results.Write(checkResult);
+					listResults.Add(checkResult);
+				}
+				CheckResult checkResultJ15=inProcHost.Run("J15","Direct messaging options");
+				Results.Write(checkResultJ15);
+				listResults.Add(checkResultJ15);
 			}
-			Results.Write(checkResultJ1);
-			checkResultJ3.Note("The synthetic SNOMED row of J3's [DATA] step is not inserted: J4 to J13, which use it, are not run");
-			Results.Write(checkResultJ3);
-			Results.Write(checkResultJ15);
-			//J14: the time check is off.
+			//J14: the time check is off, after the log-ons above with EHR on.
 			CheckResult checkResultJ14=new CheckResult("J14","Time check off");
 			string folderDocuments=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),"Logger","TimeSync");
 			string folderDebug=Path.Combine(WinChkEnv.DebugFolder,"Logger","TimeSync");
-			checkResultJ14.Expect(!Directory.Exists(folderDocuments),"No Documents\\Logger\\TimeSync after the log-ons with EHR on");
+			checkResultJ14.Expect(!Directory.Exists(folderDocuments),"No Documents\\Logger\\TimeSync after the log-ons with EHR on (Admin, "
+				+InProc.InProcChecks.USER_SETUP+", "+InProc.InProcChecks.USER_NOSETUP+")");
 			checkResultJ14.Expect(!Directory.Exists(folderDebug),"No <dbg>\\Logger\\TimeSync");
 			string timeSync=ScratchDb.Scalar("SELECT ValueString FROM preference WHERE PrefName='ForkTimeSyncMode'");
 			checkResultJ14.Expect(timeSync=="" || timeSync=="0","ForkTimeSyncMode: "+(timeSync=="" ? "no row" : timeSync));
 			checkResultJ14.Note("Time Synchronization is never opened; text instead of a picture");
 			Results.Write(checkResultJ14);
+			listResults.Add(checkResultJ14);
+			//J16: EHR off; exit, start: no EHR button.
 			CheckResult checkResultJ16;
 			using(InProcHost inProcHost=InProcHost.Start("chart")) {
 				checkResultJ16=inProcHost.Run("J16","EHR off");
 			}
+			CheckResult checkResultJ17;
 			using(InProcHost inProcHost=InProcHost.Start("chart")) {
 				CheckResult checkResultChart=inProcHost.Run("JCHART","Chart after the start");
 				checkResultJ16.Expect(checkResultChart.ListVerified.Contains("EHR button absent"),"Exit, start, log on: no EHR button in the Chart");
 				ATests.Merge(checkResultJ16,checkResultChart);
+				//J17: the Setup Wizard saves EHR on Next.
+				checkResultJ17=inProcHost.Run("J17","Setup Wizard saves EHR");
 			}
 			checkResultJ16.ForPerson("Show Features matches J1-before.png");
 			Results.Write(checkResultJ16);
-			string reasonUsers="Not scripted in this run: it needs the 0.4 test users (gate-setup, gate-nosetup and their groups) and log-offs between them.";
-			foreach(string[] arrayCheck in new[] { new[] { "J4","EHR window, no row" },new[] { "J5","EHR setup without Setup" },new[] { "J6","SNOMED tools hidden without Setup" },
-				new[] { "J7","Add a provider row" },new[] { "J8","A name no provider has" },new[] { "J9","SNOMED tools with Setup; map refused" },
-				new[] { "J10","EHR window with a row" },new[] { "J11","CPOE" },new[] { "J12","Change and delete the row; the log" },new[] { "J13","Map to ICD9 with Problem Definition Edit" } })
-			{
-				WinChkFixture.Record(arrayCheck[0],arrayCheck[1],CheckStatus.NeedsScreen,reasonUsers);
+			listResults.Add(checkResultJ16);
+			using(InProcHost inProcHost=InProcHost.Start("chart")) {
+				CheckResult checkResultChart=inProcHost.Run("JCHART","Chart after the start");
+				checkResultJ17.Expect(checkResultChart.ListVerified.Contains("EHR button present"),"Exit, start, log on: the Chart toolbar has EHR");
+				ATests.Merge(checkResultJ17,checkResultChart);
+				ATests.Merge(checkResultJ17,inProcHost.Run("J17OFF","Show Features: EHR off again"));
 			}
-			WinChkFixture.Record("J2","Setup Wizard, unsaved",CheckStatus.NeedsScreen,"Not scripted in this run: the Setup Wizard's pages and its information text.");
-			WinChkFixture.Record("J17","Setup Wizard saves EHR",CheckStatus.NeedsScreen,"Not scripted in this run: the Setup Wizard's Basic Features page and Next.");
-			Assert.AreEqual("",string.Join(" || ",new[] { checkResultJ1,checkResultJ3,checkResultJ14,checkResultJ15,checkResultJ16 }
-				.Where(x => x.Status==CheckStatus.Failed).Select(x => x.Id+": "+x.Summary)));
+			using(InProcHost inProcHost=InProcHost.Start("chart")) {
+				CheckResult checkResultChart=inProcHost.Run("JCHART","Chart after the start");
+				checkResultJ17.Expect(checkResultChart.ListVerified.Contains("EHR button absent"),"Exit, start, log on: no EHR button");
+				ATests.Merge(checkResultJ17,checkResultChart);
+			}
+			Results.Write(checkResultJ17);
+			listResults.Add(checkResultJ17);
+			//0.4's removal: the copy's test users and groups go (the program cannot delete users; in the scratch copy the rows are deleted).
+			RemoveTestUsers();
+			Assert.AreEqual("",string.Join(" || ",listResults.Where(x => x.Status==CheckStatus.Failed).Select(x => x.Id+": "+x.Summary)));
+		}
+
+		///<summary>0.4's removal in the scratch copy: the two test users, their group attaches, the two groups and their permissions. Logged.</summary>
+		public static void RemoveTestUsers() {
+			string userNums=ScratchDb.Scalar("SELECT GROUP_CONCAT(UserNum) FROM userod WHERE UserName IN ('"+InProc.InProcChecks.USER_SETUP+"','"
+				+InProc.InProcChecks.USER_NOSETUP+"')");
+			string groupNums=ScratchDb.Scalar("SELECT GROUP_CONCAT(UserGroupNum) FROM usergroup WHERE Description IN ('"+InProc.InProcChecks.GROUP_SETUP+"','"
+				+InProc.InProcChecks.GROUP_NOSETUP+"')");
+			if(userNums!="") {
+				ScratchDb.Exec("DELETE FROM usergroupattach WHERE UserNum IN ("+userNums+")");
+				ScratchDb.Exec("DELETE FROM userod WHERE UserNum IN ("+userNums+")");
+			}
+			if(groupNums!="") {
+				ScratchDb.Exec("DELETE FROM grouppermission WHERE UserGroupNum IN ("+groupNums+")");
+				ScratchDb.Exec("DELETE FROM usergroup WHERE UserGroupNum IN ("+groupNums+")");
+			}
+			Results.Log("0.4 removal: users "+(userNums=="" ? "none" : userNums)+", groups "+(groupNums=="" ? "none" : groupNums)+" deleted from the scratch copy");
 		}
 	}
 }

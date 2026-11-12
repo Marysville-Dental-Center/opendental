@@ -120,9 +120,14 @@ namespace WindowChecksTests.InProc {
 			}
 			openedName.Posted.Wait();
 			//Setup > Exit Setup.
+			List<IntPtr> listBeforeExit=ui.GetWindows();
 			ui.Post("Setup > Exit Setup",() => ((ToolStripMenuItem)Ui.GetField(form,"setupToolStripMenuItem")).PerformClick()).Wait();
-			ui.CloseStrayWindows(checkResult);
+			foreach(IntPtr hwndNew in ui.GetWindows().Where(x => !listBeforeExit.Contains(x))) {
+				checkResult.Note("Exit Setup showed: "+ui.DescribeWindow(hwndNew));
+				ui.Close(hwndNew);
+			}
 			title=Native.GetText(hwnd);
+			checkResult.Expect(Native.IsWindowVisible(hwnd),"The dashboard is still open after Exit Setup");
 			checkResult.Expect(!title.Contains("(Edit)"),"Setup > Exit Setup: the title loses '(Edit)' ('"+title+"'); Save Changes is never pressed");
 			int countLayouts=Count("SELECT COUNT(*) FROM dashboardlayout");
 			CloseDashboard(ui,checkResult,hwnd);

@@ -53,8 +53,8 @@ namespace WindowChecksTests {
 			listLines.Add("7. A to Z folder: the scratch copy's own (DocPath moved to a scratch folder in the temp folder); images stored in folders");
 			File.WriteAllLines(Path.Combine(WinChkEnv.OutFolder,"00-prechecks.txt"),listLines);
 			checkResult.Note(string.Join(" / ",listLines));
-			checkResult.Note("0.4's test users and groups are not made: the checks that need them (J4 to J13) are recorded for an on-screen pass; 0.4 #6 (DOC's "
-				+"first name) is not needed for the checks that ran");
+			checkResult.Note("0.4's test users and groups are made by group J in the copy (JUSERS, before J4) and removed at its end; 0.4 #6 (DOC's first "
+				+"name) is not needed: the copy's provider names are not blank");
 			Results.Write(checkResult);
 		}
 
@@ -108,6 +108,13 @@ namespace WindowChecksTests {
 			string pathDebugLogger=Path.Combine(WinChkEnv.DebugFolder,"Logger");
 			checkResult.Note("<dbg>\\Logger: "+(Directory.Exists(pathDebugLogger) ? string.Join(", ",Directory.GetDirectories(pathDebugLogger).Select(Path.GetFileName)) : "none")
 				+" (the program's own start-up logs; left as the program writes them, as stage 0 found)");
+			//0.4's removal, in case group J stopped before its own (the copy's rows; nothing when they are gone).
+			try {
+				IJTests.RemoveTestUsers();
+			}
+			catch(Exception ex) {
+				checkResult.Note("0.4 removal failed: "+ex.Message);
+			}
 			//3 and 4. The copy, compared with the prechecks, before it is dropped.
 			string countsBefore=_countsAtPrecheck;
 			string countsNow=ScratchDb.Rows(QUERY_COUNTS);

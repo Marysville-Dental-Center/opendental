@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -172,6 +173,68 @@ namespace WindowChecksTests {
 
 		///<summary>SMTO_ABORTIFHUNG: a hung window's text reads as empty instead of blocking the test.</summary>
 		private const int SMTO_ABORTIFHUNG=0x0002;
+
+		#region Native menus (a classic MainMenu's HMENU, readable across processes)
+		[DllImport("user32.dll")]
+		public static extern IntPtr GetMenu(IntPtr hwnd);
+		[DllImport("user32.dll")]
+		public static extern int GetMenuItemCount(IntPtr hMenu);
+		[DllImport("user32.dll")]
+		public static extern IntPtr GetSubMenu(IntPtr hMenu,int pos);
+		[DllImport("user32.dll")]
+		public static extern int GetMenuItemID(IntPtr hMenu,int pos);
+		[DllImport("user32.dll")]
+		public static extern int GetMenuState(IntPtr hMenu,int id,int flags);
+		[DllImport("user32.dll",CharSet=CharSet.Unicode,EntryPoint="GetMenuStringW")]
+		public static extern int GetMenuString(IntPtr hMenu,int item,StringBuilder stringBuilder,int maxCount,int flags);
+		public const int MF_BYPOSITION=0x400;
+		public const int MF_GRAYED=0x1;
+		public const int MF_DISABLED=0x2;
+
+		///<summary>The text of the menu's item at the position, without ampersands and without the shortcut after a tab.</summary>
+		public static string GetMenuText(IntPtr hMenu,int pos) {
+			StringBuilder stringBuilder=new StringBuilder(256);
+			GetMenuString(hMenu,pos,stringBuilder,stringBuilder.Capacity,MF_BYPOSITION);
+			string text=stringBuilder.ToString();
+			int indexTab=text.IndexOf('\t');
+			if(indexTab>=0) {
+				text=text.Substring(0,indexTab);
+			}
+			return text.Replace("&","").Trim();
+		}
+
+		///<summary>Finds the item at the path ("View", "Preview") in the window's menu bar: its command id (-1 when absent) and whether it is grayed or
+		///disabled. Lists what each level holds in found.</summary>
+		public static int FindMenuCommand(IntPtr hwnd,string[] arrayPath,out bool isDisabled,out string found) {
+			isDisabled=false;
+			found="";
+			IntPtr hMenu=GetMenu(hwnd);
+			for(int level=0;level<arrayPath.Length && hMenu!=IntPtr.Zero;level++) {
+				int count=GetMenuItemCount(hMenu);
+				List<string> listTexts=new List<string>();
+				for(int pos=0;pos<count;pos++) {
+					listTexts.Add(GetMenuText(hMenu,pos));
+				}
+				found+=(found=="" ? "" : " / ")+string.Join(", ",listTexts.Where(x => x!=""));
+				int index=listTexts.FindIndex(x => string.Equals(x,arrayPath[level],StringComparison.OrdinalIgnoreCase));
+				if(index<0) {
+					return -1;
+				}
+				if(level==arrayPath.Length-1) {
+					int state=GetMenuState(hMenu,index,MF_BYPOSITION);
+					isDisabled=state!=-1 && (state & (MF_GRAYED|MF_DISABLED))!=0;
+					return GetMenuItemID(hMenu,index);
+				}
+				hMenu=GetSubMenu(hMenu,index);
+			}
+			return -1;
+		}
+
+		///<summary>Posts WM_COMMAND with the menu item's id, as choosing the item does (WinForms dispatches it to the MenuItem's Click).</summary>
+		public static bool PostMenuCommand(IntPtr hwnd,int id) {
+			return PostMessage(hwnd,WM_COMMAND,(IntPtr)(id & 0xFFFF),IntPtr.Zero);
+		}
+		#endregion Native menus
 
 		public static string GetClass(IntPtr hwnd) {
 			StringBuilder stringBuilder=new StringBuilder(256);

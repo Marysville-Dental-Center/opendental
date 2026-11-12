@@ -291,6 +291,9 @@ namespace WindowChecksTests.InProc {
 				}
 			}
 			ui.Close(hwndEhr);
+			//[DATA, undone in J13] the synthetic SNOMED row J4 to J13 use.
+			DataCore.NonQ("INSERT INTO snomed (SnomedCode,Description) VALUES ('TEST0001','Synthetic gate test code')");
+			checkResult.Expect(Count("SELECT COUNT(*) FROM snomed WHERE SnomedCode='TEST0001'")==1,"[DATA] The synthetic SNOMED row TEST0001 is inserted (J13 deletes it)");
 		}
 
 		public static void CheckJ15(Ui ui,CheckResult checkResult) {
