@@ -633,9 +633,11 @@ namespace DataConnectionBase {
 			return BuildSimpleConnectionString(DBtype,pServer,pDatabase,pUserID,pPassword,sslCa);
 		}
 
+		///<summary>The program's connection string of this thread's connection (DbConnectionSecurity.GetConnectionString), as it was before the
+		///driver got its own string for a server over the network, so that what it seeds goes through the rule again.</summary>
 		public static string GetCurrentConnectionString() {
 			DataConnection dcon=new DataConnection();
-			return dcon._con.ConnectionString;
+			return DbConnectionSecurity.GetConnectionString(dcon._con);
 		}
 
 		///<summary>Returns a connection string constructed with the lower privileged MySQL user and password.</summary>
@@ -663,7 +665,7 @@ namespace DataConnectionBase {
 				,pUserID
 				,pPassword
 				,DatabaseType.MySql);
-			return rdcon._con.ConnectionString;
+			return DbConnectionSecurity.GetConnectionString(rdcon._con);
 		}
 
 		#endregion
