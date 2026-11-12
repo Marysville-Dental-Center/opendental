@@ -16,7 +16,9 @@ downloaded; no program was started.
 | `docs/port-notes/S2-1.md` | section 10: which `run-tests.ps1` sets `OPMS_REQUIRE_BUILD_OUTPUT`; the open point on S1-T's reads points here |
 
 Commits: `d2ad8d380` (the reader), `3b432605f` (reads whose old form was already safe stay as they were), `b7323d074` (the tests),
-`cb977956a` (what the mutation check found in the tests), `05fa914a5` (S2-1's review points), and this note.
+`cb977956a` (what the mutation check found in the tests), `05fa914a5` (S2-1's review points), and this note (`11577b88e`). The fix round
+on `net10/readerenv-2` (section 9): `b0f3da4b6` (`_EnableWindowsDesktopGlobbing`, the cases of three reads a variable reaches) and the
+note's update.
 
 ## 2. The rule, and what the reader does now
 
@@ -57,9 +59,10 @@ word. Now:
 
 Three fixes that are not about variables came with it, each found while reading MSBuild's lines: `CustomAfterDirectoryBuild{Props,Targets}`
 is read after the import, where Directory.Build.props/.targets may set it (before, a file that set it was missed); `ProjectPath` is
-`$(ProjectDir)$(ProjectFileName)` as line 348 has it; and `_EnableWindowsDesktopGlobbing` is the WindowsDesktop targets' only when
-`Microsoft.NET.Sdk.targets` imported them (otherwise a file's or a variable's, which `Microsoft.NET.Sdk.WindowsDesktop.props` reads).
-S2-1's review point 4 (the AND of NuGet.targets) is section 6.
+`$(ProjectDir)$(ProjectFileName)` as line 348 has it; and `_EnableWindowsDesktopGlobbing` is 'true' from the WindowsDesktop targets only
+when `Microsoft.NET.Sdk.targets` imported them and their line 56's condition holds; otherwise, imported or not, it is a file's or a
+variable's, which `Microsoft.NET.Sdk.WindowsDesktop.props` reads, while the targets' Page removals keep line 56's condition, which their
+ItemGroup (line 73) has itself (the fix round, section 9). S2-1's review point 4 (the AND of NuGet.targets) is section 6.
 
 No result changes for the repository's projects: no such variable is set where the build lane, the evaluator and the tests run (the
 machine's and the user's variables are `PATH`, `TEMP`, `TMP`, `OS`, `PROCESSOR_*`, `USERNAME` and the like; the lane and
@@ -117,6 +120,7 @@ lines 45-62; one code for both)
 | `CustomBeforeMicrosoftCommonTargets`, `CustomAfterMicrosoftCommonTargets` | CurrentVersion 38-43, 7140 | not read | throws | I8, I9; M23, M24 |
 | `ImportByWildcardAfterMicrosoftCommonTargets` | CurrentVersion 22, 7142 | the marker as not 'true': `_TargetFrameworkVersionWithoutV` left `''` for a classic project | not known | B1; M26 |
 | `MicrosoftNETBuildExtensionsTargets` | ImportAfter file 14, 17 | not read | a variable: not known; a file's: not modelled (not known) | B2; M27 |
+| `TargetFrameworkVersion` | `Microsoft\Microsoft.NET.Build.Extensions\Microsoft.NET.Build.Extensions.targets` 15, which the ImportAfter file imports; reachable when TargetRuntime is not Managed (the common targets' lines 61-71 then store no default) | `''`: `_TargetFrameworkVersionWithoutV` `''`, known | `GetValue`: not known | B3 (in C2's case); M168 |
 
 **`ApplyCommonTargetsProperties`** (CurrentVersion) **and `ApplyNuGetTargetsProperties`**
 
@@ -136,6 +140,7 @@ lines 45-62; one code for both)
 | `OutputType` | 230-235, 253, 260-261, 377 (a variable for an SDK-style project: `SetIfEmpty`) | the marker matched none: TargetExt `''`, TargetName and TargetFileName the assembly's, no WinMD name, no GenerateBindingRedirectsOutputType | not known | C14-C17; M48-M51 |
 | `RootNamespace` | 253 | `''` | TargetName not known | C18; M52, M53 |
 | `TargetName` | 253 | `''`: RootNamespace over the variable | stays the variable | C19; M54 |
+| `OutDir` | 240, before line 242's default | `''`: OutDirWasSpecified `''`, known | `GetValue`: the variable is not `''`, so OutDirWasSpecified is 'true', as MSBuild has it (OutDir stays the variable: not known) | C20b; M166 |
 | `OutDirWasSpecified` | 240, 250 | the reader's own flag; the name not read | read as MSBuild reads it | C20, C21; M55, M56 |
 | `WindowsAppContainer` | 250 | `''` | OutDir not known | C22; M57 |
 | `GenerateProjectSpecificOutputFolder` | 250, both reads | `''` | OutDir not known | C23, C24; M58, M59 |
@@ -195,6 +200,7 @@ lines 45-62; one code for both)
 | `CopyLocalLockFileAssemblies` | PackageDependencyResolution 31-42 | computed over the variable | stays the variable | G1; M132 |
 | `_TargetFrameworkVersionWithoutV`, `HasRuntimeOutput`, `EnableDynamicLoading` | PackageDependencyResolution 37-39 | the marker as not below 3.0; `IsPropertyTrue` | not known | V3, G3, G2; M110, M134, M133 |
 | `DisableDefaultItemsInProjectFolder` | DefaultItems.targets 18-22 | not read | EnableDefaultItems not known (Load throws) | X5; M158 |
+| `EnableDefaultItems` | DefaultItems.targets 18, before line 24's default | `''`: with a file's DisableDefaultItemsInProjectFolder 'true' (a .csproj's folder always holds the project), EnableDefaultItems 'false': no default items and no error, where MSBuild globs with the variable's value | `GetValue`: the variable stands; Load throws | X5b; M167 |
 | `DefaultExcludesInProjectFolder`, `DefaultItemExcludesInProjectFolder` | DefaultItems.targets 51 | `''` | not known (Load throws) | X8, X7; M161, M160 |
 | `UseWPF`, `UseWindowsForms` | Microsoft.NET.Sdk.targets 1468-1469 | `''` | `IsKnownTrue`: throws | W1, W2; M143, M144 |
 | `TargetFrameworkIdentifier`, `_TargetFrameworkVersionWithoutV`, `TargetPlatformIdentifier` | 1470-1473 | the marker compared: no WindowsDesktop targets | `GetKnownValue`: throws | W3, V5, W4; M145, M111, M146 |
@@ -214,17 +220,25 @@ items and metadata are not markers, so a switch not known throws at `Load`)
 |---|---|---|---|---|
 | `EnableDefaultItems` | DefaultItems.props 35, WindowsDesktop.targets 56 | the marker as not 'true': no items | `IsKnownTrue`: throws | X1; M154 |
 | `EnableDefaultCompileItems`, `...EmbeddedResourceItems`, `...NoneItems` | DefaultItems.props 36-45 | no items | throws | X2-X4; M155-M157 |
-| `_EnableWindowsDesktopGlobbing` | WindowsDesktop.props 3, 17 (only WindowsDesktop.targets 56 sets it) | computed for a project without those targets too | the targets' when imported; otherwise `IsKnownTrue` | W6; M149 |
+| `_EnableWindowsDesktopGlobbing` | WindowsDesktop.props 3, 17, read in the item passes (the name's last value); only WindowsDesktop.targets 56 sets it, and only when its condition holds | computed for a project without those targets too; with them, line 56's condition alone (a file's or a variable's value ignored when the condition is false) | 'true' when the targets are imported and line 56's condition holds; otherwise `IsKnownTrue` (a file's value; a variable throws) | W6, W6b, W6c; M149, M164 |
 | `UseWPF`, `_TargetFrameworkVersionWithoutV` | WindowsDesktop.targets 51, 56, 73 | `''`; the marker as not a version | throws | W7, V6; M150, M112 |
 | `EnableDefaultPageItems` | WindowsDesktop.props 25, 39; .targets 80, 100 | the marker as not 'false' | `IsKnownFalse`: throws (the four reads one unit: the first throws) | W8; M151 |
 | `EnableDefaultApplicationDefinition` | WindowsDesktop.props 19, 39; .targets 100 | the same | throws | W9; M152 |
 | `DefaultXamlRuntime` | WindowsDesktop.props 6, 12 | the marker's text as XamlRuntime metadata | `GetKnownValue`: throws | W10; M153 |
 | `SetLinkMetadataAutomatically` | DefaultItems.targets 82 | `''`: the Link set | `IsKnownFalse`: throws | X9; M162 |
 
+The targets' Page removals (`ApplySdkTargetsItems`, WindowsDesktop.targets 73-101) are not decided by `_EnableWindowsDesktopGlobbing`: their
+ItemGroup has line 56's condition itself, which they keep (`IsWindowsDesktopTargetsGlobbing`, the structural fix M165). So a file's or a
+variable's value of the name for a project without UseWPF gives the props' Page items and their definitions and none of the removals, as
+MSBuild 18 evaluates it (section 9); W6c checks it.
+
 **`ThrowIfImplicitPackageReferences`** (S2-1's read, test added): `_TargetFrameworkVersionWithoutV`, a version not known for .NET Core
 throws (SPR; M163; section 6).
 
-**Size:** 159 reads converted, each undone in turn by its mutation unit (section 5), and three structural fixes (M06, M13, M70).
+**Size:** 163 reads converted, each undone in turn by its mutation unit (section 5), and four structural fixes (M06, M13, M70, M165).
+The fix round (section 9) added four of the reads (OutDir in line 240, EnableDefaultItems in DefaultItems.targets 18, TargetFrameworkVersion
+in Microsoft.NET.Build.Extensions.targets 15, and `_EnableWindowsDesktopGlobbing` with the WindowsDesktop targets imported) and M165; the
+first pass had 159 reads and three fixes.
 
 ### 3.2 Reads left as they were
 
@@ -234,8 +248,8 @@ throws (SPR; M163; section 6).
 | Global properties: `Configuration`, `Platform` (every `IsValue` of `ImportSdkProps`, the output paths, the configuration's define), and the solution's `Solution*` for a listed project | a global property replaces a variable; for an unlisted project `SetIfEmpty("*Undefined*")` already gives a variable's marker |
 | Names MSBuild's files set unconditionally before the read, as the reader does: `Language`, `DefaultLanguageSourceExtension`, `TargetRuntime` (C# and Visual Basic), `MicrosoftCommonPropsHasBeenImported`, `UsingMicrosoftNETSdk`, `UsingNETSdkDefaults`, `DisableHandlePackageFileConflicts`, `RestoreProjectStyle`, `SupportsRoslynComponentVersioning`, `_TargetFrameworkVersionWithoutV` of an SDK-style project (Inference 59), `TargetDir` (CurrentVersion 336, whenever OutDir is not `''`), `ProjectAssetsFile` (normalized unconditionally), `_InitialBaseIntermediateOutputPath`, the appends to `DefaultItemExcludes`, `DefaultExcludesInProjectFolder`, `WarningsAsErrors` and `DefineConstants` after their first read | the file's value replaces the variable |
 | Names `SetIfEmpty` sets just before the read, so a variable is already the marker there, which flows into every value made from it and makes `GetProperty` throw: `BaseOutputPath`, `OutputPath`, `BaseIntermediateOutputPath`, `IntermediateOutputPath`, `MSBuildProjectExtensionsPath`, `OutDir`, `AssemblyName`, `TargetName` (line 254), `TargetFileName`, `TargetPath`, `ProjectExt`, `AppDesignerFolder`, `Utf8Output`, `PlatformName` in the classic output paths (CurrentVersion 169-176: `IsValue` with the marker gives the marker's folder), `TargetFrameworkAsMSBuildRuntime`, `PlatformTargetAsMSBuildArchitecture`, `ProduceReferenceAssembly` (common default), the SDK's defaults (`Configurations` ... `CheckForOverflowUnderflow`, `NoWarn`, `PlatformTarget`, `DebugType`, the `EnableDefault*` switches, `IsPublishable`, `AppendTargetFrameworkToOutputPath`), the `ImportByWildcard*` switches, and the names S2-1 read through `SetIfEmpty` and `ThrowIfUnresolved` (`ImportProjectExtensionProps`, `ImportProjectExtensionTargets`, `ImportDirectoryPackagesProps`, `_DirectoryPackagesPropsFile`, `_DirectoryPackagesPropsBasePath`) | unchanged: a variable was not known before already |
-| Reads whose old form already refused, left as they were (commit `3b432605f`): `TargetPlatformIdentifier` in Inference 66-67 (a marker is not 'Windows'; the version is then 7.0 as MSBuild has it for a framework without a platform, or not modelled for .NET 5+), `AppendRuntimeIdentifierToOutputPath` (RuntimeIdentifierInference 358, 368: a variable is not 'false', so the paths are not known either way), `TargetFrameworkIdentifier` in BeforeCommon 102 (CurrentVersion 379 reads it again and makes AutoGenerateBindingRedirects not known), `DelaySign` in line 594's branch (line 595 decides it), `OutputType` in the TargetExt loop (the not-known branch before it decides), `TargetType` against Container (the marker is OutputType's value), `TargetFrameworkVersion` in TargetFrameworkAsMSBuildRuntime (its `IsUnresolved` branch), `PlatformTarget` in PlatformTargetAsMSBuildArchitecture (`IsPropertyKnown` makes it not modelled) | the old read already gave a value not known, so no fixture can tell it from a converted one |
-| Reads a variable does not reach, because the reader's own model of MSBuild stored the name before (so `GetValue`'s change cannot matter there): `TargetFrameworkIdentifier` in the CopyLocalLockFileAssemblies guard (the common targets' `SetIfEmpty` ran first; mutation unit M109 survived as an equivalent mutant), `TargetFrameworkVersion` in `ApplyBuildExtensionsTargets`, `TargetPlatformIdentifier`/`Version` in Inference 65 (both variables: `SetIfEmpty`'s marker), `EnableDefaultItems` in DefaultItems.targets 18 (the next `SetIfEmpty`), `OutDir` in line 240 (the next `SetIfEmpty`), the identifier and version after a not-known check returned (`ApplyFrameworkProps`, CopyLocalLockFileAssemblies, WarningLevel) | not reachable |
+| Reads whose old form already refused, left as they were (commit `3b432605f`): `TargetPlatformIdentifier` in Inference 66-67 (a marker is not 'Windows'; the version is then 7.0 as MSBuild has it for a framework without a platform, or not modelled for .NET 5+), `AppendRuntimeIdentifierToOutputPath` (RuntimeIdentifierInference 358, 368: a variable is not 'false', so the paths are not known either way), `TargetFrameworkIdentifier` in BeforeCommon 102 (CurrentVersion 379 reads it again and makes AutoGenerateBindingRedirects not known), `DelaySign` in line 594's branch (line 595 decides it), `OutputType` in the TargetExt loop (the not-known branch before it decides), `TargetType` against Container (the marker is OutputType's value), `TargetFrameworkVersion` in TargetFrameworkAsMSBuildRuntime (its `IsUnresolved` branch), `PlatformTarget` in PlatformTargetAsMSBuildArchitecture (`IsPropertyKnown` makes it not modelled), and `TargetPlatformIdentifier`/`TargetPlatformVersion` in Inference 65, which a variable of either reaches (nothing stored them before): read as `''` there, the next lines' `SetIfEmpty` stores the identifier's variable as its marker, which is not 'Windows', so the version is not set from it either; read as `GetValue` reads them, the variables stand; both ways the two are the same values not known, and the mutant is equivalent | the old read already gave a value not known, so no fixture can tell it from a converted one |
+| Reads a variable does not reach, because the reader's own model of MSBuild stored the name before (so `GetValue`'s change cannot matter there): `TargetFrameworkIdentifier` in the CopyLocalLockFileAssemblies guard (the common targets' `SetIfEmpty` of lines 61-71 ran first: an SDK-style project always gets the C# or Visual Basic targets, which set TargetRuntime Managed; mutation unit M109 survived as an equivalent mutant), and the identifier and version after a check for a value not known returned for it (`ApplyFrameworkProps`, CopyLocalLockFileAssemblies, WarningLevel) | not reachable |
 | S2-1's converted reads (S2-1.md, section 10): `ImportDirectoryPackagesProps`, `DirectoryPackagesPropsPath`, `_DirectoryPackagesPropsFile`, `_DirectoryPackagesPropsBasePath`, `ManagePackageVersionsCentrally`, `CentralPackageVersionsFileImported`, `_CentralPackageVersionsEnabled`, `CentralPackageVersionOverrideEnabled`, `RestoreEnableGlobalPackageReference`, `DisableImplicitFrameworkReferences`, `TargetFrameworkIdentifier`, `_TargetFrameworkVersionWithoutV`, `RuntimeFrameworkVersion`, `ImportProjectExtensionProps`, `ImportProjectExtensionTargets`, `NuGetPackageFolders` | already read as MSBuild reads them; the AND of NuGet.targets three-valued now (section 6) |
 
 ## 4. Tests
@@ -252,7 +266,7 @@ that sets the name decides it, and the value without the variable is MSBuild's.
 | `DirectoryBuildFileNames_AsEnvironmentVariables_ThrowWhereMicrosoftCommonReadsThem` | D1-D7, each for Props and Targets |
 | `TheImportsOfTheCommonFiles_AsEnvironmentVariables_Throw` | I1-I12 |
 | `TheBuildExtensionsTargets_AsEnvironmentVariables_MakeTheVersionWithoutVNotKnown` | B1, B2 |
-| `TheCommonTargetsProperties_FromEnvironmentVariables_AreNotKnown` | C1-C32 |
+| `TheCommonTargetsProperties_FromEnvironmentVariables_AreNotKnown` | C1-C32, C20b, B3 (in C2's case) |
 | `NuGetTargets_FromEnvironmentVariables_LeavesTheCentralSwitchNotKnown_UnlessAFalseOperandDecidesIt` | N1-N3 |
 | `TheFrameworkPropsDefaults_FromEnvironmentVariables_AreNotKnown` | F1-F6 |
 | `TheImportsOfTheSdksFiles_AsEnvironmentVariables_Throw` | S1-S15 |
@@ -261,12 +275,14 @@ that sets the name decides it, and the value without the variable is MSBuild's.
 | `TheVersionOfANetCoreProject_NotKnown_MakesWhatDependsOnItNotKnown` | V1-V6 |
 | `TheSdksBeforeCommonProperties_FromEnvironmentVariables_AreNotKnown` | E1-E18 |
 | `TheSdksTargetsProperties_FromEnvironmentVariables_AreNotKnown` | G1-G10 |
-| `TheWindowsDesktopNames_AsEnvironmentVariables_Throw` | W1-W10 |
-| `TheDefaultItemSwitches_AsEnvironmentVariables_Throw` | X1-X9 |
+| `TheWindowsDesktopNames_AsEnvironmentVariables_Throw` | W1-W10, W6b, W6c |
+| `TheDefaultItemSwitches_AsEnvironmentVariables_Throw` | X1-X9, X5b |
 | `ImportsTests.TheSdksPackageReferenceNames_AsEnvironmentVariablesOrNotKnown_Throw` | SPR (section 6) |
 
 All of them fail on the reader of `net10/s21r3-1`: its `ProjectFile.cs` built with the tests of `b7323d074` failed all 16 (run
-`.git\od-tools\test-results\rdenv-oldreader.txt`); section 5 undoes each read on its own.
+`.git\od-tools\test-results\rdenv-oldreader.txt`); section 5 undoes each read on its own, the fix round's cases (C20b, B3, X5b, W6b, W6c)
+included. W6c (a file's `_EnableWindowsDesktopGlobbing` for a Windows Forms project) is not about a variable: it pins what MSBuild 18 gives
+for that shape (section 9), which the fix of W6b had to keep.
 
 ## 5. The mutation check
 
@@ -280,7 +296,19 @@ line numbers unchanged; a statement over several lines is keyed by its first lin
 compared). One build, then one Targeted run of ProjectFileTests (with NoHqTests) per unit. The three structural fixes were undone by hand,
 one build each (M06: `ProjectPath` as the full path again; M13: the CustomAfter read before the import; M70: S2-1's form of the AND).
 
-**Result: every unit killed, by exactly the tests of its reads.** 151 of the 162 units failed exactly one test, at the case of section 3
+The fix round's five units (section 9) were undone by hand too, one lane build of ProjectFileTests and one Targeted run each
+(`rdenv-mut-164.txt` to `rdenv-mut-168.txt`, and their lines at the end of the summary file, keyed `hand:`). Each failed exactly the one
+test, at its case (ProjectFileTests 1 failed; NoHqTests none failed, 8 of its 58 skipped there without the full build's outputs):
+
+| Unit | Undone | Failed (case) |
+|---|---|---|
+| M164 | `IsWindowsDesktopGlobbing` with the targets imported: line 56's condition alone, the name not read | WDT (W6b) |
+| M165 | the targets' removals decided by `IsWindowsDesktopGlobbing` instead of line 56's condition | WDT (W6c: the Page that is also a Resource removed) |
+| M166 | OutDir in CurrentVersion line 240 read as `''` for a variable | CTP (C20b: OutDirWasSpecified `''`) |
+| M167 | EnableDefaultItems in DefaultItems.targets line 18 read as `''` for a variable | DIS (X5b: no exception) |
+| M168 | TargetFrameworkVersion in Microsoft.NET.Build.Extensions.targets line 15 read as `''` for a variable | CTP (B3: `''`) |
+
+**Result: every unit killed, by exactly the tests of its reads.** 156 of the 167 units failed exactly one test, at the case of section 3
 (the test's other cases passed up to it). The 11 others failed every test that has a case of the read:
 
 | Unit | Tests that failed (cases) | Why more than one |
@@ -362,6 +390,8 @@ In this worktree, cleaned with `git clean -fdXq` at `05fa914a5` (the code of thi
 
 ForkMigrationTests and InitSqlTests were left out, and `db/init/new-database.sql` was not written again (the coordinator's rule).
 
+The fix round repeated this proof on its own code (`b0f3da4b6`): section 9.
+
 ## 8. For the lead
 
 - **What the reader still does not model** (unchanged, each reads as `''` or throws as before): the files of MSBuild's and Visual Studio's
@@ -375,3 +405,62 @@ ForkMigrationTests and InitSqlTests were left out, and `db/init/new-database.sql
 - **The rule for a later change to the reader:** a read of the reader's own code goes through `GetValue` (a value) or `IsValueIfKnown` (a
   comparison) unless the name is reserved, global or set just before; an import or an item decision through `GetKnownValue`/`IsKnownTrue`;
   an import of a file a property names through `ThrowIfImportHook`. `EnvironmentVariablesTests` is the place for its case.
+
+## 9. The fix round (`net10/readerenv-2`)
+
+Two review findings on `net10/readerenv-1`, both real; commit `b0f3da4b6` (the reader and the tests) and this note's update.
+
+**1. `_EnableWindowsDesktopGlobbing` with the WindowsDesktop targets imported.** When `Microsoft.NET.Sdk.targets` imported
+`Microsoft.NET.Sdk.WindowsDesktop.targets`, `IsWindowsDesktopGlobbing` returned line 56's condition alone. But line 56 sets the name only
+when its condition holds (`EnableDefaultItems` and `UseWPF` 'true', a version of 3.0 or later; checked in the pinned SDK 10.0.114's files:
+the targets' lines 56-58, the props' lines 3 and 17); when it does not, the name keeps a file's or an environment variable's value, which
+the props read in the item passes. So an SDK-style Windows Forms project (`UseWindowsForms` true, `UseWPF` false: the shape OpenDental
+takes in stage 3) with a variable `_EnableWindowsDesktopGlobbing=true` got no Page or ApplicationDefinition items and no error from the
+reader, where MSBuild adds them with their item definitions. Now `IsWindowsDesktopGlobbing` is 'true' when the targets are imported and
+line 56's condition holds (`IsWindowsDesktopTargetsGlobbing`, the condition as before); otherwise, imported or not, it is
+`IsKnownTrue("_EnableWindowsDesktopGlobbing")`: a file's value decides, a variable throws. It decides the props' items
+(`AddSdkDefaultItems`) and their definitions (`ApplyItemDefinitions`).
+
+The finding also named `ApplySdkTargetsItems`, the targets' Page removals, as decided by the same function. Their ItemGroup (line 73) does
+not read the name: it has line 56's condition itself. With the fall-through alone, a file's value of the name for a Windows Forms project
+would have removed Pages that MSBuild keeps, so `ApplySdkTargetsItems` reads `IsWindowsDesktopTargetsGlobbing` now (a structural fix,
+M165). Cases: W6b (the variable, Windows Forms: `Load` throws naming `$(_EnableWindowsDesktopGlobbing)`) and W6c (the same name in the
+project file: the props' Page items with their `Generator` definition, a Page that is also a Resource stays a Page, and no Page item
+without the name). Units M164 (the imported branch as line 56's condition alone) and M165 (the removals by `IsWindowsDesktopGlobbing`).
+
+**2. Three reads a variable reaches, listed as not reached.** Section 3.2's first pass gave wrong reasons for three reads that
+`GetValue`'s environment branch already changed, so they had no case and no unit:
+
+- `OutDir` at CurrentVersion line 240 (`ApplyCommonTargetsProperties`): no file set it, and the `SetIfEmpty` comes after the read, so a
+  variable `OutDir` makes OutDirWasSpecified 'true' as in MSBuild; the old read left it `''`, a known value. Case C20b, unit M166.
+- `EnableDefaultItems` at `Microsoft.NET.Sdk.DefaultItems.targets` line 18: read before the `SetIfEmpty` of line 24's default. With a
+  variable `EnableDefaultItems=true` and a file's `DisableDefaultItemsInProjectFolder` 'true' (a .csproj's folder always holds the project),
+  the old read stored EnableDefaultItems 'false': no default items and no error, where MSBuild keeps the variable and globs. Now `Load`
+  throws. Case X5b, unit M167.
+- `TargetFrameworkVersion` at `Microsoft.NET.Build.Extensions.targets` line 15 (`ApplyBuildExtensionsTargets`): when TargetRuntime is not
+  Managed (C2's fixture: `Microsoft.Common.targets` alone, TargetRuntime Native), nothing stored the name before, and the old read gave
+  `_TargetFrameworkVersionWithoutV` `''`, known. Case B3 (in C2's case), unit M168.
+
+The three are converted reads in section 3.1 now, with a comment at each in `ProjectFile.cs`. Inference 65's
+`TargetPlatformIdentifier`/`TargetPlatformVersion` read is reachable too, but both forms give the same values not known (its mutant is
+equivalent), so it moved to the row of reads whose old form already refused, with that reason.
+
+**Counts now:** 163 reads converted and four structural fixes (section 3.1); 167 mutation units, every one killed, 156 of them by exactly
+one test (section 5); M109 still an equivalent mutant (section 3.2). The mutation runs of the fix round: `rdenv-mut-164.txt` to
+`rdenv-mut-168.txt` and the `hand:` lines at the end of `rdenv-mutation-summary.txt`.
+
+**The proof of the fix round,** in this worktree cleaned with `git clean -fdXq` at `b0f3da4b6`:
+
+- **One cold full lane build** of `OpenDental.Local.slnf` (Debug x86): 0 errors, 353 warnings as before, 154 compiler runs, 32 of them
+  compiling `tests\ProjectFileTests\ProjectFile.cs` (the same 32 outputs); `git status` clean after it.
+- **`tools\Test-ProjectFileEvaluator.ps1`**: exit 0, "The evaluator agrees with MSBuild": 153 projects, 306 evaluations, 40,485
+  comparisons (31,798 Debug equal, 3,638 Debug not modelled, 5,049 Release equal), nothing else: S2-1's round 3's counts.
+- **The project baseline.** A new record against a copy of S2-1's round-3 record: the one difference of section 7
+  (`ProjectFileTests|Compile|EnvironmentVariablesTests.cs`), 121 files of other sizes, not gated. Against the first pass's record: items,
+  resources, configs and file names the same (no project of the repository sets `_EnableWindowsDesktopGlobbing`, and no such variable is
+  set where the lane runs). ProjectFileTests with `OPMS_CHECK_PROJECT_BASELINE=1` against a copy of the new record: 13,540 recorded items,
+  13,540 evaluated, "No differences".
+- **Targeted runs**, NoHqTests in each: `rdenv2b-targeted.txt` (ProjectFileTests 126 of 126, LibraryBindingTests 15 of 15,
+  AttributionTests 50 of 50, NoHqTests 58 of 58, with the baseline variables) and `rdenv2b-targeted-2.txt` (the 29 other assemblies that
+  compile `ProjectFile.cs`: VendorDirectTests 922, SshHostKeyTests 46, ReleaseFlowTests 119 of 120 with the one inconclusive of section 7,
+  the 26 others 1,313 of 1,313). No test failed.
