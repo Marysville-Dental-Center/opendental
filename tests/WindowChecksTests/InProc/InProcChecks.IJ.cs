@@ -251,8 +251,29 @@ namespace WindowChecksTests.InProc {
 			ShowFeaturesEhr(ui,checkResult,on:false,shotBefore:null,shotConfirm:null);
 		}
 
-		///<summary>After a start: the Chart toolbar has (or has not) the EHR button.</summary>
-		public static void CheckJCHART(Ui ui,CheckResult checkResult) {
+		///<summary>J1's restart: the Chart, printed as J1-chart-ehr.png.</summary>
+		public static void CheckJCHARTJ1(Ui ui,CheckResult checkResult) {
+			ChartAfterStart(ui,checkResult,"J1-chart-ehr.png");
+		}
+
+		///<summary>J16's restart: the Chart, printed as J16-chart.png.</summary>
+		public static void CheckJCHARTJ16(Ui ui,CheckResult checkResult) {
+			ChartAfterStart(ui,checkResult,"J16-chart.png");
+		}
+
+		///<summary>J17's first restart (EHR saved by the wizard): the Chart, printed as J17-chart-ehr.png.</summary>
+		public static void CheckJCHARTJ17ON(Ui ui,CheckResult checkResult) {
+			ChartAfterStart(ui,checkResult,"J17-chart-ehr.png");
+		}
+
+		///<summary>J17's second restart (EHR off again): the Chart, printed as J17-chart-off.png.</summary>
+		public static void CheckJCHARTJ17OFF(Ui ui,CheckResult checkResult) {
+			ChartAfterStart(ui,checkResult,"J17-chart-off.png");
+		}
+
+		///<summary>After a start: the Chart toolbar has (or has not) the EHR button. Each restart prints its own picture (fileName), so one restart's
+		///picture never stands for another's.</summary>
+		private static void ChartAfterStart(Ui ui,CheckResult checkResult,string fileName) {
 			GoToModule(ui,EnumModuleType.Chart);
 			Control controlChart=ModuleControl("controlChart");
 			List<string> listButtons=ui.Invoke(() => {
@@ -263,7 +284,8 @@ namespace WindowChecksTests.InProc {
 			});
 			checkResult.Note("Chart toolbar: "+string.Join(", ",listButtons));
 			checkResult.ListVerified.Add("EHR button "+(listButtons.Contains("EHR") ? "present" : "absent"));
-			checkResult.AddShot(ui.Shot(ui.Invoke(() => FormMain.Handle),"J-chart.png"),"The Chart after the start");
+			checkResult.AddShot(ui.Shot(ui.Invoke(() => FormMain.Handle),fileName),"The Chart after the start (EHR button "
+				+(listButtons.Contains("EHR") ? "present" : "absent")+")");
 		}
 
 		public static void CheckJ3(Ui ui,CheckResult checkResult) {

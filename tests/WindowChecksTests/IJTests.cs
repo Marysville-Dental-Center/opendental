@@ -106,7 +106,7 @@ namespace WindowChecksTests {
 			}
 			//Exit and start with EHR on: J1's Chart, J2's wizard, J3's SNOMED window and data row, the 0.4 users, J4 to J13 with their log-offs, J15.
 			using(InProcHost inProcHost=InProcHost.Start("chart")) {
-				CheckResult checkResultChart=inProcHost.Run("JCHART","Chart after the start");
+				CheckResult checkResultChart=inProcHost.Run("JCHARTJ1","Chart after the start");
 				checkResultJ1.Expect(checkResultChart.ListVerified.Contains("EHR button present"),"Exit, start, log on: the Chart toolbar has EHR");
 				ATests.Merge(checkResultJ1,checkResultChart);
 				Results.Write(checkResultJ1);
@@ -160,7 +160,7 @@ namespace WindowChecksTests {
 			}
 			CheckResult checkResultJ17;
 			using(InProcHost inProcHost=InProcHost.Start("chart")) {
-				CheckResult checkResultChart=inProcHost.Run("JCHART","Chart after the start");
+				CheckResult checkResultChart=inProcHost.Run("JCHARTJ16","Chart after the start");
 				checkResultJ16.Expect(checkResultChart.ListVerified.Contains("EHR button absent"),"Exit, start, log on: no EHR button in the Chart");
 				ATests.Merge(checkResultJ16,checkResultChart);
 				ATests.Merge(checkResultJ16,inProcHost.Run("J16SF","Show Features after the restart"));
@@ -170,13 +170,13 @@ namespace WindowChecksTests {
 			Results.Write(checkResultJ16);
 			listResults.Add(checkResultJ16);
 			using(InProcHost inProcHost=InProcHost.Start("chart")) {
-				CheckResult checkResultChart=inProcHost.Run("JCHART","Chart after the start");
+				CheckResult checkResultChart=inProcHost.Run("JCHARTJ17ON","Chart after the start");
 				checkResultJ17.Expect(checkResultChart.ListVerified.Contains("EHR button present"),"Exit, start, log on: the Chart toolbar has EHR");
 				ATests.Merge(checkResultJ17,checkResultChart);
 				ATests.Merge(checkResultJ17,inProcHost.Run("J17OFF","Show Features: EHR off again"));
 			}
 			using(InProcHost inProcHost=InProcHost.Start("chart")) {
-				CheckResult checkResultChart=inProcHost.Run("JCHART","Chart after the start");
+				CheckResult checkResultChart=inProcHost.Run("JCHARTJ17OFF","Chart after the start");
 				checkResultJ17.Expect(checkResultChart.ListVerified.Contains("EHR button absent"),"Exit, start, log on: no EHR button");
 				ATests.Merge(checkResultJ17,checkResultChart);
 			}
