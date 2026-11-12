@@ -581,8 +581,9 @@ namespace ProjectFileTests {
 
 		///<summary>Runs the action with the environment variable of this test process set to the value, and gives the variable its old value (none,
 		///normally) afterwards, whatever the action does. ProjectFileTests' tests run one after another in one test host (MSTest v1 runs the tests
-		///of an assembly in turn; run-tests.ps1 starts each assembly in a vstest process of its own), so no other test sees the variable.</summary>
-		private static void WithEnvironmentVariable(string name,string value,Action action) {
+		///of an assembly in turn; run-tests.ps1 starts each assembly in a vstest process of its own), so no other test sees the variable. Also
+		///EnvironmentVariablesTests'.</summary>
+		internal static void WithEnvironmentVariable(string name,string value,Action action) {
 			string valueOld=Environment.GetEnvironmentVariable(name);
 			Environment.SetEnvironmentVariable(name,value);
 			try {
@@ -752,6 +753,31 @@ namespace ProjectFileTests {
 					Assert.AreEqual("1.2.3",LoadSdkPackages(fixtureFolder,"","").GetPackageVersion("Fixture.Package"),"Not read without Microsoft.NETCore.App.");
 					Assert.AreEqual(2,LoadSdkPackages(fixtureFolder,"<RuntimeFrameworkVersion></RuntimeFrameworkVersion>","<PackageReference Include=\"Microsoft.NETCore.App\" />")
 						.GetItems("PackageReference").Count,"A file that sets it decides it.");
+				});
+				//The version of a .NET Core project (READER-ENV, the third review point of S2-1's second follow-up round): a project without a
+				//TargetFramework names the identifier itself, so the SDK infers nothing, and with ImportByWildcardAfterMicrosoftCommonTargets false
+				//only Microsoft.NET.TargetFrameworkInference.targets line 59 sets _TargetFrameworkVersionWithoutV, from TargetFrameworkVersion.
+				const string NETCORE_WITHOUT_TF="<TargetFramework></TargetFramework><TargetFrameworkIdentifier>.NETCoreApp</TargetFrameworkIdentifier>"
+					+"<ImportByWildcardAfterMicrosoftCommonTargets>false</ImportByWildcardAfterMicrosoftCommonTargets>";
+				AssertThrows<NotSupportedException>(() => LoadSdkPackages(fixtureFolder,NETCORE_WITHOUT_TF+"<TargetFrameworkVersion>v2.1</TargetFrameworkVersion>","")
+					.GetItems("PackageReference"),"implicit PackageReference");
+				Assert.AreEqual(1,LoadSdkPackages(fixtureFolder,NETCORE_WITHOUT_TF+"<TargetFrameworkVersion>v3.1</TargetFrameworkVersion>","")
+					.GetItems("PackageReference").Count);
+				//A TargetFrameworkVersion of an environment variable: the version is not known, so neither is the implicit PackageReference
+				//(GetKnownValue("_TargetFrameworkVersionWithoutV"), with the switch off and on).
+				WithEnvironmentVariable("TargetFrameworkVersion","v2.1",() => {
+					foreach(string importAfter in new[] { "false","true" }) {
+						ProjectFile projectFile=LoadSdkPackages(fixtureFolder,NETCORE_WITHOUT_TF.Replace("Targets>false<","Targets>"+importAfter+"<"),"");
+						AssertThrows<NotSupportedException>(() => projectFile.GetItems("PackageReference"),"$(TargetFrameworkVersion)");
+						Assert.AreEqual(1,projectFile.GetItems("Compile").Count,importAfter);
+					}
+				});
+				//_TargetFrameworkVersionWithoutV itself as an environment variable does not reach the read: line 59 sets it for every SDK-style
+				//project, over the variable, as MSBuild does.
+				WithEnvironmentVariable("_TargetFrameworkVersionWithoutV","2.1",() => {
+					ProjectFile projectFile=LoadSdkPackages(fixtureFolder,NETCORE_WITHOUT_TF+"<TargetFrameworkVersion>v3.1</TargetFrameworkVersion>","");
+					Assert.AreEqual("3.1",projectFile.GetProperty("_TargetFrameworkVersionWithoutV"));
+					Assert.AreEqual(1,projectFile.GetItems("PackageReference").Count);
 				});
 				//A framework the reader does not know: whether the SDK adds its implicit PackageReference is not known either.
 				ProjectFile projectFileUnknown=LoadSdkPackages(fixtureFolder,"<TargetFramework>uap10.0</TargetFramework>","");

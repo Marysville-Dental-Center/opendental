@@ -65,14 +65,13 @@ namespace OpenPmsDental {
 					return;
 				}
 			}
-			File.WriteAllText(Path.Combine(formBrowserDialog.SelectedPath,"ccd.xml"),continuityOfCareText);
-			File.WriteAllText(Path.Combine(formBrowserDialog.SelectedPath,"ccd.xsl"),EhrSummaryCcds.GetEhrResource("CCD"));
+			string reasonPage=FormEhrSummaryOfCare.WriteCcdFiles(formBrowserDialog.SelectedPath,continuityOfCareText);//ccd.xml, the stylesheet files, the licence text and ccd.html.
 			EhrMeasureEvent ehrMeasureEvent=new EhrMeasureEvent();
 			ehrMeasureEvent.DateTEvent=DateTime.Now;
 			ehrMeasureEvent.EventType=EhrMeasureEventType.ClinicalSummaryProvidedToPt;
 			ehrMeasureEvent.PatNum=PatCur.PatNum;
 			EhrMeasureEvents.Insert(ehrMeasureEvent);
-			MsgBox.Show(this,"File has been exported.");
+			MessageBox.Show(Lan.g(this,"File has been exported.")+FormEhrSummaryOfCare.GetPageNotWrittenMessage(reasonPage));
 		}
 
 	}

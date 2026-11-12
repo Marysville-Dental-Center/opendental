@@ -1,2 +1,5 @@
 # PNG baselines and pictures are binary: no line-ending conversion, no text diff or merge (docs/specs/wpf-tooth-chart-plan.md, section 7).
 *.png binary
+# The EHR stylesheets are upstream's files byte for byte (LF line ends): no line-ending conversion, so the embedded text keeps the SHA-256 that
+# THIRD-PARTY-NOTICES.txt names (docs/specs/ehr-rebuild-plan.md, EHR-3). Diffs and merges stay text.
+OpenPmsDentalBusiness/Resources/Ehr/** -text

@@ -209,10 +209,15 @@ WPF
 			return bitmapImage;
 		}
 
-		///<summary>If you have a control on the screen, you can draw it onto the canvas using this method. Doesn't work for signatureBoxes.</summary>
+		///<summary>If you have a control on the screen, you can draw it onto the canvas using this method. Doesn't work for signatureBoxes. A collapsed element, or one without width or height, draws nothing.</summary>
 		public void DrawFrameworkElement(FrameworkElement frameworkElement,double x,double y){
 			double width=frameworkElement.ActualWidth;
 			double height=frameworkElement.ActualHeight;
+			if(frameworkElement.Visibility==Visibility.Collapsed || width<=0 || height<=0){
+				//Nothing shows on the screen, so there is nothing to draw. RenderTargetBitmap also needs at least one pixel each way, or it throws.
+				//Example: an eForm row whose fields are all hidden by conditional logic.
+				return;
+			}
 			frameworkElement.Measure(new Size(width,height));
 			frameworkElement.Arrange(new Rect(new Size(width,height)));
 			//handle rounding errors that would cut off the bottom row of pixels

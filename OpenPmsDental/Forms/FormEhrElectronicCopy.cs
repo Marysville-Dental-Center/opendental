@@ -118,10 +118,9 @@ namespace OpenPmsDental {
 					return;
 				}
 			}
-			File.WriteAllText(Path.Combine(dlg.SelectedPath,"ccd.xml"),ccd);
-			File.WriteAllText(Path.Combine(dlg.SelectedPath,"ccd.xsl"),EhrSummaryCcds.GetEhrResource("CCD"));
+			string reasonPage=FormEhrSummaryOfCare.WriteCcdFiles(dlg.SelectedPath,ccd);//ccd.xml, the stylesheet files, the licence text and ccd.html.
 			RecordRequestAndProvide();
-			MessageBox.Show("Exported");
+			MessageBox.Show("Exported"+FormEhrSummaryOfCare.GetPageNotWrittenMessage(reasonPage));
 		}
 
 		private void butSendEmail_Click(object sender,EventArgs e) {

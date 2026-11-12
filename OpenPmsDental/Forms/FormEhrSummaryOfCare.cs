@@ -105,13 +105,25 @@ namespace OpenPmsDental {
 		///Pass in a valid patient if the CCD is being displayed to reconcile (incoporate into patient record) medications and/or problems and/or allergies.
 		///patCur can be null, or patCur.PatNum can be 0, to hide the three reconcile buttons. 
 		///strXmlCCD is the actual text of the CCD.
-		///strAlterateFilPathXslCCD is the file of a stylesheet that came with the CCD in an email, or "". The stylesheet is never read or run: the
-		///window shows the CCD as XML instead, with its print and reconcile buttons.</summary>
+		///strAlterateFilPathXslCCD is the file of a stylesheet that came with the CCD in an email, or "". That stylesheet is never read or run: the
+		///document is shown with the program's own stylesheet (a CCD with HL7's CDA.xsl, a CCR with the AAFP's ccr.xsl), run in a child process by
+		///EhrStylesheetStarter, or as XML with the reason when that fails, with its print and reconcile buttons either way.</summary>
 		public static bool DisplayCCD(string strXmlCCD,Patient patCur,string strAlterateFilPathXslCCD) {
+			//The child's limits first, on the text: XmlDocument.InnerXml below writes the document recursively in the program's own process, and a
+			//document type declaration could expand its entities here. Such a document, and one that is not well-formed XML (its depth could not be
+			//counted), is shown as text, with the reason and no reconcile buttons.
+			string reasonLimits=EhrStylesheetStarter.GetLimitError(strXmlCCD);
+			if(reasonLimits!=null) {
+				string noteLimits=Lan.g("FormEhrSummaryOfCare","The document is not shown with the program's stylesheet")+": "+reasonLimits;
+				using FormEhrSummaryCcdEdit formLimits=new FormEhrSummaryCcdEdit(strXmlCCD,null,null,noteLimits);
+				formLimits.ShowDialog();
+				return formLimits.DidPrint;
+			}
 			//string xmltext=GetSampleMissingStylesheet();
-			XmlDocument doc=new XmlDocument();
+			XmlDocument doc;
 			try {
-				doc.LoadXml(strXmlCCD);
+				//The reader the limits were counted with, never LoadXml's more lenient one.
+				doc=EhrStylesheetStarter.LoadXmlDocument(strXmlCCD);
 			}
 			catch {
 				throw new XmlException("Invalid XML");
@@ -125,23 +137,41 @@ namespace OpenPmsDental {
 				return false;
 			}
 			bool isStylesheetAttached=isCcd && !string.IsNullOrEmpty(strAlterateFilPathXslCCD);
-			//The display stylesheets came from Open Dental's proprietary EHR.dll, which is not loaded anymore (EhrSummaryCcds.GetEhrResource gives "").
-			//A stylesheet that came with an email is never run: the program has no XSLT in its own process, because a stylesheet that recurses
-			//without end overflows the stack, which ends the program whatever catches it, and one that loops never returns.
-			if(!isStylesheetAttached) {
-				MessageBox.Show(Lan.g("FormEhrSummaryOfCare","No stylesheet is available to display this document.  Only the raw text will be shown."));
-				using MsgBoxCopyPaste msgBoxCopyPaste=new MsgBoxCopyPaste(strXmlCCD);
-				msgBoxCopyPaste.ShowDialog();
-				return false;
+			//The program's own stylesheet runs in a child process (EhrStylesheetStarter): the program has no XSLT in its own process, because a
+			//stylesheet that recurses without end overflows the stack, which ends the process whatever catches it, and one that loops never returns.
+			//A stylesheet that came with an email is never run (E-14).
+			Cursor.Current=Cursors.WaitCursor;
+			string htmlRendered=EhrStylesheetStarter.Render(isCcr ? EhrRenderKind.Ccr : EhrRenderKind.Ccd,strXmlCCD,out string reasonRender);
+			Cursor.Current=Cursors.Default;
+			string note="";
+			if(htmlRendered!=null && isStylesheetAttached) {
+				note=Lan.g("FormEhrSummaryOfCare","The stylesheet that came with this document was not run. The document is shown with the program's own stylesheet.");
 			}
-			//The email's stylesheet styled this window before. The window still opens, with the CCD as XML, so a Direct message can still be reconciled.
-			string note=Lan.g("FormEhrSummaryOfCare","The stylesheet that came with this document was not run, so the document is shown as XML.");
+			else if(htmlRendered==null && isStylesheetAttached) {
+				note=Lan.g("FormEhrSummaryOfCare","The stylesheet that came with this document was not run, so the document is shown as XML.")
+					+"\r\n"+Lan.g("FormEhrSummaryOfCare","The program's own stylesheet could not show it")+": "+reasonRender;
+			}
+			else if(htmlRendered==null) {
+				note=Lan.g("FormEhrSummaryOfCare","The program's stylesheet could not show this document, so it is shown as XML")+": "+reasonRender;
+			}
 			//The document stays in memory while it is shown: the patient's clinical document never sits on disk, and a crash leaves nothing behind.
 			//An older version wrote it (and the email's stylesheet) to the program's temp folder until the window closed; remove what one left there.
 			DeleteOldCcdFiles(Path.Combine(Path.GetTempPath(),ProgramNames.TempFolderName),DateTime.Now.AddHours(-1));
-			using FormEhrSummaryCcdEdit formESCD=new FormEhrSummaryCcdEdit(doc.InnerXml,patCur,note);
+			//A CCR gets no reconcile buttons, as before, when it showed as raw text only.
+			Patient patReconcile=GetPatientReconcile(isCcr,patCur);
+			using FormEhrSummaryCcdEdit formESCD=new FormEhrSummaryCcdEdit(doc.InnerXml,htmlRendered,patReconcile,note);
 			formESCD.ShowDialog();
 			return formESCD.DidPrint;
+		}
+
+		///<summary>The patient the CCD window offers to reconcile the document into, or null for none, which hides its three reconcile buttons:
+		///patCur for a CCD, never a patient for a CCR. The reconcile code (EhrCCD.GetListMedicationPats and the others) reads the CDA templates of a
+		///CCD, not a CCR's elements.</summary>
+		public static Patient GetPatientReconcile(bool isCcr,Patient patCur) {
+			if(isCcr) {
+				return null;
+			}
+			return patCur;
 		}
 
 		///<summary>The names of the files an older version wrote into the program's temp folder while it showed a CCD or CCR: the document and its
@@ -172,6 +202,70 @@ namespace OpenPmsDental {
 				}
 			}
 			return countDeleted;
+		}
+
+		///<summary>A single-document file export (E-13) into folder: ccd.xml, the stylesheet files (ccd.xsl, which is CDA.xsl, and its two companions,
+		///unmodified), stylesheets-license.txt (the Apache-2.0 text, E-11) and ccd.html, the page the program's own stylesheet makes of the document
+		///in a child process, because browsers stop running XSLT (Chrome 158, November 2026). Returns null, or why ccd.html was not written; the other
+		///files are written either way, and an older ccd.html is deleted then, so it never shows another document. Throws when a file cannot be
+		///written, as the export buttons did before.</summary>
+		public static string WriteCcdFiles(string folder,string ccd) {
+			File.WriteAllText(Path.Combine(folder,EhrSummaryCcds.FileNameCcdXml),ccd);
+			WriteStylesheetFiles(folder);
+			string pathHtml=Path.Combine(folder,EhrSummaryCcds.FileNameCcdHtml);
+			string html=EhrStylesheetStarter.Render(EhrRenderKind.Ccd,ccd,out string reason);
+			if(html==null) {
+				if(File.Exists(pathHtml)) {
+					File.Delete(pathHtml);
+				}
+				return reason;
+			}
+			File.WriteAllText(pathHtml,html);
+			return null;
+		}
+
+		///<summary>The stylesheet files and the licence text of a file export into folder (EhrSummaryCcds.GetCcdStylesheetFiles), unmodified.</summary>
+		public static void WriteStylesheetFiles(string folder) {
+			foreach(KeyValuePair<string,string> pairFile in EhrSummaryCcds.GetCcdStylesheetFiles(doIncludeLicense:true)) {
+				File.WriteAllText(Path.Combine(folder,pairFile.Key),pairFile.Value);
+			}
+		}
+
+		///<summary>Bulk Patient Export (E-13): writes <name>.html beside each <name>.xml already in folder, one per document, all made by one stylesheet
+		///child, so CDA.xsl is compiled once, and one set of stylesheet files and the licence text. enumerableFileNames are the names without the
+		///extension. It streams, so an export of thousands of patients needs no more memory than one of a single patient: each <name>.xml is read
+		///back from folder just before it goes to the child, and its <name>.html is written as soon as the page arrives, before the next document
+		///is read. Returns the reasons of the pages that were not written, one line each with the name, or "" when all were. Throws when a file
+		///cannot be read or written.</summary>
+		public static string WriteCcdPages(string folder,IEnumerable<string> enumerableFileNames) {
+			WriteStylesheetFiles(folder);
+			StringBuilder stringBuilderReasons=new StringBuilder();
+			List<string> listFileNamesRead=new List<string>();//Only the names: the page of index i is that of the i-th name read.
+			EhrStylesheetStarter.RenderBatch(EhrRenderKind.Ccd,ReadCcdFiles(folder,enumerableFileNames,listFileNamesRead),(index,ehrRenderResult) => {
+				if(ehrRenderResult.Html==null) {
+					stringBuilderReasons.AppendLine(listFileNamesRead[index]+".html: "+ehrRenderResult.Reason);
+					return;
+				}
+				File.WriteAllText(Path.Combine(folder,listFileNamesRead[index]+".html"),ehrRenderResult.Html);
+			});
+			return stringBuilderReasons.ToString();
+		}
+
+		///<summary>The text of each <name>.xml of folder, read only when the batch asks for the next document, so no more than one is held at a time.
+		///Adds each name to listFileNamesRead as its file is read.</summary>
+		private static IEnumerable<string> ReadCcdFiles(string folder,IEnumerable<string> enumerableFileNames,List<string> listFileNamesRead) {
+			foreach(string fileName in enumerableFileNames) {
+				listFileNamesRead.Add(fileName);
+				yield return File.ReadAllText(Path.Combine(folder,fileName+".xml"));
+			}
+		}
+
+		///<summary>The message for an export whose page could not be made (reason from WriteCcdFiles), or "" when it was.</summary>
+		public static string GetPageNotWrittenMessage(string reason) {
+			if(reason==null) {
+				return "";
+			}
+			return "\r\n"+Lan.g("FormEhrSummaryOfCare","ccd.html was not written, because the program's stylesheet could not show the document")+": "+reason;
 		}
 
 		private void butExport_Click(object sender,EventArgs e) {
@@ -209,8 +303,7 @@ namespace OpenPmsDental {
 					return;
 				}
 			}
-			File.WriteAllText(Path.Combine(dlg.SelectedPath,"ccd.xml"),ccd);
-			File.WriteAllText(Path.Combine(dlg.SelectedPath,"ccd.xsl"),EhrSummaryCcds.GetEhrResource("CCD"));
+			string reasonPage=WriteCcdFiles(dlg.SelectedPath,ccd);//ccd.xml, the stylesheet files, the licence text and ccd.html.
 			EhrMeasureEvent newMeasureEvent = new EhrMeasureEvent();
 			newMeasureEvent.DateTEvent = DateTime.Now;
 			newMeasureEvent.EventType = EhrMeasureEventType.SummaryOfCareProvidedToDr;
@@ -225,7 +318,7 @@ namespace OpenPmsDental {
 			newMeasureEvent.FKey=FrmReferralsPatient.RefAttachNum;//Can be 0 if user didn't pick a referral for some reason.
 			EhrMeasureEvents.Insert(newMeasureEvent);
 			FillGridSent();
-			MessageBox.Show("Exported");
+			MessageBox.Show("Exported"+GetPageNotWrittenMessage(reasonPage));
 		}
 
 		private void butSendEmail_Click(object sender,EventArgs e) {
@@ -268,7 +361,9 @@ namespace OpenPmsDental {
 			emailMessage.MsgType=EmailMessageSource.EHR;
 			try {
 				emailMessage.Attachments.Add(EmailAttaches.CreateAttach("ccd.xml",Encoding.UTF8.GetBytes(ccd)));
-				emailMessage.Attachments.Add(EmailAttaches.CreateAttach("ccd.xsl",Encoding.UTF8.GetBytes(EhrSummaryCcds.GetEhrResource("CCD"))));
+				foreach(KeyValuePair<string,string> pairFile in EhrSummaryCcds.GetCcdStylesheetFiles(doIncludeLicense:false)) {//ccd.xsl and its two companions
+					emailMessage.Attachments.Add(EmailAttaches.CreateAttach(pairFile.Key,Encoding.UTF8.GetBytes(pairFile.Value)));
+				}
 			}
 			catch(Exception ex) {
 				Cursor=Cursors.Default;
