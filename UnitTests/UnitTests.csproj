@@ -34,9 +34,6 @@
     <!-- Mono.Cecil 0.10.3 (Mono.Cecil, Mono.Cecil.Mdb, Mono.Cecil.Pdb, Mono.Cecil.Rocks): the NuGet package, from the offline package
          folder (nuget.config), at the version of Directory.Packages.props. Newtonsoft.Json comes as a package through the projects below. -->
     <PackageReference Include="Mono.Cecil" />
-    <Reference Include="MySqlConnector">
-      <HintPath>..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
     <ProjectReference Include="..\third-party\build\MigraDoc.DocumentObjectModel\MigraDoc.DocumentObjectModel.csproj" />
     <ProjectReference Include="..\third-party\build\MigraDoc.Rendering-gdi\MigraDoc.Rendering-gdi.csproj" />
     <ProjectReference Include="..\third-party\build\PdfSharp-gdi\PdfSharp-gdi.csproj" />

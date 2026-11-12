@@ -4,11 +4,6 @@
        Database tests use scratch databases on the local MariaDB (127.0.0.1:3306, root, blank password) and are skipped (inconclusive) when it
        does not answer, or when FORKMIGRATION_TEST_DB=skip. Every .cs file under this folder is compiled. -->
   <ItemGroup>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-  <ItemGroup>
     <!-- Scratch-database helper shared with the fork migration tests. -->
     <Compile Include="..\ForkMigrationTests\TestDb.cs">
       <Link>TestDb.cs</Link>

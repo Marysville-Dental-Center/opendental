@@ -63,9 +63,7 @@
       <HintPath>..\Required dlls\Health.Direct.ResolverPlugins.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.VisualBasic" />
-    <Reference Include="MySqlConnector">
-      <HintPath>..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
+    <PackageReference Include="MySqlConnector" />
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="System" />

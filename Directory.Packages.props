@@ -15,6 +15,11 @@
     docs/port-notes/S2-1.md). The projects that referenced a file by HintPath reference its package; a test project gets them through
     the projects it references. MySqlConnector, the WebView2 files and the other files of "Required dlls" keep their HintPaths until
     S2-2 and S2-3; the files of these packages stay in "Required dlls" until S2-4 moves the release tooling to the packages.
+
+    Package S2-2 (docs/port-notes/S2-2.md): MySqlConnector 2.6.2 replaces 2.3.7 (its HintPaths become this package), and the three
+    Microsoft packages that were on 8.0.x, whose support ends on 2026-11-10, move to the current 10.0 patch, 10.0.15, with
+    Microsoft.Bcl.AsyncInterfaces, which DependencyInjection.Abstractions 10.0.15 requires at 10.0.15. "Required dlls" holds the same
+    bytes of each until S2-4, because tools\Build-Release.ps1 still checks the staged files against it.
   -->
   <PropertyGroup Condition="'$(UsingMicrosoftNETSdk)' == 'true'">
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
@@ -39,7 +44,7 @@
 
   <ItemGroup Condition="'$(UsingMicrosoftNETSdk)' == 'true'">
     <!-- The libraries: Bouncy Castle, the Google APIs with Gmail, MailKit and MimeKit, MSAL with its IdentityModel abstractions,
-         Json.NET and SSH.NET (Renci.SshNet.dll). -->
+         MySqlConnector (the database client, S2-2), Json.NET and SSH.NET (Renci.SshNet.dll). -->
     <PackageVersion Include="BouncyCastle.Cryptography" Version="2.7.0" />
     <PackageVersion Include="Google.Apis" Version="1.78.0" />
     <PackageVersion Include="Google.Apis.Auth" Version="1.78.0" />
@@ -49,17 +54,18 @@
     <PackageVersion Include="MimeKit" Version="4.18.2" />
     <PackageVersion Include="Microsoft.Identity.Client" Version="4.92.0" />
     <PackageVersion Include="Microsoft.IdentityModel.Abstractions" Version="8.14.0" />
+    <PackageVersion Include="MySqlConnector" Version="2.6.2" />
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageVersion Include="SSH.NET" Version="2026.0.0" />
-    <!-- The support packages (polyfills) they and MySqlConnector use on the .NET Framework. The three Microsoft packages on 8.0.x move
-         to 10.0 in S2-2; System.Security.Cryptography.Pkcs, the 26th identical file, is used by nothing and leaves "Required dlls" in
-         S2-4. -->
-    <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.14" />
+    <!-- The support packages (polyfills) they and MySqlConnector use on the .NET Framework. The three Microsoft packages that were on
+         8.0.x are on 10.0 since S2-2 (MySqlConnector 2.6.2 asks for 8.0.x; the pinning above gives it these); System.Security.Cryptography.Pkcs,
+         the 26th identical file, is used by nothing and leaves "Required dlls" in S2-4. -->
+    <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.15" />
     <PackageVersion Include="Microsoft.Bcl.Cryptography" Version="10.0.10" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.3" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.15" />
     <PackageVersion Include="System.Buffers" Version="4.6.1" />
-    <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="8.0.1" />
+    <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="10.0.15" />
     <PackageVersion Include="System.Formats.Asn1" Version="10.0.13" />
     <PackageVersion Include="System.IO.Pipelines" Version="10.0.14" />
     <PackageVersion Include="System.Memory" Version="4.6.3" />

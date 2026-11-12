@@ -6,9 +6,6 @@
        Z codes, made-up payer and patients, a hand-built 835). They are skipped (inconclusive) when the server does not answer, or when
        FORKMIGRATION_TEST_DB=skip. Every .cs file under this folder is compiled. -->
   <ItemGroup>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <ItemGroup>

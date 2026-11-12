@@ -4,9 +4,6 @@
        duplicates. Database tests use scratch MariaDB databases named test_maint_* with synthetic rows only. Every .cs file under this folder is
        compiled. -->
   <ItemGroup>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <ItemGroup>

@@ -4,9 +4,6 @@
        password) with the current reference schema, dropped afterwards, and are skipped (inconclusive) when it does not answer or when
        ODOPTS_TEST_DB=skip. Synthetic data only. Every .cs file under this folder is compiled. -->
   <ItemGroup>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="System.Windows.Forms" />

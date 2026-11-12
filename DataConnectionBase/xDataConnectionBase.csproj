@@ -14,12 +14,10 @@
     <DebugType>pdbonly</DebugType>
   </PropertyGroup>
   <ItemGroup>
-    <!-- MySqlConnector (2.3.7 from "Required dlls" until S2-2 of docs/specs/net10-plan.md moves it to its package) and the support packages
-         it needs, below, so every program that uses the database copies them. The programs' configs redirect the older versions
+    <!-- MySqlConnector (the package, at the version of Directory.Packages.props, since S2-2 of docs/specs/net10-plan.md) and the support
+         packages it needs, below, so every program that uses the database copies them. The programs' configs redirect the older versions
          MySqlConnector was built against to these (tests/LibraryBindingTests). -->
-    <Reference Include="MySqlConnector">
-      <HintPath>..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
+    <PackageReference Include="MySqlConnector" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />

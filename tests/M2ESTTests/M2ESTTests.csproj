@@ -6,11 +6,6 @@
        drop it afterwards. They are skipped (inconclusive) when the server does not answer, or when FORKMIGRATION_TEST_DB=skip. Every .cs file under
        this folder is compiled. -->
   <ItemGroup>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-  <ItemGroup>
     <!-- Scratch database helpers shared with the fork migration tests (database names start with forkmig_). -->
     <Compile Include="..\ForkMigrationTests\TestDb.cs">
       <Link>TestDb.cs</Link>

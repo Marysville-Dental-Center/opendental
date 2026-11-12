@@ -7,9 +7,6 @@
        FORKMIGRATION_TEST_DB=skip. Tests that need a Windows font this computer lacks are inconclusive. Every .cs file under this folder is
        compiled. -->
   <ItemGroup>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <ItemGroup>

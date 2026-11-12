@@ -6,10 +6,7 @@
        for each run with BouncyCastle. No test reaches the internet. Every .cs file under this folder is compiled. -->
   <ItemGroup>
     <!-- BouncyCastle (the tests generate host keys with it, and the fake SSH server does its key exchange with it; SSH.NET uses it itself) and
-         SSH.NET come as packages through OpenPmsDentalStorage, below. -->
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
+         SSH.NET come as packages through OpenPmsDentalStorage, below, and MySqlConnector (the scratch databases) through the projects below. -->
   </ItemGroup>
   <ItemGroup>
     <!-- The reader of project files (classic and SDK-style) shared by the tests that check them (S1-T of docs/specs/net10-plan.md). -->

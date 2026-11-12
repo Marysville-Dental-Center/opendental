@@ -18,10 +18,8 @@
     <Reference Include="Microsoft.Web.WebView2.WinForms">
       <HintPath>..\..\Required dlls\Microsoft.Web.WebView2.WinForms.dll</HintPath>
     </Reference>
-    <!-- The scratch database of EmailPreviewTemplateTests (ScratchDb.cs). -->
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
+    <!-- The scratch database of EmailPreviewTemplateTests (ScratchDb.cs) uses MySqlConnector, which comes as a package through the
+         projects below. -->
     <!-- PresentationCore, PresentationFramework, System.Xaml and WindowsBase: FrmMessageReplacements (WpfControlsOD) is a WPF window class. -->
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />

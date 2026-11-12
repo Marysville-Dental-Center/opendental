@@ -4,11 +4,6 @@
        lists, the Employee Titles definition setup, and the Seed26_1 rows. Database tests use scratch MariaDB databases with unique names and
        synthetic rows only. Every .cs file under this folder is compiled. -->
   <ItemGroup>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-  <ItemGroup>
     <!-- Enum names and numbers from Open Dental's published 25.4 and 26.1 database documents (names and numbers only). -->
     <Content Include="Data\OdEnums26_1Changes.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

@@ -4,9 +4,6 @@
        Database tests use scratch databases on the local MariaDB (127.0.0.1:3306, root, blank password) filled with synthetic rows only, and are
        skipped (inconclusive) when it does not answer, or when BEF_TEST_DB=skip. Every .cs file under this folder is compiled. -->
   <ItemGroup>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="System.Xaml" />

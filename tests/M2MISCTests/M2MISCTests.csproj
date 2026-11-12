@@ -4,9 +4,6 @@
        condition, the non-modal task attachment windows and the Perio Chart's Current Direction buttons. Database tests use scratch MariaDB
        databases with unique names and synthetic rows only. Every .cs file under this folder is compiled. -->
   <ItemGroup>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="System.Windows.Forms" />

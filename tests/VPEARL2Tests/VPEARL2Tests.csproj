@@ -5,9 +5,6 @@
        they are skipped (inconclusive) when the server does not answer, or when FORKMIGRATION_TEST_DB=skip. Synthetic data only. Every .cs file
        under this folder is compiled. -->
   <ItemGroup>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
     <!-- Newtonsoft.Json, which the fake IApiRequest in PearlWiringTests implements the signatures of, comes as a package through the projects
          below. -->
     <Reference Include="System.Net.Http" />

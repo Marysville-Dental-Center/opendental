@@ -7,9 +7,6 @@
        OPMS_WINDOW_CHECKS_OUT. The program's own output folder (OpenPmsDental\bin\Debug) is the one started or loaded: the in-process checks load
        it in an AppDomain whose base is that folder and whose configuration file is the exe's own. Every .cs file under this folder is compiled. -->
   <ItemGroup>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="System.Windows.Forms" />
