@@ -81,6 +81,58 @@ namespace WindowChecksTests.InProc {
 			}
 		}
 
+		///<summary>The WPF print preview's document (FrmPrintPreview.FixedDocumentCur, made by WpfControlsOD's PrinterL.CreateFixedDocument as Print
+		///made it): it has pages, page 1 has drawn content, and page 1 is rendered to the file (RenderTargetBitmap of the FixedPage).</summary>
+		public static void CheckFixedDocumentPage(Ui ui,CheckResult checkResult,System.Windows.FrameworkElement frmPreview,string fileName,string whatItShows) {
+			if(frmPreview==null) {
+				checkResult.Fail("The preview has no Frm to read its document from");
+				return;
+			}
+			int countPages=0;
+			int countElements=0;
+			ShotInfo shotInfo=ui.Invoke(() => {
+				System.Windows.Documents.FixedDocument fixedDocument=(System.Windows.Documents.FixedDocument)Ui.GetField(frmPreview,"FixedDocumentCur");
+				if(fixedDocument==null) {
+					return null;
+				}
+				countPages=fixedDocument.Pages.Count;
+				if(countPages==0) {
+					return null;
+				}
+				System.Windows.Documents.FixedPage fixedPage=fixedDocument.Pages[0].GetPageRoot(false);
+				countElements=WpfTree(fixedPage).Count(x => x is System.Windows.Controls.TextBlock || x is System.Windows.Controls.Image
+					|| x is System.Windows.Shapes.Shape || x is System.Windows.Controls.Border);
+				double width=double.IsNaN(fixedPage.Width) ? fixedPage.ActualWidth : fixedPage.Width;
+				double height=double.IsNaN(fixedPage.Height) ? fixedPage.ActualHeight : fixedPage.Height;
+				if(fixedPage.ActualWidth<=0) {
+					fixedPage.Measure(new System.Windows.Size(width,height));
+					fixedPage.Arrange(new System.Windows.Rect(0,0,width,height));
+					fixedPage.UpdateLayout();
+				}
+				int pixelWidth=(int)Math.Ceiling(width);
+				int pixelHeight=(int)Math.Ceiling(height);
+				System.Windows.Media.Imaging.RenderTargetBitmap renderTargetBitmap=new System.Windows.Media.Imaging.RenderTargetBitmap(pixelWidth,pixelHeight,96,96,
+					System.Windows.Media.PixelFormats.Pbgra32);
+				System.Windows.Media.DrawingVisual drawingVisual=new System.Windows.Media.DrawingVisual();
+				using(System.Windows.Media.DrawingContext drawingContext=drawingVisual.RenderOpen()) {
+					drawingContext.DrawRectangle(System.Windows.Media.Brushes.White,null,new System.Windows.Rect(0,0,pixelWidth,pixelHeight));
+					drawingContext.DrawRectangle(new System.Windows.Media.VisualBrush(fixedPage) { Stretch=System.Windows.Media.Stretch.None,
+						AlignmentX=System.Windows.Media.AlignmentX.Left,AlignmentY=System.Windows.Media.AlignmentY.Top },null,new System.Windows.Rect(0,0,pixelWidth,pixelHeight));
+				}
+				renderTargetBitmap.Render(drawingVisual);
+				System.Windows.Media.Imaging.PngBitmapEncoder pngBitmapEncoder=new System.Windows.Media.Imaging.PngBitmapEncoder();
+				pngBitmapEncoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(renderTargetBitmap));
+				using System.IO.MemoryStream memoryStream=new System.IO.MemoryStream();
+				pngBitmapEncoder.Save(memoryStream);
+				memoryStream.Position=0;
+				using System.Drawing.Bitmap bitmap=new System.Drawing.Bitmap(memoryStream);
+				return WindowChecksTests.Shot.Bitmap(bitmap,fileName);
+			});
+			checkResult.Expect(countPages>0,"The preview's document has "+countPages+" page(s)");
+			checkResult.Expect(countElements>0,"Page 1 has drawn content ("+countElements+" text, image and shape elements)");
+			checkResult.AddShot(shotInfo??new ShotInfo { FileName=fileName,Error="no page to render" },whatItShows+" (the FixedPage, RenderTargetBitmap)");
+		}
+
 		public static void ClickFrm(Ui ui,System.Windows.FrameworkElement frm,string handler) {
 			Ui.Call(frm,handler,frm,new System.Windows.RoutedEventArgs());
 		}
@@ -201,6 +253,10 @@ namespace WindowChecksTests.InProc {
 				return;
 			}
 			int countEFormsBefore=Count("SELECT COUNT(*) FROM eform WHERE PatNum=1");
+			//The D4 copy (of the first internal eForm, Patient Registration) has fields that conditional logic hides: the rows EFORM-PRINT's fix skips.
+			string description=DataCore.GetScalar("SELECT Description FROM eformdef WHERE EFormDefNum="+_eFormDefNumD4);
+			int countConditional=Count("SELECT COUNT(*) FROM eformfielddef WHERE EFormDefNum="+_eFormDefNumD4+" AND ConditionalParent<>''");
+			checkResult.Expect(countConditional>0,"The D4 eForm '"+description+"' has conditionally hidden fields ("+countConditional+" with a conditional parent)");
 			Ui.Opened openedForms=OpenToolbar(ui,"Form");
 			if(!InspectWindow(ui,checkResult,openedForms,"FormPatientForms",null,close:false)) {
 				return;
@@ -229,8 +285,15 @@ namespace WindowChecksTests.InProc {
 					}
 					else if(InspectWindow(ui,checkResult,openedPreview,"FrmPrintPreview",null,close:false)) {
 						InspectFrm(ui,checkResult,openedPreview.Hwnd,hasMinMax:true,shot:"D5-preview.png");
+						CheckFixedDocumentPage(ui,checkResult,ui.GetFrm(openedPreview.Hwnd),"D5-page.png","The eForm's printed page 1");
 						checkResult.Expect(ui.Close(openedPreview.Hwnd),"The preview closes");
 					}
+					else if(!openedPreview.IsOpen) {
+						checkResult.Fail("Print opened no preview (EFORM-PRINT's ArgumentOutOfRangeException pixelHeight, if it is back, is listed as unhandled)");
+					}
+					openedPreview.Posted.Wait(5000);
+					checkResult.Expect(!checkResult.ListFailures.Any(x => x.Contains("pixelHeight")),"Print throws no ArgumentOutOfRangeException (pixelHeight): "
+						+"EFORM-PRINT's fix holds");
 					checkResult.Expect(ui.Close(openedFill.Hwnd),"The fill window closes (Cancel)");
 				}
 				openedPick.Posted.Wait();

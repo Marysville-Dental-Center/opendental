@@ -333,30 +333,35 @@ namespace WindowChecksTests.InProc {
 				Ui.Opened openedEdit=ui.Open("Add",() => ((IButtonControl)FindControl(ui,hwndAddresses,"butAdd",true)).PerformClick());
 				if(InspectWindow(ui,checkResult,openedEdit,"FormEmailAddressEdit",null,close:false)) {
 					IntPtr hwndEdit=openedEdit.Hwnd;
-					//Since DIRECT-CERT the button needs the address in Username first (the checklist's gatetest@example.invalid).
-					ui.Invoke(() => FindControl(ui,hwndEdit,"textUsername",true).Text="gatetest@example.invalid");
 					Control butCert=ui.Invoke(() => FindControl(ui,hwndEdit,"butRegisterCertificate",true));
 					if(checkResult.Expect(butCert!=null,"The address editor has its Certificate button")) {
+						//Since DIRECT-CERT (checklist revised 2026-11-09) the Certificate button needs the Username first: with it empty, a message asks for it.
+						ui.Invoke(() => FindControl(ui,hwndEdit,"textUsername",true).Text="");
+						Ui.Opened openedAsk=ui.Open("Certificate with the Username empty",() => ((IButtonControl)butCert).PerformClick(),allowMessage:true);
+						string textAsk=openedAsk.IsOpen && Native.IsDialogClass(openedAsk.Hwnd) ? Native.GetDialogMessage(openedAsk.Hwnd) : "";
+						checkResult.Expect(textAsk.Contains("Enter the email address first."),"Certificate with the Username empty asks for it first: '"+textAsk.Trim()+"'",
+							openedAsk.IsOpen ? ui.DescribeWindow(openedAsk.Hwnd) : "nothing opened");
+						if(openedAsk.IsOpen) {
+							ui.Close(openedAsk.Hwnd);
+						}
+						openedAsk.Posted.Wait();
+						//With the checklist's address in Username the registration window opens.
+						ui.Invoke(() => FindControl(ui,hwndEdit,"textUsername",true).Text="gatetest@example.invalid");
 						Ui.Opened openedReg=ui.Open("Certificate",() => ((IButtonControl)butCert).PerformClick());
 						if(InspectWindow(ui,checkResult,openedReg,"FormEmailCertRegister",null,close:false)) {
 							IntPtr hwndReg=openedReg.Hwnd;
-							checkResult.Note("The registration window: '"+Native.GetText(hwndReg)+"'");
-							Control butSend=ui.Invoke(() => Ui.AllControls(Control.FromHandle(hwndReg)).FirstOrDefault(x => x is IButtonControl && x.Visible
-								&& x.Text.Replace("&","").StartsWith("Send Code")));
-							if(butSend==null) {
-								checkResult.ForPerson("the checklist's Send Code step no longer exists: DIRECT-CERT (O-13) replaced it with importing the provider's .pfx/.p12 "
-									+"and trust anchor; the window opens and is cancelled (no certificate imported); the checklist needs updating");
-							}
-							else {
-								Ui.Opened openedMsg=ui.Open("Send Code",() => ((IButtonControl)butSend).PerformClick(),allowMessage:true);
-								string text=openedMsg.IsOpen ? Native.GetDialogMessage(openedMsg.Hwnd) : "";
-								checkResult.Expect(text.Contains("This feature used Open Dental's hosted services, which are not available in this build."),"Send Code: '"+text+"'",text);
-								if(openedMsg.IsOpen) {
-									ui.Close(openedMsg.Hwnd);
-								}
-								openedMsg.Posted.Wait();
-							}
-							checkResult.AddShot(ui.Shot(hwndReg,"J15-send-code.png"),"Email Certificate Registration");
+							checkResult.Note("The registration window's title: '"+Native.GetText(hwndReg)+"' (the checklist calls it Email Certificate Registration)");
+							List<string> listButtons=ui.Invoke(() => Ui.AllControls(Control.FromHandle(hwndReg)).Where(x => x is IButtonControl && x.Visible)
+								.Select(x => x.Name+" '"+x.Text.Replace("&","")+"'"+(x.Enabled ? "" : " (disabled)")).ToList());
+							checkResult.Note("Buttons: "+string.Join(", ",listButtons));
+							string groupCert=ui.Invoke(() => FindControl(ui,hwndReg,"groupCertificate",true)?.Text??"");
+							checkResult.Expect(groupCert.Contains(".pfx") && groupCert.Contains(".p12"),"The certificate group asks for the provider's .pfx or .p12 ('"+groupCert+"')");
+							checkResult.Expect(listButtons.Any(x => x.StartsWith("butImport 'Import'")),"The .pfx/.p12 import button (Import) is there; it is never pressed",
+								string.Join(", ",listButtons));
+							checkResult.Expect(listButtons.Any(x => x.StartsWith("butImportAnchor ")),"The trust anchor's Import... button is there; it is never pressed",
+								string.Join(", ",listButtons));
+							checkResult.Expect(!listButtons.Any(x => x.Contains("Send Code")),"No Send Code button (DIRECT-CERT replaced it)",string.Join(", ",listButtons));
+							checkResult.AddShot(ui.Shot(hwndReg,"J15-send-code.png"),"The Direct certificate window (nothing imported)");
 							ui.Close(hwndReg);
 						}
 						openedReg.Posted?.Wait();

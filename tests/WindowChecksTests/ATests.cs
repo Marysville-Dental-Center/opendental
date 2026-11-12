@@ -251,14 +251,18 @@ namespace WindowChecksTests {
 				if(checkResult.Expect(promptText!="","The publish prompt showed")) {
 					checkResult.Expect(promptText.Contains("Publish this build") && promptText.Contains("Click Cancel to run it on this workstation only."),
 						"It names 'Publish this build' and 'Click Cancel to run it on this workstation only.'");
-					if(!promptText.Contains("No release is published yet.")) {
-						string published=ScratchDb.Rows("SELECT DocMiscNum,DateCreated,FileName,DocMiscType,LENGTH(RawBase64) FROM documentmisc");
-						checkResult.ForPerson("the prompt is not the checklist's 'No release is published yet.': the copy of the test database already holds a "
-							+"published release (documentmisc rows: "+(published.Length>400 ? published.Substring(0,400)+"..." : published)+"), an older build of "
-							+"this fork; the lead decides whether opendental_dev should keep it");
-					}
+					//The lead keeps opendental_dev's published release (an older build of this fork), so the checklist (revised 2026-11-09) expects
+					//"This build is newer than the published one ..." here, not "No release is published yet.".
+					string published=ScratchDb.Rows("SELECT DocMiscNum,DateCreated,FileName,DocMiscType,LENGTH(RawBase64) FROM documentmisc");
+					checkResult.Note("Published release in the copy (documentmisc rows): "+(published.Length>400 ? published.Substring(0,400)+"..." : published));
+					checkResult.Expect(promptText.Contains("This build is newer than the published one"),"It says 'This build is newer than the published one ...' (the "
+						+"copy keeps opendental_dev's published release, as the lead decided)",promptText);
 					Match match=Regex.Match(promptText,"Publish this build \\(release [^(]*\\(build ([0-9a-f]{12}), built (\\d{4}-\\d\\d-\\d\\d \\d\\d:\\d\\d) UTC");
 					if(checkResult.Expect(match.Success,"It names the build (12 hex) and the built time (yyyy-MM-dd HH:mm UTC)")) {
+						string buildIdExe=OpenPmsDentalBusiness.ForkReleases.ComputeBuildId(folderRelease);
+						string buildIdShort=buildIdExe.Length>12 ? buildIdExe.Substring(0,12) : buildIdExe;
+						checkResult.Expect(match.Groups[1].Value==buildIdShort,"The build "+match.Groups[1].Value+" is this exe's build id (ForkReleases.ComputeBuildId of "
+							+"<rel>: "+buildIdShort+")",buildIdShort);
 						DateTime dateBuilt=DateTime.ParseExact(match.Groups[2].Value,"yyyy-MM-dd HH:mm",CultureInfo.InvariantCulture);
 						double minutes=Math.Abs((dateWriteUtc-dateBuilt).TotalMinutes);
 						checkResult.Expect(minutes<=3,"The built time "+match.Groups[2].Value+" matches the exe's LastWriteTimeUtc "+dateWriteUtc.ToString("yyyy-MM-dd HH:mm:ss")

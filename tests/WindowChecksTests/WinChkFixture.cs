@@ -29,14 +29,18 @@ namespace WindowChecksTests {
 			}
 			if(Environment.GetEnvironmentVariable("OPMS_WINDOW_CHECKS_KEEP_DB")=="1") {
 				Results.Log("Kept "+ScratchDb.Name+" (OPMS_WINDOW_CHECKS_KEEP_DB=1)");
-				return;
 			}
-			try {
-				ScratchDb.Drop();
+			else {
+				try {
+					ScratchDb.Drop();
+				}
+				catch(Exception ex) {
+					Results.Log("Drop failed: "+ex.Message);
+				}
 			}
-			catch(Exception ex) {
-				Results.Log("Drop failed: "+ex.Message);
-			}
+			//The report, from every result in results.tsv (the last of each check), so the run that ends last leaves the whole report.
+			string reportError=Report.Write();
+			Results.Log(reportError=="" ? "REPORT.md written" : "REPORT.md not written: "+reportError);
 		}
 
 		///<summary>Call first in a check test: skips the test (inconclusive) when the checks are off, the group is not asked for, or the copy of

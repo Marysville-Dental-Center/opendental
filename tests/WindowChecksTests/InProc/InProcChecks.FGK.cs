@@ -23,12 +23,138 @@ namespace WindowChecksTests.InProc {
 			}
 			System.Threading.Thread.Sleep(3000);//the graphs fill in the background
 			string title=Native.GetText(opened.Hwnd);
-			checkResult.Note("The window's title is '"+title+"' (the checklist calls it the Dashboard window)");
+			checkResult.Expect(title=="Graphic Reports - Default","The window's title is 'Graphic Reports - Default' ('"+title+"')");
 			int countCells=ui.Invoke(() => Ui.AllControls(Control.FromHandle(opened.Hwnd)).Count(x => x.GetType().Name.Contains("Cell")));
 			checkResult.Expect(countCells>0,"The dashboard has its graph cells ("+countCells+")");
 			checkResult.AddShot(ui.Shot(opened.Hwnd,"F1.png"),"Dashboard");
 			checkResult.ForPerson("the graphs (they may be empty on synthetic data) in F1.png");
 			checkResult.Expect(ui.Close(opened.Hwnd),"Dashboard closes");
+		}
+
+		///<summary>Reports > Graphic, waited for its graphs; returns the window or zero.</summary>
+		private static IntPtr OpenDashboard(Ui ui,CheckResult checkResult) {
+			Ui.Opened opened=OpenMenu(ui,"Reports","Graphic");
+			if(!InspectWindow(ui,checkResult,opened,"FormDashboardEditTab",null,close:false)) {
+				return IntPtr.Zero;
+			}
+			System.Threading.Thread.Sleep(3000);//the graphs fill in the background
+			return opened.Hwnd;
+		}
+
+		///<summary>The dashboard's first cell (DashboardCellCtrl) that holds a graph, on the window's thread.</summary>
+		private static Control GetGraphCellOnThread(IntPtr hwndDashboard) {
+			return Ui.AllControls(Control.FromHandle(hwndDashboard)).FirstOrDefault(x => x.GetType().Name=="DashboardCellCtrl" && x.Visible
+				&& (bool)Member(x,"HasDockedControl"));
+		}
+
+		///<summary>Closes the dashboard; a "Discard Changes?" question (unsaved layout changes) is answered OK, which discards them (never Save
+		///Changes).</summary>
+		private static void CloseDashboard(Ui ui,CheckResult checkResult,IntPtr hwndDashboard) {
+			List<IntPtr> listBefore=ui.GetWindows();
+			ui.Post("Close the dashboard",() => ((Form)Control.FromHandle(hwndDashboard)).Close());
+			System.Diagnostics.Stopwatch stopwatch=System.Diagnostics.Stopwatch.StartNew();
+			while(Native.IsWindow(hwndDashboard) && Native.IsWindowVisible(hwndDashboard) && stopwatch.ElapsedMilliseconds<20000) {
+				foreach(IntPtr hwndAsk in ui.GetWindows().Where(x => !listBefore.Contains(x) && Native.IsDialogClass(x))) {
+					string text=Native.GetDialogMessage(hwndAsk);
+					checkResult.Note("Closing the dashboard asked: '"+text.Trim()+"'; answered OK (discard)");
+					if(text.Contains("discard")) {
+						Native.ClickDialogButton(hwndAsk,"OK");
+					}
+					else {
+						Native.CancelDialog(hwndAsk);
+					}
+					ui.WaitGone(hwndAsk);
+				}
+				System.Threading.Thread.Sleep(200);
+			}
+			checkResult.Expect(ui.WaitGone(hwndDashboard,5000),"The dashboard closes (nothing saved)");
+		}
+
+		public static void CheckF2(Ui ui,CheckResult checkResult) {
+			IntPtr hwnd=OpenDashboard(ui,checkResult);
+			if(hwnd==IntPtr.Zero) {
+				return;
+			}
+			Control cell=ui.Invoke(() => GetGraphCellOnThread(hwnd));
+			if(checkResult.Expect(cell!=null,"The dashboard has a cell with a graph")) {
+				//Right-click a cell > Edit: the cell's context menu item, clicked by its PerformClick (the menu itself is not shown).
+				string itemText=ui.Invoke(() => ((ToolStripMenuItem)Ui.GetField(cell,"editToolStripMenuItem")).Text);
+				checkResult.Expect(itemText=="Edit","The cell's context menu has Edit ('"+itemText+"')");
+				Ui.Opened openedEdit=ui.Open("The cell's context menu > Edit",() => ((ToolStripMenuItem)Ui.GetField(cell,"editToolStripMenuItem")).PerformClick());
+				if(InspectWindow(ui,checkResult,openedEdit,"FormDashboardEditCell",null,close:false)) {
+					string title=Native.GetText(openedEdit.Hwnd);
+					checkResult.Expect(title.StartsWith("Edit Cell"),"'Edit Cell' opens ('"+title+"')");
+					checkResult.AddShot(ui.Shot(openedEdit.Hwnd,"F2.png"),"Edit Cell");
+					checkResult.Expect(ui.Close(openedEdit.Hwnd),"Edit Cell closes (Cancel)");
+				}
+				openedEdit.Posted.Wait();
+			}
+			CloseDashboard(ui,checkResult,hwnd);
+		}
+
+		public static void CheckF3(Ui ui,CheckResult checkResult) {
+			IntPtr hwnd=OpenDashboard(ui,checkResult);
+			if(hwnd==IntPtr.Zero) {
+				return;
+			}
+			Form form=ui.GetForm(hwnd);
+			//Setup > Setup: its menu item's handler (GraphicalReportSetup; Admin has it).
+			ui.Post("Setup > Setup",() => ((ToolStripMenuItem)Ui.GetField(form,"setupToolStripMenuItem")).PerformClick()).Wait();
+			string title=Native.GetText(hwnd);
+			checkResult.Expect(title.EndsWith("(Edit)"),"Setup > Setup: the title gets '(Edit)' ('"+title+"')");
+			string setupText=ui.Invoke(() => ((ToolStripMenuItem)Ui.GetField(form,"setupToolStripMenuItem")).Text);
+			checkResult.Expect(setupText=="Exit Setup","The Setup item now reads 'Exit Setup'");
+			//Double-click a tab name: the tab control's MouseDoubleClick handler at the middle of the first tab's header.
+			Control dashboardTabCtrl=(Control)Ui.GetField(form,"dashboardTabControl");
+			Ui.Opened openedName=ui.Open("Double-click the first tab's name",() => {
+				System.Windows.Forms.TabControl tabControl=(System.Windows.Forms.TabControl)Ui.GetField(dashboardTabCtrl,"tabControl");
+				System.Drawing.Rectangle rectangle=tabControl.GetTabRect(0);
+				MouseEventArgs mouseEventArgs=new MouseEventArgs(MouseButtons.Left,2,rectangle.X+rectangle.Width/2,rectangle.Y+rectangle.Height/2,0);
+				Ui.Call(dashboardTabCtrl,"tabControl_MouseDoubleClick",tabControl,mouseEventArgs);
+			});
+			if(InspectWindow(ui,checkResult,openedName,"FormDashboardNamePrompt",null,close:false)) {
+				checkResult.Note("The name prompt: '"+Native.GetText(openedName.Hwnd)+"'");
+				checkResult.AddShot(ui.Shot(openedName.Hwnd,"F3.png"),"The tab name prompt");
+				checkResult.AddShot(ui.Shot(hwnd,"F3-edit.png"),"The dashboard in Setup mode");
+				checkResult.Expect(ui.Close(openedName.Hwnd),"The name prompt closes (Cancel)");
+			}
+			openedName.Posted.Wait();
+			//Setup > Exit Setup.
+			ui.Post("Setup > Exit Setup",() => ((ToolStripMenuItem)Ui.GetField(form,"setupToolStripMenuItem")).PerformClick()).Wait();
+			ui.CloseStrayWindows(checkResult);
+			title=Native.GetText(hwnd);
+			checkResult.Expect(!title.Contains("(Edit)"),"Setup > Exit Setup: the title loses '(Edit)' ('"+title+"'); Save Changes is never pressed");
+			int countLayouts=Count("SELECT COUNT(*) FROM dashboardlayout");
+			CloseDashboard(ui,checkResult,hwnd);
+			checkResult.Expect(Count("SELECT COUNT(*) FROM dashboardlayout")==countLayouts,"No layout saved ("+countLayouts+" dashboardlayout rows)");
+		}
+
+		public static void CheckF4(Ui ui,CheckResult checkResult) {
+			IntPtr hwnd=OpenDashboard(ui,checkResult);
+			if(hwnd==IntPtr.Zero) {
+				return;
+			}
+			Control cell=ui.Invoke(() => GetGraphCellOnThread(hwnd));
+			if(checkResult.Expect(cell!=null,"The dashboard has a cell with a graph")) {
+				string itemText=ui.Invoke(() => ((ToolStripMenuItem)Ui.GetField(cell,"printToolStripMenuItem")).Text);
+				checkResult.Expect(itemText=="Print","The cell's context menu has Print ('"+itemText+"')");
+				Ui.Opened openedPrint=ui.Open("The cell's context menu > Print",() => ((ToolStripMenuItem)Ui.GetField(cell,"printToolStripMenuItem")).PerformClick());
+				if(InspectWindow(ui,checkResult,openedPrint,"FormPrintSettings",null,close:false)) {
+					System.Threading.Thread.Sleep(1500);
+					string title=Native.GetText(openedPrint.Hwnd);
+					checkResult.Expect(title=="Print Settings","'Print Settings' opens ('"+title+"')");
+					checkResult.AddShot(ui.Shot(openedPrint.Hwnd,"F4.png"),"Print Settings");
+					//The graph image it previews: the page bitmap it drew the chart and legend into.
+					ShotInfo shotInfoPage=ui.Invoke(() => {
+						System.Drawing.Bitmap bitmap=Ui.GetField(Control.FromHandle(openedPrint.Hwnd),"_bmpSheet") as System.Drawing.Bitmap;
+						return bitmap==null ? new ShotInfo { FileName="F4-image.png",Error="no page bitmap" } : WindowChecksTests.Shot.Bitmap(bitmap,"F4-image.png");
+					});
+					checkResult.AddShot(shotInfoPage,"The graph image on the page");
+					checkResult.Expect(ui.Close(openedPrint.Hwnd),"Print Settings closes (Close; Print... never pressed)");
+				}
+				openedPrint.Posted.Wait();
+			}
+			CloseDashboard(ui,checkResult,hwnd);
 		}
 
 		public static void CheckG1(Ui ui,CheckResult checkResult) {

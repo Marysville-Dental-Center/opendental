@@ -2,6 +2,7 @@
 // folder before the program starts, as the Custom Reports menu is built at start-up, and deleted afterwards), and RdlDesigner (out of process).
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -13,14 +14,19 @@ namespace WindowChecksTests {
 		[TestMethod]
 		public void F1toF4_Dashboard() {
 			WinChkFixture.Begin("F");
+			//F2 and F4 click the graph cell's context menu items by their PerformClick (the right-click menu itself is not shown); F3 runs Setup through
+			//its menu item and the tab name's double-click through the tab control's handler.
+			List<CheckResult> listCheckResults=new List<CheckResult>();
 			using(InProcHost inProcHost=InProcHost.Start("chart")) {
-				WinChkFixture.Finish(inProcHost.Run("F1","Dashboard: open"));
+				foreach(string[] arrayCheck in new[] { new[] { "F1","Dashboard: open" },new[] { "F2","Dashboard: edit a cell" },new[] { "F3","Dashboard: edit a tab" },
+					new[] { "F4","Dashboard: print preview" } })
+				{
+					CheckResult checkResult=inProcHost.Run(arrayCheck[0],arrayCheck[1]);
+					Results.Write(checkResult);
+					listCheckResults.Add(checkResult);
+				}
 			}
-			string reason="Not scripted in this run: the step goes through the graph cell's right-click context menu (F2, F4) or the dashboard's Setup "
-				+"mode and a tab name double-click (F3). Reachable in process through the context menu items' handlers in a later run; for now an on-screen pass.";
-			WinChkFixture.Record("F2","Dashboard: edit a cell",CheckStatus.NeedsScreen,reason);
-			WinChkFixture.Record("F3","Dashboard: edit a tab",CheckStatus.NeedsScreen,reason);
-			WinChkFixture.Record("F4","Dashboard: print preview",CheckStatus.NeedsScreen,reason);
+			Assert.AreEqual("",string.Join(" || ",listCheckResults.Where(x => x.Status==CheckStatus.Failed).Select(x => x.Id+": "+x.Summary)));
 		}
 
 		[TestMethod]
