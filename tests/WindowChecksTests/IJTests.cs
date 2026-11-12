@@ -15,25 +15,23 @@ namespace WindowChecksTests {
 		[TestMethod]
 		public void I1toI11_ToothChart() {
 			WinChkFixture.Begin("I");
+			List<CheckResult> listResults=new List<CheckResult>();
+			//I1 to I7 in one session (I5's dashboard copy and I6's exam stay until I10; I6's 2D setting until I7).
 			using(InProcHost inProcHost=InProcHost.Start("chart")) {
 				CheckResult checkResultPrep=inProcHost.Run("IPREP","I prep: D2391 on 30 O");
-				foreach(string[] arrayCheck in new[] { new[] { "I1","Refill, slider, Show Big" },new[] { "I2","Save to Images" },new[] { "I7","Graphics: save DirectX" } }) {
-					CheckResult checkResult=inProcHost.Run(arrayCheck[0],arrayCheck[1]);
+				foreach(string[] arrayCheck in new[] { new[] { "I1","Refill, slider, Show Big" },new[] { "I2","Save to Images" },
+					new[] { "I3","Treatment Plan print preview, classic and sheet" },new[] { "I4","Referral letter" },new[] { "I5","Dashboard widget, open and closed" },
+					new[] { "I6","Graphical perio, and the 2D message" },new[] { "I7","Graphics: save DirectX" } })
+				{
+					CheckResult checkResult=inProcHost.Run(arrayCheck[0],arrayCheck[1],timeoutSeconds:360);
 					if(arrayCheck[0]=="I1") {
 						ATests.Merge(checkResult,checkResultPrep);
 					}
 					Results.Write(checkResult);
+					listResults.Add(checkResult);
 				}
 			}
-			string reason="Not scripted in this run: ";
-			WinChkFixture.Record("I3","Treatment Plan print preview, classic and sheet",CheckStatus.NeedsScreen,reason+"a saved plan, a User Query date change and two "
-				+"print previews; reachable in process later.");
-			WinChkFixture.Record("I4","Referral letter",CheckStatus.NeedsScreen,reason+"a sheet copy edited in the sheet designer (mouse placement), a referral and the "
-				+"Letter drop-down.");
-			WinChkFixture.Record("I5","Dashboard widget, open and closed",CheckStatus.NeedsScreen,reason+"Dashboard Setup's grids and the patient dashboard toggle.");
-			WinChkFixture.Record("I6","Graphical perio, and the 2D message",CheckStatus.NeedsScreen,reason+"a perio exam and the graphical perio window.");
 			WinChkFixture.Record("I9","WPF developer switch, the other callers",CheckStatus.Skipped,"Optional, not run (the checklist marks it optional).");
-			WinChkFixture.Record("I10","Sheet editor preview",CheckStatus.NeedsScreen,reason+"it undoes I5 and I6, which were not run.");
 			//I8: the WPF chart, out of process (its memory) and in process (Show Big and the resize).
 			CheckResult checkResultI8=new CheckResult("I8","The WPF chart at 100%");
 			using(ProgramProcess programProcessWpf=ProgramProcess.Start(ATests.DebugExe,ProgramProcess.ProgramArgs("chart"),
@@ -59,6 +57,12 @@ namespace WindowChecksTests {
 			}
 			checkResultI8.ForPerson("the memory after Show Big and after closing it (in process the memory is the test host's)");
 			Results.Write(checkResultI8);
+			//I10: the program started again (a new session): the sheet editor's preview, undoing I5 and I6.
+			using(InProcHost inProcHost=InProcHost.Start("chart")) {
+				CheckResult checkResultI10=inProcHost.Run("I10","Sheet editor preview",timeoutSeconds:300);
+				Results.Write(checkResultI10);
+				listResults.Add(checkResultI10);
+			}
 			//I11: start-up with no DirectX format saved.
 			CheckResult checkResultI11=new CheckResult("I11","Start-up with no DirectX format saved");
 			string computerName=Environment.MachineName;
@@ -85,7 +89,9 @@ namespace WindowChecksTests {
 				ATests.Merge(checkResultI11,inProcHost.Run("IUNDO","Undo of the prep"));
 			}
 			Results.Write(checkResultI11);
-			Assert.AreEqual("",string.Join(" || ",new[] { checkResultI8,checkResultI11 }.Where(x => x.Status==CheckStatus.Failed).Select(x => x.Id+": "+x.Summary)));
+			listResults.Add(checkResultI8);
+			listResults.Add(checkResultI11);
+			Assert.AreEqual("",string.Join(" || ",listResults.Where(x => x.Status==CheckStatus.Failed).Select(x => x.Id+": "+x.Summary)));
 		}
 
 		[TestMethod]
@@ -155,10 +161,10 @@ namespace WindowChecksTests {
 				CheckResult checkResultChart=inProcHost.Run("JCHART","Chart after the start");
 				checkResultJ16.Expect(checkResultChart.ListVerified.Contains("EHR button absent"),"Exit, start, log on: no EHR button in the Chart");
 				ATests.Merge(checkResultJ16,checkResultChart);
+				ATests.Merge(checkResultJ16,inProcHost.Run("J16SF","Show Features after the restart"));
 				//J17: the Setup Wizard saves EHR on Next.
 				checkResultJ17=inProcHost.Run("J17","Setup Wizard saves EHR");
 			}
-			checkResultJ16.ForPerson("Show Features matches J1-before.png");
 			Results.Write(checkResultJ16);
 			listResults.Add(checkResultJ16);
 			using(InProcHost inProcHost=InProcHost.Start("chart")) {

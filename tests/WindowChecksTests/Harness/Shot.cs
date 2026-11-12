@@ -95,6 +95,34 @@ namespace WindowChecksTests {
 			return hashSet.Count;
 		}
 
+		///<summary>The share (0 to 1) of pixels that differ between two saved pictures of the same size, or -1 when either is missing or the sizes
+		///differ (the text says which).</summary>
+		public static double CompareFiles(string fileNameA,string fileNameB,out string text) {
+			string pathA=Path.Combine(WinChkEnv.OutFolder,fileNameA);
+			string pathB=Path.Combine(WinChkEnv.OutFolder,fileNameB);
+			if(!File.Exists(pathA) || !File.Exists(pathB)) {
+				text="missing: "+(File.Exists(pathA) ? fileNameB : fileNameA);
+				return -1;
+			}
+			using Bitmap bitmapA=new Bitmap(pathA);
+			using Bitmap bitmapB=new Bitmap(pathB);
+			if(bitmapA.Size!=bitmapB.Size) {
+				text="sizes differ: "+bitmapA.Width+"x"+bitmapA.Height+" and "+bitmapB.Width+"x"+bitmapB.Height;
+				return -1;
+			}
+			long countDiffer=0;
+			for(int x=0;x<bitmapA.Width;x++) {
+				for(int y=0;y<bitmapA.Height;y++) {
+					if(bitmapA.GetPixel(x,y).ToArgb()!=bitmapB.GetPixel(x,y).ToArgb()) {
+						countDiffer++;
+					}
+				}
+			}
+			double share=(double)countDiffer/((long)bitmapA.Width*bitmapA.Height);
+			text=bitmapA.Width+"x"+bitmapA.Height+", "+countDiffer+" pixels differ ("+(share*100).ToString("0.00")+"%)";
+			return share;
+		}
+
 		private static void Save(Bitmap bitmap,ShotInfo shotInfo) {
 			shotInfo.Width=bitmap.Width;
 			shotInfo.Height=bitmap.Height;

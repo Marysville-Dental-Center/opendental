@@ -35,6 +35,39 @@ namespace WindowChecksTests.InProc {
 			},allowMessage);
 		}
 
+		///<summary>Presses the window's control as a click does and returns a window it opens within the time (a message box, say), or an Opened
+		///without a window when the handler finishes without one; neither is a failure (the caller decides).</summary>
+		public static Ui.Opened PressMaybeMessage(Ui ui,IntPtr hwnd,string nameOrText,int timeoutMs=8000) {
+			List<IntPtr> listBefore=ui.GetWindows();
+			Ui.Opened opened=new Ui.Opened();
+			opened.Posted=ui.Post("Button "+nameOrText,() => {
+				Control control=FindControl(ui,hwnd,nameOrText,isOnThread:true);
+				if(control==null) {
+					throw new Exception("No button "+nameOrText+" in "+Native.GetText(hwnd));
+				}
+				if(control is IButtonControl buttonControl) {
+					buttonControl.PerformClick();
+				}
+				else {
+					Ui.Call(control,"OnClick",EventArgs.Empty);
+				}
+			});
+			System.Diagnostics.Stopwatch stopwatch=System.Diagnostics.Stopwatch.StartNew();
+			while(stopwatch.ElapsedMilliseconds<timeoutMs) {
+				IntPtr hwndNew=ui.GetWindows().FirstOrDefault(x => !listBefore.Contains(x));
+				if(hwndNew!=IntPtr.Zero) {
+					System.Threading.Thread.Sleep(300);
+					opened.Hwnd=hwndNew;
+					return opened;
+				}
+				if(opened.Posted.ManualResetEventDone.WaitOne(0)) {
+					return opened;
+				}
+				System.Threading.Thread.Sleep(150);
+			}
+			return opened;
+		}
+
 		///<summary>The message box's text, then closes it with the button (OK when it has one). "" when the window is not a message box.</summary>
 		private static string ReadAndCloseMessage(Ui ui,Ui.Opened opened,string button="OK") {
 			if(!opened.IsOpen || !Native.IsDialogClass(opened.Hwnd)) {
@@ -322,7 +355,7 @@ namespace WindowChecksTests.InProc {
 					});
 					checkResult.Note("Last Name '"+provider.LName+"', First Name '"+provider.FName+"' (patient #1's provider "+provider.Abbr+"; the checklist's "
 						+"'Dentist, Gate' assumed a new database's names), Year 26, EHR Key empty");
-					Ui.Opened openedMsg=OpenByButton(ui,hwndEdit,"butSave",allowMessage:true);
+					Ui.Opened openedMsg=PressMaybeMessage(ui,hwndEdit,"butSave");
 					if(openedMsg.IsOpen) {
 						checkResult.Fail("Save showed: "+ui.DescribeWindow(openedMsg.Hwnd));
 						ui.Close(openedMsg.Hwnd);
@@ -385,7 +418,7 @@ namespace WindowChecksTests.InProc {
 			}
 			checkResult.Expect(hasTools==true,"The One-Time Tools group shows (Setup, and a row exists)");
 			checkResult.AddShot(ui.Shot(hwndSnomed,"J9.png"),"SNOMED CTs with the One-Time Tools");
-			Ui.Opened openedMsg=OpenByButton(ui,hwndSnomed,"butMapToSnomed",allowMessage:true);
+			Ui.Opened openedMsg=OpenByButton(ui,hwndSnomed,"butMapICD9",allowMessage:true);
 			string text=openedMsg.IsOpen && Native.IsDialogClass(openedMsg.Hwnd) ? Native.GetDialogMessage(openedMsg.Hwnd) : "";
 			if(openedMsg.IsOpen) {
 				checkResult.AddShot(ui.Shot(openedMsg.Hwnd,"J9-not-authorized.png"),"Map to ICD9's message");
@@ -461,7 +494,7 @@ namespace WindowChecksTests.InProc {
 				Ui.Opened openedEdit=ui.Open("Provider Keys > double-click the row",() => DoubleClickRowOnThread(FindControl(ui,hwndKeys,"gridMain",true),0));
 				if(InspectWindow(ui,checkResult,openedEdit,"FormEhrProviderKeyEdit",null,close:false)) {
 					ui.Invoke(() => FindControl(ui,openedEdit.Hwnd,"textYear",true).Text="25");
-					Ui.Opened openedMsg=OpenByButton(ui,openedEdit.Hwnd,"butSave",allowMessage:true);
+					Ui.Opened openedMsg=PressMaybeMessage(ui,openedEdit.Hwnd,"butSave");
 					if(openedMsg.IsOpen) {
 						checkResult.Fail("Save showed: "+ui.DescribeWindow(openedMsg.Hwnd));
 						ui.Close(openedMsg.Hwnd);
@@ -516,7 +549,7 @@ namespace WindowChecksTests.InProc {
 				return;
 			}
 			checkResult.Expect(hasTools==true,"Admin: the One-Time Tools group shows");
-			Ui.Opened openedConfirm=OpenByButton(ui,hwndSnomed,"butMapToSnomed",allowMessage:true);
+			Ui.Opened openedConfirm=OpenByButton(ui,hwndSnomed,"butMapICD9",allowMessage:true);
 			string textConfirm=openedConfirm.IsOpen && Native.IsDialogClass(openedConfirm.Hwnd) ? Native.GetDialogMessage(openedConfirm.Hwnd) : "";
 			checkResult.Expect(textConfirm.Contains("Will add SNOMED CT code"),"Map to ICD9 asks for confirmation; OK","'"+textConfirm+"'");
 			List<IntPtr> listBefore=ui.GetWindows();
@@ -702,6 +735,21 @@ namespace WindowChecksTests.InProc {
 			if(hwndWizard!=IntPtr.Zero && Native.IsWindow(hwndWizard)) {
 				ui.Close(hwndWizard);
 			}
+		}
+
+		///<summary>J16 after the restart: Show Features (EHR unticked) printed as J16.png and compared with J1-before.png; closed with its X (nothing
+		///saved).</summary>
+		public static void CheckJ16SF(Ui ui,CheckResult checkResult) {
+			Ui.Opened opened=OpenMenu(ui,"Setup","Advanced Setup","Show Features");
+			if(!InspectWindow(ui,checkResult,opened,"FormShowFeatures",null,close:false)) {
+				return;
+			}
+			bool isTicked=ui.Invoke(() => ((OpenPmsDental.UI.CheckBox)FindControl(ui,opened.Hwnd,"checkEhr",true)).Checked);
+			checkResult.Expect(!isTicked,"Show Features: EHR unticked");
+			checkResult.AddShot(ui.Shot(opened.Hwnd,"J16.png"),"Show Features after J16");
+			double share=WindowChecksTests.Shot.CompareFiles("J1-before.png","J16.png",out string text);
+			checkResult.Expect(share>=0 && share<0.005,"Show Features matches J1-before.png ("+text+")",text);
+			checkResult.Expect(ui.Close(opened.Hwnd),"Show Features closes with its X");
 		}
 
 		///<summary>J17's undo: Show Features > untick EHR > Save (as J16).</summary>

@@ -130,7 +130,8 @@ namespace WindowChecksTests {
 								+"RdlEngineConfig.xml, ODR.dll or MySqlConnector, which the checklist expects and does not count as a failure");
 						}
 						else {
-							checkResultH2.ForPerson("read what the preview shows in H2-preview.png (no text naming MySQL.NET or ODR was readable from its windows)");
+							checkResultH2.ForPerson("read the preview's messages in H2-preview.png: RdlViewer draws them itself, so no window text holds them (the "
+								+"checklist expects an error naming the data provider MySQL.NET or the ODR connection, not a failure)");
 						}
 						foreach(IntPtr hwndDialog in listDialogs.Where(x => Native.IsDialogClass(x))) {
 							if(!Native.ClickDialogButton(hwndDialog,"OK")) {
