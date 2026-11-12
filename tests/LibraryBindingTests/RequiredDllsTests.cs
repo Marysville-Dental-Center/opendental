@@ -19,12 +19,13 @@ namespace LibraryBindingTests {
 		///System.Security.Cryptography.Pkcs, which waits in the folder and ships once a shipped library needs it (ReleaseListTests). The libraries
 		///themselves are checked by tests/LibraryUpdateTests (LibraryFilesTests).</summary>
 		private static readonly string[][] _arraySupportAssemblies=new[] {
-			new[] { "Microsoft.Bcl.AsyncInterfaces.dll","10.0.0.14","10.0.1426.52326","10.0.14" },
+			//S2-2 of the .NET 10 move: the three Microsoft packages that were on 8.0.x, and Microsoft.Bcl.AsyncInterfaces with them, at 10.0.15.
+			new[] { "Microsoft.Bcl.AsyncInterfaces.dll","10.0.0.15","10.0.1526.53008","10.0.15" },
 			new[] { "Microsoft.Bcl.Cryptography.dll","10.0.0.10","10.0.1026.32716","10.0.10" },
-			new[] { "Microsoft.Extensions.DependencyInjection.Abstractions.dll","8.0.0.2","8.0.1024.46610","8.0.2" },
-			new[] { "Microsoft.Extensions.Logging.Abstractions.dll","8.0.0.3","8.0.1325.6609","8.0.3" },
+			new[] { "Microsoft.Extensions.DependencyInjection.Abstractions.dll","10.0.0.15","10.0.1526.53008","10.0.15" },
+			new[] { "Microsoft.Extensions.Logging.Abstractions.dll","10.0.0.15","10.0.1526.53008","10.0.15" },
 			new[] { "System.Buffers.dll","4.0.5.0","4.600.125.16908","4.6.1" },
-			new[] { "System.Diagnostics.DiagnosticSource.dll","8.0.0.1","8.0.424.16909","8.0.1" },
+			new[] { "System.Diagnostics.DiagnosticSource.dll","10.0.0.15","10.0.1526.53008","10.0.15" },
 			new[] { "System.Formats.Asn1.dll","10.0.0.13","10.0.1326.50504","10.0.13" },
 			new[] { "System.IO.Pipelines.dll","10.0.0.14","10.0.1426.52326","10.0.14" },
 			new[] { "System.Memory.dll","4.0.5.0","4.600.325.20307","4.6.3" },
@@ -36,7 +37,8 @@ namespace LibraryBindingTests {
 
 		///<summary>fo-dicom 4 (Dicom.Core.dll and its native codecs Dicom.Native.dll), which the in-house DICOM reader replaced, and the packages
 		///only fo-dicom 5 needed (and fo-dicom 5 itself). No library that stays uses them: MimeKit's net48 build does not reference
-		///System.Text.Encoding.CodePages, and Microsoft.Extensions.Logging.Abstractions 8.0.3 needs only DependencyInjection.Abstractions.</summary>
+		///System.Text.Encoding.CodePages, and Microsoft.Extensions.Logging.Abstractions 10.0.15 needs only DependencyInjection.Abstractions,
+		///DiagnosticSource, System.Buffers and System.Memory, all of them in the folder.</summary>
 		private static readonly string[] _arrayFoDicomOnly=new[] {
 			"Dicom.Core.dll","Dicom.Native.dll",
 			"CommunityToolkit.HighPerformance.dll","Microsoft.Bcl.HashCode.dll","Microsoft.Extensions.Configuration.Abstractions.dll",
@@ -85,7 +87,7 @@ namespace LibraryBindingTests {
 		///picked for the projects that get it (their project.assets.json, PackageFiles.ReadCopiedAssets: lib\net4x of the nearest framework, and
 		///runtimes\win-x86\native for an exe's win-x86 target), so a file of the same name and bytes in another folder of the package (another
 		///framework's lib folder) does not count. A package that brings none has no file of a name in "Required dlls" in any of its folders. A
-		///package that a later package adds (S2-2's MySqlConnector, S2-3's Microsoft.Web.WebView2) fails here until it is mapped, instead of
+		///package that a later package adds (S2-3's Microsoft.Web.WebView2; S2-2 mapped MySqlConnector) fails here until it is mapped, instead of
 		///dropping out. The checks that need no assets file (each package in the offline folder, mapped or bringing none, and the names of one
 		///that brings none) run first and fail as they would after a build; without the restore's assets files (no build yet) the rest is
 		///inconclusive, a failure with OPMS_REQUIRE_BUILD_OUTPUT=1 (READER-ENV, from S2-1's review).</summary>

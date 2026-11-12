@@ -408,6 +408,12 @@ namespace DbConnectionSecurityTests {
 			new[] { @"xCrudGenerator\CrudGenHelper.cs","SetDb","dbName,\"root\",\"\",\"\",\"\",DatabaseType.MySql" },
 			//DocumentationBuilder keeps the string it connects with in ConnStr (its window shows it), set from DevDbTls.Apply(...) just before.
 			new[] { @"DocumentationBuilder\DataConnection.cs","MySqlConnection","ConnStr" },
+			//S2-2's database TLS check: the program's string for a server over the network (a non-loopback address of this computer, with the
+			//check's own CA and client certificates), which DevDbTls leaves as it is; without a certificate and with another CA on purpose, to show
+			//that the server refuses them. Its user and database are made through DevDbTls.Apply(ROOT).
+			new[] { @"tests\DbConnectionSecurityTests\TlsCertificateLoginTests.cs","NewMySqlConnection","connectionString" },
+			new[] { @"tests\DbConnectionSecurityTests\TlsCertificateLoginTests.cs","MySqlConnection","builderNoCertificate.ConnectionString" },
+			new[] { @"tests\DbConnectionSecurityTests\TlsCertificateLoginTests.cs","MySqlConnection","builderOtherCa.ConnectionString" },
 		};
 
 		///<summary>The folders the scan reads: the tests, the dev tools, the legacy test projects and the developer tools of _arrayDevToolFolders.

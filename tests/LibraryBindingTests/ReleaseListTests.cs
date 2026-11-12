@@ -105,7 +105,7 @@ namespace LibraryBindingTests {
 			Assert.IsTrue(RequiredDlls.Files.ContainsKey("System.Security.Cryptography.Pkcs.dll"));
 			CollectionAssert.DoesNotContain(listAllowed,"System.Security.Cryptography.Pkcs.dll","Nothing shipped uses it yet.");
 			CollectionAssert.Contains(listAllowed,"Microsoft.Extensions.DependencyInjection.Abstractions.dll",
-				"Microsoft.Extensions.Logging.Abstractions 8.0.3 references it, so it ships.");
+				"Microsoft.Extensions.Logging.Abstractions 10.0.15 and MySqlConnector 2.6.2 reference it, so it ships.");
 		}
 
 		[TestMethod]

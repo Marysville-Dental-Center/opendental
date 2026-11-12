@@ -28,6 +28,8 @@ namespace LibraryUpdateTests {
 			new[] { "Microsoft.Identity.Client.dll","4.92.0.0","4.92.0.0","Microsoft.Identity.Client 4.92.0" },
 			new[] { "Microsoft.IdentityModel.Abstractions.dll","8.14.0.0","8.14.0.60815","Microsoft.IdentityModel.Abstractions 8.14.0" },
 			new[] { "Renci.SshNet.dll","2026.0.0.1","2026.0.0.1","SSH.NET 2026.0.0" },
+			//The database client, upgraded from 2.3.7 in S2-2 of the .NET 10 move (its assembly version stays 2.0.0.0).
+			new[] { "MySqlConnector.dll","2.0.0.0","2.6.2.0","MySqlConnector 2.6.2" },
 			new[] { "System.Text.Json.dll","10.0.0.14","10.0.1426.52326","System.Text.Json 10.0.14" },
 			new[] { "System.Text.Encodings.Web.dll","10.0.0.14","10.0.1426.52326","System.Text.Encodings.Web 10.0.14" },
 		};
