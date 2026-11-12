@@ -821,7 +821,7 @@ namespace DataConnectionBase {
 				_con=DbConnectionSecurity.NewMySqlConnection(connectStrLow);
 				_cmd = new MySqlCommand();
 				_cmd.Connection=_con;
-				_con.Open();
+				OpenCon();
 				if(!skipValidation) {
 					_cmd.CommandText="SELECT * FROM preference WHERE ValueString = 'DataBaseVersion'";
 					DataTable table=new DataTable();
@@ -895,7 +895,7 @@ namespace DataConnectionBase {
 			DataTable table=new DataTable();
 			_cmd.CommandText=command;
 			try {
-				_con.Open();
+				OpenCon();
 				_da=new MySqlDataAdapter(_cmd);
 				RunMySqlAction(new Action(() => _da.Fill(table)));
 			}
@@ -920,7 +920,7 @@ namespace DataConnectionBase {
 			List<T> retval=new List<T>();
 			_cmd.CommandText=command;
 			try {
-				_con.Open();
+				OpenCon();
 				RunMySqlAction(new Action(() => {
 					_dr=_cmd.ExecuteReader();
 					while(_dr.Read()) {
@@ -963,7 +963,7 @@ namespace DataConnectionBase {
 				_cmd.Parameters.Add(parameters[p]).Value=parameters[p].Value;
 			}
 			try {
-				_con.Open();
+				OpenCon();
 				RunMySqlAction(new Action(() => rowsChanged=_cmd.ExecuteNonQuery()));
 				InsertID=_cmd.LastInsertedId;//This field was not reliable prior to using version 6.9.9 of the MySQL connector
 			}
@@ -1002,7 +1002,7 @@ namespace DataConnectionBase {
 			string retVal="";
 			_cmd.CommandText=command;
 			try {
-				_con.Open();
+				OpenCon();
 				RunMySqlAction(new Action(() => _dr=(MySqlDataReader)_cmd.ExecuteReader()));
 				_dr.Read();
 				retVal=_dr[0].ToString();
@@ -1029,7 +1029,7 @@ namespace DataConnectionBase {
 			object scalar=null;
 			_cmd.CommandText=command;
 			try {
-				_con.Open();
+				OpenCon();
 				RunMySqlAction(new Action(() => scalar=_cmd.ExecuteScalar()));
 			}
 			catch(MySqlException ex) {
@@ -1107,6 +1107,17 @@ namespace DataConnectionBase {
 				result.Add(strb.ToString());
 			}
 			return result.ToArray();
+		}
+
+		///<summary>Opens _con. MySqlConnector 2.4 and later leave a connection Broken, not Closed, after a network error, and Open then throws
+		///InvalidOperationException ("Cannot Open when State is Broken"); 2.3 left it Closed. A DataConnection that is used again after such an
+		///error (a long-lived one, or after an exception that came from outside RunMySqlAction, which closes the connection itself) closes it
+		///first, so it reconnects as it did with 2.3 (docs/port-notes/S2-2.md).</summary>
+		private void OpenCon() {
+			if(_con.State==ConnectionState.Broken) {
+				_con.Close();
+			}
+			_con.Open();
 		}
 
 		///<summary>Run an action using the MySqlConnection and close the MySqlConnection if the action throws an exception. Re-throws the exception. This is strictly used to close the orphaned connection.</summary>
