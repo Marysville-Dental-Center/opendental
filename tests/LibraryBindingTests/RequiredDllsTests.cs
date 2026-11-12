@@ -86,7 +86,9 @@ namespace LibraryBindingTests {
 		///runtimes\win-x86\native for an exe's win-x86 target), so a file of the same name and bytes in another folder of the package (another
 		///framework's lib folder) does not count. A package that brings none has no file of a name in "Required dlls" in any of its folders. A
 		///package that a later package adds (S2-2's MySqlConnector, S2-3's Microsoft.Web.WebView2) fails here until it is mapped, instead of
-		///dropping out. Without the restore's assets files (no build yet) it is inconclusive, a failure with OPMS_REQUIRE_BUILD_OUTPUT=1.</summary>
+		///dropping out. The checks that need no assets file (each package in the offline folder, mapped or bringing none, and the names of one
+		///that brings none) run first and fail as they would after a build; without the restore's assets files (no build yet) the rest is
+		///inconclusive, a failure with OPMS_REQUIRE_BUILD_OUTPUT=1 (READER-ENV, from S2-1's review).</summary>
 		[TestMethod]
 		public void PackagesOfTheLockFiles_MapToTheirFilesOfRequiredDlls_ByteForByte() {
 			string folderOffline=OfflinePackages.Folder;
@@ -128,15 +130,10 @@ namespace LibraryBindingTests {
 				}
 			}
 			Assert.IsTrue(dictPackages.Count>0,"No lock file of the solution filter names a package.");
-			if(listNotRestored.Count>0) {
-				BuildOutput.NotBuilt("The restore's assets files of "+listNotRestored.Count+" projects with a lock file ("+listNotRestored[0]+", ...): the files the "
-					+"build copies from each package are read from them.");
-				return;
-			}
+			//First what needs no assets file: each package is in the offline folder, mapped (or brings none, and then holds no file of a Required
+			//dlls name), and its mapped files are in Required dlls (GetRequiredDlls).
 			List<string> listProblems=new List<string>();
-			int countFiles=0;
-			int countCopied=0;
-			HashSet<string> hashSetFolders=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+			Dictionary<string,string[]> dictMapped=new Dictionary<string,string[]>(StringComparer.OrdinalIgnoreCase);
 			foreach(KeyValuePair<string,LockedPackage> pair in dictPackages.OrderBy(x => x.Key,StringComparer.OrdinalIgnoreCase)) {
 				LockedPackage lockedPackage=pair.Value;
 				string folderPackage=OfflinePackages.GetPackageFolder(lockedPackage.Id,lockedPackage.Version);
@@ -144,22 +141,35 @@ namespace LibraryBindingTests {
 					listProblems.Add(pair.Key+" ("+dictWhere[pair.Key]+") is not in the offline folder.");
 					continue;
 				}
-				string[] arrayPackageFiles=Directory.GetFiles(folderPackage,"*",SearchOption.AllDirectories);
 				if(PackageFiles.BringsNoRequiredDlls(lockedPackage.Id)) {
-					List<string> listNamed=arrayPackageFiles.Select(x => Path.GetFileName(x)).Where(x => RequiredDlls.Files.ContainsKey(x)).Distinct().ToList();
+					List<string> listNamed=Directory.GetFiles(folderPackage,"*",SearchOption.AllDirectories).Select(x => Path.GetFileName(x))
+						.Where(x => RequiredDlls.Files.ContainsKey(x)).Distinct().ToList();
 					if(listNamed.Count>0) {
 						listProblems.Add(pair.Key+" is mapped to no file of Required dlls, but holds "+string.Join(", ",listNamed)+".");
 					}
 					continue;
 				}
-				string[] arrayFiles;
 				try {
-					arrayFiles=PackageFiles.GetRequiredDlls(lockedPackage.Id,dictWhere[pair.Key]);
+					dictMapped[pair.Key]=PackageFiles.GetRequiredDlls(lockedPackage.Id,dictWhere[pair.Key]);
 				}
 				catch(InvalidOperationException ex) {
 					listProblems.Add(ex.Message);
-					continue;
 				}
+			}
+			//Then what the restore's assets files say: inconclusive without them (no build yet), unless a check above failed already.
+			if(listNotRestored.Count>0) {
+				Assert.AreEqual(0,listProblems.Count,string.Join("\r\n",listProblems));
+				BuildOutput.NotBuilt("The restore's assets files of "+listNotRestored.Count+" projects with a lock file ("+listNotRestored[0]+", ...): the files the "
+					+"build copies from each package are read from them; the "+dictPackages.Count+" packages are in the offline folder and mapped.");
+				return;
+			}
+			int countFiles=0;
+			int countCopied=0;
+			HashSet<string> hashSetFolders=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+			foreach(KeyValuePair<string,string[]> pair in dictMapped.OrderBy(x => x.Key,StringComparer.OrdinalIgnoreCase)) {
+				LockedPackage lockedPackage=dictPackages[pair.Key];
+				string folderPackage=OfflinePackages.GetPackageFolder(lockedPackage.Id,lockedPackage.Version);
+				string[] arrayFiles=pair.Value;
 				HashSet<string> hashSetCopied;
 				if(!dictCopied.TryGetValue(pair.Key,out hashSetCopied)) {
 					listProblems.Add(pair.Key+" ("+dictWhere[pair.Key]+") is in no project's assets file: build again, so the restore writes them.");
