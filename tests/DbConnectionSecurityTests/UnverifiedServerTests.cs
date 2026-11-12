@@ -135,6 +135,15 @@ namespace DbConnectionSecurityTests {
 					mySqlConnection.Close();
 				}
 				fakeServer.Wait();
+				//With the stored hash, the challenge response also gives SHA1(password): what a mysql_native_password login to the real server needs.
+				byte[] arrayStoredHash=GetStoredHashBytes(GetStoredHash(TestHelpers.SECRET));
+				byte[] arrayMask;
+				byte[] arrayPasswordSha1;
+				using(SHA1 sha1=SHA1.Create()) {
+					arrayMask=sha1.ComputeHash(fakeServer.ArrayScramble.Concat(arrayStoredHash).ToArray());
+					arrayPasswordSha1=sha1.ComputeHash(Encoding.UTF8.GetBytes(TestHelpers.SECRET));
+				}
+				CollectionAssert.AreEqual(arrayPasswordSha1,fakeServer.ArrayAuthResponse.Select((x,i) => (byte)(x^arrayMask[i])).ToArray());
 				//The session ran: the driver set its character set (SET NAMES) over the fake server's TLS session and ended with COM_QUIT.
 				Assert.IsTrue(fakeServer.ListCommandsAfterOk.Count>=2,string.Join(" | ",fakeServer.ListCommandsAfterOk));
 				StringAssert.StartsWith(fakeServer.ListCommandsAfterOk[0],"SET NAMES",string.Join(" | ",fakeServer.ListCommandsAfterOk));
@@ -162,6 +171,15 @@ namespace DbConnectionSecurityTests {
 				byte[] arrayHash=sha1.ComputeHash(sha1.ComputeHash(Encoding.UTF8.GetBytes(password)));
 				return "*"+BitConverter.ToString(arrayHash).Replace("-","");
 			}
+		}
+
+		///<summary>The 20 bytes of a stored hash ("*" and 40 hex digits).</summary>
+		private static byte[] GetStoredHashBytes(string storedHash) {
+			byte[] arrayHash=new byte[20];
+			for(int i=0;i<20;i++) {
+				arrayHash[i]=Convert.ToByte(storedHash.Substring(1+2*i,2),16);
+			}
+			return arrayHash;
 		}
 
 		///<summary>The mysql_native_password challenge response: SHA1(password) XOR SHA1(scramble + SHA1(SHA1(password))).</summary>
@@ -341,10 +359,7 @@ namespace DbConnectionSecurityTests {
 				MemoryStream memoryStream=new MemoryStream();
 				memoryStream.Write(new byte[] { 0x00,0x00,0x00,0x02,0x00,0x00,0x00 },0,7);//OK, rows, insert id, status, warnings
 				if(isLogin && _storedHash!=null) {
-					byte[] arrayPasswordHash=new byte[20];
-					for(int i=0;i<20;i++) {
-						arrayPasswordHash[i]=Convert.ToByte(_storedHash.Substring(1+2*i,2),16);
-					}
+					byte[] arrayPasswordHash=GetStoredHashBytes(_storedHash);
 					byte[] arrayProof;
 					using(SHA256 sha256=SHA256.Create()) {
 						byte[] arrayCertificateHash=sha256.ComputeHash(_x509Certificate2.RawData);
