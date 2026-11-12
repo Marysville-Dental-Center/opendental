@@ -414,6 +414,9 @@ namespace DbConnectionSecurityTests {
 			new[] { @"tests\DbConnectionSecurityTests\TlsCertificateLoginTests.cs","NewMySqlConnection","connectionString" },
 			new[] { @"tests\DbConnectionSecurityTests\TlsCertificateLoginTests.cs","MySqlConnection","builderNoCertificate.ConnectionString" },
 			new[] { @"tests\DbConnectionSecurityTests\TlsCertificateLoginTests.cs","MySqlConnection","builderOtherCa.ConnectionString" },
+			//S2-2's review: the program's string for a server over the network, pointed at the tests' own fake server on a loopback port, whose
+			//certificate is outside the office CA on purpose. It never reaches the local test server.
+			new[] { @"tests\DbConnectionSecurityTests\UnverifiedServerTests.cs","MySqlConnection","GetConnectionString(fakeServer," },
 		};
 
 		///<summary>The folders the scan reads: the tests, the dev tools, the legacy test projects and the developer tools of _arrayDevToolFolders.
