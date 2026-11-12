@@ -509,6 +509,12 @@ namespace OpenPmsDental {
 					_printedStackPanelChildren=i;
 					continue;
 				}
+				if(frameworkElement.ActualHeight<=0 || frameworkElement.ActualWidth<=0){
+					//Every field in this row is hidden by conditional logic (SetVisibilities collapses each field, not the row), so the row has no height
+					//and nothing shows on the screen. Nothing to print.
+					_printedStackPanelChildren=i;
+					continue;
+				}
 				if(eFormField.FieldType==EnumEFormFieldType.SigBox){
 					StackPanel stackPanel2=(StackPanel)borderBox.Child;
 					StackPanel stackPanelLabel=(StackPanel)stackPanel2.Children[0];
