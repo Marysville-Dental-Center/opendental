@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Tests for package EFORM-PRINT: printing an eForm from the Fill eForm window (CtrlEFormFill.Pd_PrintPage through PrinterL.CreateFixedDocument,
+       the path of Print's preview and of Save to Images) for the internal eForms and for eForms with conditionally hidden and empty fields. The
+       fill control is built and laid out on its own STA thread; no window is shown and the program is not launched. The tests use one scratch
+       database on the local MariaDB (127.0.0.1:3306, root, blank password) whose name starts with efp_ and is unique to the run, built from
+       db/init/new-database.sql and the fork migrations and dropped afterwards; they are skipped (inconclusive) when the server does not answer or
+       when EFORMPRINT_TEST_DB=skip. Synthetic data only. Every .cs file under this folder is compiled. -->
+  <ItemGroup>
+    <Reference Include="MySqlConnector">
+      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
+    </Reference>
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="System.Xaml" />
+    <Reference Include="WindowsBase" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\CodeBase\xCodeBase.csproj" />
+    <ProjectReference Include="..\..\DataConnectionBase\xDataConnectionBase.csproj" />
+    <ProjectReference Include="..\..\OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj" />
+    <ProjectReference Include="..\..\WpfControlsOD\WpfControlsOD.csproj" />
+  </ItemGroup>
+</Project>

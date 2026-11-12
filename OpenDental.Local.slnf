@@ -58,6 +58,7 @@
       "tests\\DbConnectionSecurityTests\\DbConnectionSecurityTests.csproj",
       "tests\\DbGrantsTests\\DbGrantsTests.csproj",
       "tests\\DicomReaderTests\\DicomReaderTests.csproj",
+      "tests\\EFormPrintTests\\EFormPrintTests.csproj",
       "tests\\EFormTests\\EFormTests.csproj",
       "tests\\EhrTests\\EhrTests.csproj",
       "tests\\FeeTests\\FeeTests.csproj",
