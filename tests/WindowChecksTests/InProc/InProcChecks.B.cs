@@ -46,6 +46,19 @@ namespace WindowChecksTests.InProc {
 			ControlApptPanel controlApptPanel=(ControlApptPanel)Ui.GetField(controlAppt,"contrApptPanel");
 			DateTime dateSelected=ui.Invoke(() => controlApptPanel.DateSelected);
 			checkResult.Note("Date shown: "+dateSelected.ToString("yyyy-MM-dd")+" (the program opens on today)");
+			//To 2026-11-09 by the day arrows (back or forward one day per click), as a person pages there; at most 120 clicks.
+			DateTime dateWanted=new DateTime(2026,11,9);
+			int countClicks=0;
+			while(dateSelected.Date!=dateWanted && countClicks<120) {
+				string handler=dateSelected.Date>dateWanted ? "butBack_Click" : "butFwd_Click";
+				ui.Invoke(() => Ui.Call(controlAppt,handler,controlAppt,EventArgs.Empty));
+				dateSelected=ui.Invoke(() => controlApptPanel.DateSelected);
+				countClicks++;
+			}
+			if(countClicks>0) {
+				checkResult.Note("Paged to "+dateSelected.ToString("yyyy-MM-dd")+" with "+countClicks+" click(s) of the day arrows");
+				System.Threading.Thread.Sleep(1000);
+			}
 			List<string> listAppts=ui.Invoke(() => controlApptPanel.TableAppointments.Rows.Cast<DataRow>()
 				.Select(x => Col(x,"AptDateTime")+" op "+Col(x,"Op")+" "+Col(x,"ProcDescript")).ToList());
 			checkResult.Note("Appointments in view: "+string.Join("; ",listAppts));
