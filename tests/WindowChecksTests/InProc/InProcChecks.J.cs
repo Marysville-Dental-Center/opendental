@@ -226,6 +226,21 @@ namespace WindowChecksTests.InProc {
 			return true;
 		}
 
+		///<summary>The harness's own check of LogOnAsAdmin (not a checklist item): a log-on as a user the list does not have. The log-on window is
+		///not cancelled (that would end the test host), the program is back on Admin with patient #1, and the session goes on.</summary>
+		public static void CheckJLOGONFAIL(Ui ui,CheckResult checkResult) {
+			CheckResult checkResultInner=new CheckResult("JLOGONFAIL","inner");
+			bool isLoggedOn=LogOffAndOn(ui,checkResultInner,"winchk-no-such-user");
+			checkResult.Note("The failed log-on's own result: "+string.Join("; ",checkResultInner.ListFailures.Concat(checkResultInner.ListNotes)));
+			checkResult.Expect(!isLoggedOn,"A log-on as a user the list does not have fails");
+			checkResult.Expect(checkResultInner.ListFailures.Any(x => x.Contains("lists winchk-no-such-user")),"It fails at the user list");
+			checkResult.Expect(ui.GetWindows().Count==0,"The log-on window is gone (logged on as Admin, not cancelled)",
+				string.Join("; ",ui.GetWindows().Select(x => ui.DescribeWindow(x))));
+			string userAfter=CurUserName(ui);
+			bool isPatient=ui.Invoke(() => FormOpenDental.PatNumCur==1);
+			checkResult.Expect(userAfter.ToLower()=="admin" && isPatient,"Back on Admin with patient #1 selected","user "+userAfter+", patient #1 "+isPatient);
+		}
+
 		///<summary>Setup > Chart > EHR, waited for; zero when it did not open.</summary>
 		private static IntPtr OpenEhrSetup(Ui ui,CheckResult checkResult) {
 			Ui.Opened opened=OpenMenu(ui,"Setup","Chart","EHR");

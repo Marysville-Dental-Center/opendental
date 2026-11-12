@@ -140,6 +140,10 @@ namespace WindowChecksTests {
 				CheckResult checkResultJ15=inProcHost.Run("J15","Direct messaging options");
 				Results.Write(checkResultJ15);
 				listResults.Add(checkResultJ15);
+				//The harness's own check (not a checklist row): a failed log-on goes back to Admin instead of cancelling the log-on window.
+				CheckResult checkResultLogOnFail=inProcHost.Run("JLOGONFAIL","A failed log-on goes back to Admin");
+				Results.Log("JLOGONFAIL: "+checkResultLogOnFail.Status+": "+checkResultLogOnFail.Summary);
+				listResults.Add(checkResultLogOnFail);
 			}
 			//J14: the time check is off, after the log-ons above with EHR on.
 			CheckResult checkResultJ14=new CheckResult("J14","Time check off");
