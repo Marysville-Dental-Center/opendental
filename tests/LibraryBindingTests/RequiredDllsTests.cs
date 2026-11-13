@@ -87,8 +87,9 @@ namespace LibraryBindingTests {
 		///picked for the projects that get it (their project.assets.json, PackageFiles.ReadCopiedAssets: lib\net4x of the nearest framework, and
 		///runtimes\win-x86\native for an exe's win-x86 target), so a file of the same name and bytes in another folder of the package (another
 		///framework's lib folder) does not count. A package that brings none has no file of a name in "Required dlls" in any of its folders. A
-		///package that a later package adds (S2-3's Microsoft.Web.WebView2; S2-2 mapped MySqlConnector) fails here until it is mapped, instead of
-		///dropping out. The checks that need no assets file (each package in the offline folder, mapped or bringing none, and the names of one
+		///package that a later package adds fails here until it is mapped, instead of dropping out (S2-2 mapped MySqlConnector, S2-3
+		///Microsoft.Web.WebView2), and a mapped file that the build copies from no project's assets fails too: WebView2Loader.dll is the native
+		///asset of the program's win-x86 target (runtimes\win-x86\native). The checks that need no assets file (each package in the offline folder, mapped or bringing none, and the names of one
 		///that brings none) run first and fail as they would after a build; without the restore's assets files (no build yet) the rest is
 		///inconclusive, a failure with OPMS_REQUIRE_BUILD_OUTPUT=1 (READER-ENV, from S2-1's review).</summary>
 		[TestMethod]
@@ -203,11 +204,14 @@ namespace LibraryBindingTests {
 
 		[TestMethod]
 		public void PackageFiles_APackageItDoesNotMap_FailsLoudly() {
-			//S2-3's Microsoft.Web.WebView2 brings files whose names are not its id (Microsoft.Web.WebView2.Core.dll, .WinForms.dll, .Wpf.dll,
-			//WebView2Loader.dll): until it is mapped, every check that reads the projects throws instead of leaving its files out.
-			AssertThrows<InvalidOperationException>(() => PackageFiles.GetRequiredDlls("Microsoft.Web.WebView2","x\\packages.lock.json"),
-				"names the package Microsoft.Web.WebView2");
+			//A package a later package adds and does not map: every check that reads the projects throws instead of leaving its files out.
+			AssertThrows<InvalidOperationException>(() => PackageFiles.GetRequiredDlls("Fixture.Unmapped","x\\packages.lock.json"),
+				"names the package Fixture.Unmapped");
 			CollectionAssert.AreEqual(new[] { "Renci.SshNet.dll" },PackageFiles.GetRequiredDlls("ssh.net","x"),"NuGet's ids ignore case.");
+			//S2-3's Microsoft.Web.WebView2 brings files whose names are not its id: its three assemblies and the native loader, each a file of
+			//Required dlls (PackagesOfTheLockFiles_MapToTheirFilesOfRequiredDlls_ByteForByte checks each against a file the build copies from it).
+			CollectionAssert.AreEqual(new[] { "Microsoft.Web.WebView2.Core.dll","Microsoft.Web.WebView2.WinForms.dll","Microsoft.Web.WebView2.Wpf.dll",
+				"WebView2Loader.dll" },PackageFiles.GetRequiredDlls("Microsoft.Web.WebView2","x"));
 			CollectionAssert.AreEqual(new string[0],PackageFiles.GetRequiredDlls("System.ValueTuple","x"));
 			//A mapping to no file, or to one "Required dlls" does not hold, fails the same way.
 			AssertThrows<InvalidOperationException>(() => PackageFiles.CheckMapping("Fixture.Package",new string[0],"x"),"to no file");

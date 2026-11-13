@@ -37,14 +37,10 @@
       <EmbedInteropTypes>True</EmbedInteropTypes>
     </Reference>
     <Reference Include="Microsoft.VisualBasic" />
-    <Reference Include="Microsoft.Web.WebView2.Core, Version=1.0.2420.47, Culture=neutral, PublicKeyToken=2a8ab48044d2601e, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\Microsoft.Web.WebView2.Core.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Web.WebView2.Wpf, Version=1.0.2420.47, Culture=neutral, PublicKeyToken=2a8ab48044d2601e, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\Microsoft.Web.WebView2.Wpf.dll</HintPath>
-    </Reference>
+    <!-- The WebView2 SDK, the version of Directory.Packages.props (UI\Controls\WebView2.xaml). Its build files are left out
+         (ExcludeAssets="build"): in a library they would only copy the native WebView2Loader.dll into this output folder and every one that
+         references it; the program and the tests that open WebView2 windows take it themselves (Directory.Build.targets). -->
+    <PackageReference Include="Microsoft.Web.WebView2" ExcludeAssets="build" />
     <!-- Newtonsoft.Json, the version of Directory.Packages.props. -->
     <PackageReference Include="Newtonsoft.Json" />
     <Reference Include="ReachFramework" />

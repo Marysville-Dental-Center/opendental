@@ -158,7 +158,11 @@ $extendedNames=@(
 	'CentralPackageVersionsFileImported','ManagePackageVersionsCentrally','_CentralPackageVersionsEnabled','CentralPackageTransitivePinningEnabled',
 	'CentralPackageVersionOverrideEnabled','CentralPackageFloatingVersionsEnabled','RestoreEnableGlobalPackageReference',
 	'DisableMicrosoftExtensionsLoggingSourceGenerator','DisableSystemTextJsonSourceGenerator','NuGetPropsFile','MSBuildUseVisualStudioDirectoryLayout',
-	'NuGetRestoreTargets'
+	'NuGetRestoreTargets',
+	#The WebView2 package's build files (S2-3): the SDK's own runtime identifier, which they test, and what they set for the program and the
+	#two test projects that take them (every name they use is compared there anyway, as for any file the evaluator reads).
+	'NETCoreSdkRuntimeIdentifier','WebView2ProjectKind','NugetRoot','EffectivePlatform','WebView2LoaderPreference','WebView2EnablePropertyPage',
+	'WebView2UseWinRT'
 )
 #The names a test asks ProjectFile's GetProperty for, from the tests' sources (those of tests\ProjectFileTests ask the fixtures' own names).
 $testNames=New-Object 'System.Collections.Generic.SortedSet[string]' ([StringComparer]::OrdinalIgnoreCase)

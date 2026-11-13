@@ -28,6 +28,7 @@
       "CodeBase": {
         "type": "Project",
         "dependencies": {
+          "Microsoft.Web.WebView2": "[1.0.2420.47, )",
           "Newtonsoft.Json": "[13.0.4, )"
         }
       },
@@ -108,6 +109,7 @@
           "DataConnectionBase": "[1.0.0, )",
           "ImagingCapture": "[1.0.0, )",
           "ImagingDeviceManager": "[1.0.0, )",
+          "Microsoft.Web.WebView2": "[1.0.2420.47, )",
           "MigraDoc.DocumentObjectModel": "[1.0.0, )",
           "MigraDoc.Rendering-gdi": "[1.0.0, )",
           "MySqlConnector": "[2.6.2, )",
@@ -262,6 +264,7 @@
         "dependencies": {
           "CodeBase": "[1.0.0, )",
           "DataConnectionBase": "[1.0.0, )",
+          "Microsoft.Web.WebView2": "[1.0.2420.47, )",
           "Newtonsoft.Json": "[13.0.4, )",
           "OpenPmsDentalBusiness": "[1.0.0, )",
           "PdfSharp-gdi": "[1.0.0, )",
@@ -384,6 +387,12 @@
         "requested": "[8.14.0, )",
         "resolved": "8.14.0",
         "contentHash": "iwbCpSjD3ehfTwBhtSNEtKPK0ICun6ov7Ibx6ISNA9bfwIyzI2Siwyi9eJFCJBwxowK9xcA1mj+jBWiigeqgcQ=="
+      },
+      "Microsoft.Web.WebView2": {
+        "type": "CentralTransitive",
+        "requested": "[1.0.2420.47, )",
+        "resolved": "1.0.2420.47",
+        "contentHash": "XYZjxkepD+MwmIdeiWqjm2T8x4UmVZq4CDKUe7U6L1r+9VGo2Q88OeEgvyLYtgvebGGuSP6D74Z3wxdRwjH8IQ=="
       },
       "MimeKit": {
         "type": "CentralTransitive",
@@ -522,6 +531,13 @@
         }
       }
     },
-    ".NETFramework,Version=v4.8/win-x86": {}
+    ".NETFramework,Version=v4.8/win-x86": {
+      "Microsoft.Web.WebView2": {
+        "type": "CentralTransitive",
+        "requested": "[1.0.2420.47, )",
+        "resolved": "1.0.2420.47",
+        "contentHash": "XYZjxkepD+MwmIdeiWqjm2T8x4UmVZq4CDKUe7U6L1r+9VGo2Q88OeEgvyLYtgvebGGuSP6D74Z3wxdRwjH8IQ=="
+      }
+    }
   }
 }

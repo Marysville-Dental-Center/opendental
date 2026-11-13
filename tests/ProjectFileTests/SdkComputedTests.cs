@@ -27,8 +27,8 @@ namespace ProjectFileTests {
 		public void Sdk_AnItemOutsideTheFolder_GetsTheLinkTheSdkGivesIt() {
 			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
 				ProjectFile projectFile=fixtureFolder.Load("SdkLinks");
-				//The native file at the top of the output with no Link of its own, as OpenPmsDental.csproj's WebView2Loader.dll once S1-5 drops its
-				//Link (tests\ReleaseFlowTests\ReleaseFilesTests.cs checks it).
+				//The native file at the top of the output with no Link of its own, as OpenPmsDental.csproj's WebView2Loader.dll was from S1-5 until
+				//S2-3 took it from the WebView2 package (tests\ReleaseFlowTests\ReleaseFilesTests.cs checks it).
 				ProjectItem projectItemNative=projectFile.AssertItem("None",@"..\..\Required dlls\Native.dll");
 				Assert.AreEqual("Native.dll",projectItemNative.GetMetadata("Link"));
 				Assert.AreEqual("PreserveNewest",projectItemNative.GetMetadata("CopyToOutputDirectory"));

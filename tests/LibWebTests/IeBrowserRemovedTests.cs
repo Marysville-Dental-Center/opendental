@@ -136,6 +136,16 @@ namespace LibWebTests {
 				Assert.AreEqual(new Version(1,0,2420,47),System.Reflection.AssemblyName.GetAssemblyName(path).Version,name);
 			}
 			Assert.IsTrue(File.Exists(Path.Combine(folder,"WebView2Loader.dll")));
+			//Since S2-3 of the .NET 10 move the projects take it from the WebView2 package at that same version (the files of Required dlls stay
+			//until S2-4 moves the release tooling to the packages).
+			foreach(string[] arrayProject in new[] { new[] { "CodeBase","xCodeBase.csproj" },new[] { "WpfControlsOD","WpfControlsOD.csproj" },
+				new[] { "OpenPmsDental","OpenPmsDental.csproj" },new[] { "tests","LibWebTests","LibWebTests.csproj" } })
+			{
+				ProjectFile projectFile=ProjectFile.Load(Path.Combine(TestPaths.RepoRoot,Path.Combine(arrayProject)));
+				Assert.AreEqual("1.0.2420.47",projectFile.GetPackageVersion("Microsoft.Web.WebView2"),projectFile.Name);
+				Assert.IsFalse(projectFile.GetItems("Reference").Any(x => x.Include.StartsWith("Microsoft.Web.WebView2",StringComparison.OrdinalIgnoreCase)),
+					projectFile.Name+": no HintPath to Required dlls any more.");
+			}
 		}
 
 		///<summary>The built program folder, when this checkout has built it: none of its assemblies references an IE browser type or carries
