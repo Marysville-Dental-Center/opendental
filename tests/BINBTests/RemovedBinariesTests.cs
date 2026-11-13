@@ -54,6 +54,26 @@ namespace BINBTests {
 			Assert.AreEqual(0,listFound.Count,"Back in the repository: "+string.Join(", ",listFound));
 		}
 
+		///<summary>S2-4 of the .NET 10 move deleted two files of "Required dlls" that no package supplies: the x86 Visual C++ runtime
+		///vcruntime140.dll, which nothing copied or loaded (the setup installs vc_redist.x86.exe, and the release denies vcruntime*.dll), and
+		///System.Security.Cryptography.Pkcs.dll, which nothing referenced and no release shipped. Neither comes back, and no build output holds the
+		///runtime. (The files of the NuGet packages it deleted too are checked by LibraryBindingTests, RequiredDllsTests.)</summary>
+		[TestMethod]
+		public void S24RemovedFiles_AreNotInTheRepositoryOrTheBuildOutput() {
+			string root=TestPaths.RepoRoot;
+			Assert.IsTrue(Directory.Exists(Path.Combine(root,"Required dlls")),"Required dlls stays for the files without a package.");
+			foreach(string fileName in new[] { "vcruntime140.dll","System.Security.Cryptography.Pkcs.dll" }) {
+				Assert.IsFalse(File.Exists(Path.Combine(root,"Required dlls",fileName)),@"Required dlls\"+fileName+" is back.");
+			}
+			List<string> listFolders=new List<string> { AppDomain.CurrentDomain.BaseDirectory };
+			string folderOpenDental=Path.Combine(root,"OpenPmsDental","bin","Debug");
+			if(File.Exists(Path.Combine(folderOpenDental,"OpenPmsDental.exe"))) {
+				listFolders.Add(folderOpenDental);
+			}
+			List<string> listFound=listFolders.Select(x => Path.Combine(x,"vcruntime140.dll")).Where(File.Exists).ToList();
+			Assert.AreEqual(0,listFound.Count,"The Visual C++ runtime comes from vc_redist.x86.exe: "+string.Join(", ",listFound));
+		}
+
 		[TestMethod]
 		public void RemovedAssemblies_AreNotNamedByAProjectItem() {
 			string root=TestPaths.RepoRoot;
