@@ -36,8 +36,9 @@ namespace ProjectFileTests {
 	///of the pinned SDK 10.0.114 define them.
 	///What it does not model: the rest of the files of MSBuild, Visual Studio's components, the .NET Framework and the SDK (those the common
 	///targets import from MSBuild's ImportBefore and ImportAfter folders, Microsoft.WinFx.targets, the web application targets), targets (items
-	///created while building), ItemDefinitionGroup defaults other than the WindowsDesktop SDK's, Choose, and environment variables, which MSBuild
-	///reads as properties. Anything it cannot evaluate throws, so a check never passes on a guess: Choose, a missing import, an import of another
+	///created while building), ItemDefinitionGroup defaults other than the WindowsDesktop SDK's, and environment variables, which MSBuild
+	///reads as properties (Choose is read since S2-3: ReadChoose). Anything it cannot evaluate throws, so a check never passes on a guess: a
+	///Choose MSBuild rejects, a missing import, an import of another
 	///file of MSBuild, Visual Studio or the SDK, an unknown property function in an Include or a condition, an environment variable no file set,
 	///and a property that MSBuild, its toolset, Visual Studio's components or the SDK compute and this reader does not (the machine paths such
 	///as $(MSBuildExtensionsPath), NuGet's $(NuGetTargetMoniker), the SDK's $(RuntimeIdentifier), a web application's $(AppConfig): the
@@ -99,10 +100,13 @@ namespace ProjectFileTests {
 			"MSBuildFrameworkToolsPath32","MSBuildFrameworkToolsPath64","MSBuildFrameworkToolsRoot","MSBuildProgramFiles32","MSBuildUserExtensionsPath",
 			"MSBuildVersion","MSBuildAssemblyVersion","MSBuildFileVersion","MSBuildSemanticVersion","MSBuildRuntimeType","MSBuildRuntimeVersion",
 			"MSBuildNodeCount","MSBuildStartupDirectory","MSBuildInteractive","MSBuildIsRestoring","MSBuildOverrideTasksPath","VsInstallRoot",
+			//The files MSBuild's own imports add to it (the restore's .nuget.g.props, Microsoft.Xaml.targets, ...); the WebView2 package's
+			//build\Common.targets and wv2winrt.targets add themselves only for an MSBuild before 16 (S2-3).
+			"MSBuildAllProjects",
 			"RoslynTargetsPath","FrameworkSDKRoot","SDK35ToolsPath","SDK40ToolsPath","WindowsSDK80Path","WindowsKitsRoot","VCTargetsPath",
 			"TargetFrameworkRootPath","FrameworkPathOverride","TargetFrameworkDirectory","TargetPlatformSdkPath","TargetPlatformDisplayName",
 			"TargetPlatformSdkMetadataLocation",
-			"NETCoreSdkVersion","NETCoreSdkRuntimeIdentifier","NETCoreRoot","DOTNET_HOST_PATH",
+			"NETCoreSdkVersion","NETCoreRoot","DOTNET_HOST_PATH",
 			"CurrentSolutionConfigurationContents","BuildingSolutionFile","BuildingInsideVisualStudio",
 			//Microsoft.Common.CurrentVersion.targets (from $(ReferencePath), the registry and $(OutDir)) and Microsoft.NET.Sdk.props compute these.
 			"AssemblySearchPaths","DesignTimeAssemblySearchPaths",
@@ -348,11 +352,55 @@ namespace ProjectFileTests {
 						}
 						break;
 					case "Choose":
-						throw new NotSupportedException(fileContext.Path+": Choose is not modelled by ProjectFile.");
+						ReadChoose(xElement,fileContext);
+						break;
 					default:
 						//Target, UsingTask, ItemDefinitionGroup, ProjectExtensions, Sdk: nothing that adds an item at evaluation.
 						break;
 				}
+			}
+		}
+
+		///<summary>A Choose, in pass 1 as MSBuild evaluates it (Evaluator.EvaluateChooseElement): the When elements in order, each Condition
+		///evaluated until one is true and no further, else the Otherwise; the elements of the one chosen are read as those of the file where the
+		///Choose stands (its PropertyGroups at once, its ItemGroups queued for pass 2, a Choose in it the same way), the others not at all. Since
+		///S2-3 (the WebView2 package's build\Common.targets has one). What MSBuild rejects as it loads the file throws: a Condition on the Choose,
+		///no When, a When without a Condition, an Otherwise before a When or a second one, and any other element in a Choose, When or Otherwise
+		///(MSBuild allows only PropertyGroup, ItemGroup and Choose there: an Import in a When is MSB4067).</summary>
+		private void ReadChoose(XElement xElementChoose,FileContext fileContext) {
+			string where=fileContext.Path+": Choose";
+			if(xElementChoose.Attribute("Condition")!=null) {
+				throw new NotSupportedException(where+" with a Condition, which MSBuild rejects.");
+			}
+			List<XElement> listWhens=new List<XElement>();
+			XElement xElementOtherwise=null;
+			foreach(XElement xElement in xElementChoose.Elements()) {
+				string name=xElement.Name.LocalName;
+				if(name=="When" && xElementOtherwise==null) {
+					if(xElement.Attribute("Condition")==null) {
+						throw new NotSupportedException(where+": a When without a Condition, which MSBuild rejects.");
+					}
+					listWhens.Add(xElement);
+				}
+				else if(name=="Otherwise" && xElementOtherwise==null && listWhens.Count>0) {
+					xElementOtherwise=xElement;
+				}
+				else {
+					throw new NotSupportedException(where+": <"+name+"> where MSBuild allows only When elements and then one Otherwise.");
+				}
+				foreach(XElement xElementChild in xElement.Elements()) {
+					if(!new[] { "PropertyGroup","ItemGroup","Choose" }.Contains(xElementChild.Name.LocalName)) {
+						throw new NotSupportedException(where+": <"+xElementChild.Name.LocalName+"> in <"+name+">, which MSBuild rejects (only PropertyGroup, ItemGroup "
+							+"and Choose).");
+					}
+				}
+			}
+			if(listWhens.Count==0) {
+				throw new NotSupportedException(where+" without a When, which MSBuild rejects.");
+			}
+			XElement xElementChosen=listWhens.FirstOrDefault(x => IsConditionTrueInFile(x,fileContext))??xElementOtherwise;
+			if(xElementChosen!=null) {
+				ReadProjectElement(xElementChosen,fileContext);
 			}
 		}
 
@@ -1109,7 +1157,11 @@ namespace ProjectFileTests {
 			//Sdk.props lines 48-49: another file instead of Microsoft.Common.props when a file or an environment variable names one.
 			ThrowIfImportHook("AlternateCommonProps","Sdk.props");
 			ImportMicrosoftCommonProps();
-			//Microsoft.NET.Sdk.props, in its order.
+			//Microsoft.NET.Sdk.props, in its order. Lines 14-18: Microsoft.NETCoreSdk.BundledVersions.props of the SDK sets the runtime identifier
+			//of the SDK itself, whatever the project or the environment says (the WebView2 package's build\Common.targets tests it, S2-3): the
+			//SDK installed on 64-bit Windows, per user or machine-wide, is the x64 one, on 32-bit Windows the x86 one. Not a fact of the project
+			//files, so tools\Test-ProjectFileEvaluator.ps1 compares it with MSBuild's for every project. A classic project leaves it ''.
+			_dictProperties["NETCoreSdkRuntimeIdentifier"]=Environment.Is64BitOperatingSystem ? "win-x64" : "win-x86";
 			_dictProperties["DisableHandlePackageFileConflicts"]="true";
 			SetIfEmpty("Configurations","Debug;Release");
 			SetIfEmpty("Platforms","AnyCPU");
@@ -2593,6 +2645,8 @@ namespace ProjectFileTests {
 			private readonly Func<string,string> _funcFullPath;
 			private readonly string _where;
 			private int _index;
+			///<summary>The operand ParseOperand read last, as written (without its quotes), before it was expanded.</summary>
+			private string _lastRaw;
 
 			public ConditionParser(string condition,Func<string,string> funcExpand,Func<string,string> funcFullPath,string where) {
 				_condition=condition;
@@ -2660,6 +2714,7 @@ namespace ProjectFileTests {
 					return argument.EndsWith(@"\") || argument.EndsWith("/");
 				}
 				string left=ParseOperand();
+				string rawLeft=_lastRaw;
 				SkipWhiteSpace();
 				string op=TryOperator();
 				if(op==null) {
@@ -2672,6 +2727,7 @@ namespace ProjectFileTests {
 					throw Error("'"+left+"' is not a boolean");
 				}
 				string right=ParseOperand();
+				string rawRight=_lastRaw;
 				switch(op) {
 					case "==":
 						return left.Equals(right,StringComparison.OrdinalIgnoreCase);
@@ -2680,9 +2736,7 @@ namespace ProjectFileTests {
 					default:
 						double numberLeft;
 						double numberRight;
-						if(!double.TryParse(left,System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out numberLeft)
-							|| !double.TryParse(right,System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out numberRight))
-						{
+						if(!TryGetNumber(rawLeft,left,out numberLeft) || !TryGetNumber(rawRight,right,out numberRight)) {
 							throw Error("'"+left+"' "+op+" '"+right+"' compares no numbers");
 						}
 						switch(op) {
@@ -2725,12 +2779,25 @@ namespace ProjectFileTests {
 				if(raw.Contains("@(") || raw.Contains("%(")) {
 					throw Error("item lists and metadata are not modelled by ProjectFile in conditions");
 				}
+				_lastRaw=raw;
 				string value=_funcExpand(raw);
 				if(value.Contains(UNRESOLVED_START)) {
 					ThrowIfUnresolved(value,_where+": Condition=\""+_condition+"\"");
 				}
 				//MSBuild compares, tests and checks for files with the operands unescaped: '$(V)' == '1.0.0.*' and == '1.0.0.%2a' alike.
 				return Unescape(value);
+			}
+
+			///<summary>The number an operand of &lt; &gt; &lt;= &gt;= stands for, as MSBuild's StringExpressionNode has it: its expanded text as a
+			///number, except that an operand written exactly '$(MSBuildToolsVersion)' (ignoring case) that expands to "Current" is the version of
+			///Visual Studio of the MSBuild that evaluates (MSBuildConstants.CurrentVisualStudioVersion, 18.0 for MSBuild 18), so that a package's
+			///'$(MSBuildToolsVersion)' &lt;= '15' (the WebView2 package's build\Common.targets, S2-3) still compares; MSBuild does this only for
+			///the operand written so ('$(MSBuildToolsVersion).0' or a property that holds "Current" stays no number).</summary>
+			private static bool TryGetNumber(string raw,string value,out double number) {
+				if(raw.Equals("$(MSBuildToolsVersion)",StringComparison.OrdinalIgnoreCase) && value.Equals("Current",StringComparison.Ordinal)) {
+					value=VISUAL_STUDIO_VERSION;
+				}
+				return double.TryParse(value,System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out number);
 			}
 
 			private string TryOperator() {

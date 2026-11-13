@@ -205,7 +205,7 @@ namespace LibraryBindingTests {
 	///<summary>The files of "Required dlls" that each package of the lock files brings (since S2-1 of the .NET 10 move, the packages whose files
 	///are byte for byte those of "Required dlls": docs/port-notes/S2-1.md, section 2), which NuGet copies to the output of a .NET Framework project
 	///that gets the package, used or not. Named per package, not made from its id: a package's files need not carry its id (SSH.NET brings
-	///Renci.SshNet.dll; S2-3's Microsoft.Web.WebView2 brings Microsoft.Web.WebView2.Core.dll, .WinForms.dll and .Wpf.dll and the native
+	///Renci.SshNet.dll; Microsoft.Web.WebView2, since S2-3, brings Microsoft.Web.WebView2.Core.dll, .WinForms.dll and .Wpf.dll and the native
 	///WebView2Loader.dll). GetRequiredDlls throws for a package in neither list and for a file "Required dlls" does not hold, so a package that a
 	///later package adds fails every check that reads the projects until it is mapped here, instead of dropping out of the binding checks.
 	///RequiredDllsTests checks every mapping against the package's own files in the offline folder.</summary>
@@ -221,6 +221,10 @@ namespace LibraryBindingTests {
 			{ "MimeKit",new[] { "MimeKit.dll" } },
 			{ "Microsoft.Identity.Client",new[] { "Microsoft.Identity.Client.dll" } },
 			{ "Microsoft.IdentityModel.Abstractions",new[] { "Microsoft.IdentityModel.Abstractions.dll" } },
+			//S2-3: the WebView2 SDK, 1.0.2420.47: its three assemblies (lib\net45) and the native loader (runtimes\win-x86\native, which NuGet
+			//copies for an exe's win-x86 target; the package's build files copy the same file, Directory.Build.targets). None carries the id.
+			{ "Microsoft.Web.WebView2",new[] { "Microsoft.Web.WebView2.Core.dll","Microsoft.Web.WebView2.WinForms.dll","Microsoft.Web.WebView2.Wpf.dll",
+				"WebView2Loader.dll" } },
 			//S2-2: the database client, 2.6.2 (lib\net48), whose file "Required dlls" holds until S2-4.
 			{ "MySqlConnector",new[] { "MySqlConnector.dll" } },
 			{ "Newtonsoft.Json",new[] { "Newtonsoft.Json.dll" } },
