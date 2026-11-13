@@ -14,17 +14,19 @@
     byte for byte (lib\net462, lib\net472 or lib\net48 of each package as the .NET Framework 4.8 build takes it, SHA-256 checked;
     docs/port-notes/S2-1.md). The projects that referenced a file by HintPath reference its package; a test project gets them through
     the projects it references. MySqlConnector and the WebView2 files kept their HintPaths until S2-2 and S2-3, the other files of
-    "Required dlls" keep theirs; the files of these packages stay in "Required dlls" until S2-4 moves the release tooling to the packages.
+    "Required dlls" keep theirs.
 
     Package S2-2 (docs/port-notes/S2-2.md): MySqlConnector 2.6.2 replaces 2.3.7 (its HintPaths become this package), and the three
     Microsoft packages that were on 8.0.x, whose support ends on 2026-11-10, move to the current 10.0 patch, 10.0.15, with
-    Microsoft.Bcl.AsyncInterfaces, which DependencyInjection.Abstractions 10.0.15 requires at 10.0.15. "Required dlls" holds the same
-    bytes of each until S2-4, because tools\Build-Release.ps1 still checks the staged files against it.
+    Microsoft.Bcl.AsyncInterfaces, which DependencyInjection.Abstractions 10.0.15 requires at 10.0.15.
 
     Package S2-3 (docs/port-notes/S2-3.md): Microsoft.Web.WebView2 1.0.2420.47, the same bits as before, replaces the HintPaths to its
     three assemblies. The program and the two test projects that open WebView2 windows take the native loader, WebView2Loader.dll (x86),
-    from the package's build files, which Directory.Build.targets puts at the top of the output folder. "Required dlls" keeps the four
-    files until S2-4.
+    from the package's build files, which Directory.Build.targets puts at the top of the output folder.
+
+    Package S2-4 (docs/port-notes/S2-4.md): the files of these packages left "Required dlls". tools\Build-Release.ps1 checks each staged
+    file of a package against the package's own file at the version OpenPmsDental\packages.lock.json names, so a version changed here
+    reaches the release only through a restore that writes the new lock files.
   -->
   <PropertyGroup Condition="'$(UsingMicrosoftNETSdk)' == 'true'">
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
@@ -66,7 +68,7 @@
     <PackageVersion Include="Microsoft.Web.WebView2" Version="1.0.2420.47" />
     <!-- The support packages (polyfills) they and MySqlConnector use on the .NET Framework. The three Microsoft packages that were on
          8.0.x are on 10.0 since S2-2 (MySqlConnector 2.6.2 asks for 8.0.x; the pinning above gives it these); System.Security.Cryptography.Pkcs,
-         the 26th identical file, is used by nothing and leaves "Required dlls" in S2-4. -->
+         the 26th identical file, was used by nothing and left "Required dlls" in S2-4. -->
     <PackageVersion Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.15" />
     <PackageVersion Include="Microsoft.Bcl.Cryptography" Version="10.0.10" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.15" />

@@ -130,8 +130,8 @@ server computer must then connect with `<db-server>` (the name the workstations 
 
 ## Library updates for security
 
-The libraries below replace unmaintained ones or versions with known problems. They are still DLL files in `Required dlls`, listed with
-their licences in `THIRD-PARTY-NOTICES.txt`.
+The libraries below replace unmaintained ones or versions with known problems. They come from their NuGet packages, each release file checked against
+the package at the version the lock file names, and are listed with their licences in `THIRD-PARTY-NOTICES.txt`.
 
 - **SSH: SSH.NET 2026.0.0** (with Bouncy Castle Cryptography 2.7.0) in place of SharpSSH, which was unmaintained since 2013, and its two
   cryptography libraries (Mentalis.org Security Library and DiffieHellman). It serves every SSH connection of the program: the SFTP image
