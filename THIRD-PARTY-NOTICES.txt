@@ -31,12 +31,12 @@ of each release, OpenPmsDental-<version>-source.zip next to the setup, holds
 the repository and both submodules at the commits the release was built from
 (docs/third-party-source-builds.md).
 
-Files in the repository's "Required dlls" folder that are not listed here are
-not part of the release (see docs/third-party-binaries-audit.md). Among them
-is a support library for the coming library updates, listed here once a
-shipped library uses it: System.Security.Cryptography.Pkcs 8.0.1, by the .NET
-Foundation and Contributors under the MIT License, source at
-https://github.com/dotnet/runtime. The MariaDB server, the .NET Framework,
+The files of a component that comes as a NuGet package are that package's own
+files, at the version named below: the build takes them from the package, and
+the release checks each one against the package that the program's lock file
+(OpenPmsDental/packages.lock.json) names. Files in the repository's "Required
+dlls" folder that are not listed here are not part of the release (see
+docs/third-party-binaries-audit.md). The MariaDB server, the .NET Framework,
 the Visual C++ runtime, the WebView2 runtime and the TWAIN data source manager
 are installed separately and are not shipped. DICOM images are read and
 written by the program's own code, written from the DICOM standard (NEMA
@@ -48,7 +48,7 @@ docs/port-notes/REL-FILES.md.
 
 --- Component: MySqlConnector
 Files:     MySqlConnector.dll
-Version:   2.3.7
+Version:   2.6.2
 Copyright: Bradley Grainger and contributors
 License:   MIT License
 Source:    https://github.com/mysql-net/MySqlConnector
@@ -60,10 +60,10 @@ Files:     Microsoft.Bcl.AsyncInterfaces.dll, Microsoft.Bcl.Cryptography.dll,
            System.Diagnostics.DiagnosticSource.dll, System.Formats.Asn1.dll, System.IO.Pipelines.dll,
            System.Memory.dll, System.Numerics.Vectors.dll, System.Runtime.CompilerServices.Unsafe.dll,
            System.Text.Encodings.Web.dll, System.Text.Json.dll, System.Threading.Tasks.Extensions.dll
-Version:   NuGet packages Microsoft.Bcl.AsyncInterfaces 10.0.14, Microsoft.Bcl.Cryptography 10.0.10,
-           Microsoft.Extensions.DependencyInjection.Abstractions 8.0.2,
-           Microsoft.Extensions.Logging.Abstractions 8.0.3, System.Buffers 4.6.1,
-           System.Diagnostics.DiagnosticSource 8.0.1, System.Formats.Asn1 10.0.13,
+Version:   NuGet packages Microsoft.Bcl.AsyncInterfaces 10.0.15, Microsoft.Bcl.Cryptography 10.0.10,
+           Microsoft.Extensions.DependencyInjection.Abstractions 10.0.15,
+           Microsoft.Extensions.Logging.Abstractions 10.0.15, System.Buffers 4.6.1,
+           System.Diagnostics.DiagnosticSource 10.0.15, System.Formats.Asn1 10.0.13,
            System.IO.Pipelines 10.0.14, System.Memory 4.6.3, System.Numerics.Vectors 4.6.1,
            System.Runtime.CompilerServices.Unsafe 6.1.2, System.Text.Encodings.Web 10.0.14,
            System.Text.Json 10.0.14, System.Threading.Tasks.Extensions 4.6.3
@@ -214,10 +214,11 @@ Note:      Apache License 2.0 is compatible with GNU GPL version 3 but not with 
 --- Component: Microsoft Edge WebView2 SDK
 Files:     Microsoft.Web.WebView2.Core.dll, Microsoft.Web.WebView2.WinForms.dll, Microsoft.Web.WebView2.Wpf.dll,
            WebView2Loader.dll (x86)
-Version:   1.0.2420.47
+Version:   1.0.2420.47 (NuGet package Microsoft.Web.WebView2)
 Copyright: Microsoft Corporation
 License:   BSD 3-Clause License (Microsoft's own text is LICENSE.txt in the NuGet package)
-Source:    https://www.nuget.org/packages/Microsoft.Web.WebView2/1.0.2420.47
+Source:    https://www.nuget.org/packages/Microsoft.Web.WebView2/1.0.2420.47, the NuGet package the files
+           come from as it holds them (lib/net45, and runtimes/win-x86/native for WebView2Loader.dll)
 
 --- Component: TWAIN
 Files:     none; ImagingDeviceManager.dll implements the TWAIN protocol from the TWAIN specification
