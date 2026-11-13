@@ -471,7 +471,8 @@ choose otherwise (`docs/owner-questions.md`, DB-SEC 3):
    the office CA file as its only trusted roots, ends at a certificate of that file byte for byte; no element has an error (dates,
    signatures, server-authentication usage, revocation); under `VerifyFull` the certificate names one of the connection's hosts by Windows'
    SSL policy (the rules `VerifyFull` used); revocation as the driver asked for it (online under `VerifyFull`, none under `VerifyCA`), a
-   revoked certificate refused, an unknown status (no CRL distribution point) not. The connection string the rule checks keeps
+   revoked certificate refused, an unknown status (no CRL distribution point) not; the owner confirmed on 2026-11-12 that a certificate
+   with no revocation information is accepted, since the guide's certificates publish none. The connection string the rule checks keeps
    `SslMode=VerifyFull` and `SslCa` (section 2.2 is unchanged); only the driver's copy differs. Loopback connections and strings without a
    CA go to the driver as before. Because the session never carries the driver's policy errors, `ValidateFingerprint` is never reached, so
    the same change closes the MariaDB 11.4 stored-hash path. Client certificates (`CertificateStoreLocation`, `CertificateThumbprint`, CAPI
