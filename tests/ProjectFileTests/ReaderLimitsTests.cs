@@ -262,6 +262,22 @@ namespace ProjectFileTests {
 				Assert.IsFalse(projectFileClassic.AssertItem("Compile",@"Old\Keep.cs").HasMetadata("SubType"),"Only what it names.");
 			}
 		}
+
+		[TestMethod]
+		public void AnIncludeWithADoubledBackSlash_KeepsItsText_AndAnUpdateFindsItByItsPath() {
+			//As MSBuild has it (S2-3): the WebView2 package's build\Common.targets includes $(MSBuildThisFileDirectory)\..\runtimes\..., whose
+			//Include keeps "build\\.." (MSBuild -getItem prints it so), and Directory.Build.targets updates that file through another spelling.
+			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
+				fixtureFolder.EditProject("SdkStyle","</Project>","<ItemGroup><Content Include=\"$(MSBuildProjectDirectory)\\\\Data\\..\\Data\\Seed.txt\" "
+					+"CopyToOutputDirectory=\"PreserveNewest\" /><Content Update=\"$(MSBuildProjectDirectory)\\Data\\Seed.txt\" Link=\"Seed.txt\" /></ItemGroup></Project>");
+				ProjectFile projectFile=fixtureFolder.Load("SdkStyle");
+				ProjectItem projectItem=projectFile.GetItems("Content").Single(x => x.Include.EndsWith("Seed.txt"));
+				Assert.AreEqual(projectFile.Folder+@"\\Data\..\Data\Seed.txt",projectItem.Include,"The text as written, doubled back slash and all.");
+				Assert.AreEqual(projectFile.Folder+@"\Data\Seed.txt",projectItem.FullPath);
+				Assert.AreEqual("Seed.txt",projectItem.GetMetadata("Link"),"The Update found it by its full path.");
+				Assert.AreEqual("PreserveNewest",projectItem.GetMetadata("CopyToOutputDirectory"));
+			}
+		}
 		#endregion Update
 	}
 }

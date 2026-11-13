@@ -2032,7 +2032,10 @@ namespace ProjectFileTests {
 					continue;
 				}
 				string specUnescaped=Unescape(spec);
-				listNew.Add(new ProjectItem(itemType,NormalizeSlashes(specUnescaped),TryGetFullPath(specUnescaped),false,fileContext?.Path));
+				//The Include keeps a doubled back slash, as MSBuild keeps it (-getItem prints the WebView2 package's
+				//$(MSBuildThisFileDirectory)\..\runtimes\... with its "build\\..", S2-3); the full path is normalized, so matching by path is not
+				//affected.
+				listNew.Add(new ProjectItem(itemType,specUnescaped.Replace('/','\\'),TryGetFullPath(specUnescaped),false,fileContext?.Path));
 			}
 			foreach(ProjectItem projectItem in listNew) {
 				if(listExcludes.Any(x => x(projectItem))) {

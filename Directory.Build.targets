@@ -48,10 +48,11 @@
   -->
   <!--
     The native WebView2Loader.dll of the WebView2 package (Microsoft.Web.WebView2 1.0.2420.47, S2-3 of the .NET 10 move), next to the
-    program. Microsoft.Web.WebView2.Core.dll loads it for every WebView2 window; the program and the test projects have always kept it at the
-    top of their output folders, and no package property puts it there: the package's build\Common.targets copies it for a managed project as
-    a Content item to runtimes\win-x86\native\ (with EffectivePlatform x86, from PlatformTarget x86 of Directory.Build.props, only the x86
-    one; the x64 and arm64 loaders only for AnyCPU), and WebView2LoaderPreference decides only for a native (C++) project. The package's
+    program. Microsoft.Web.WebView2.Core.dll loads it for every WebView2 window; the program, and the test projects that open such
+    windows, have always kept it at the top of their output folders, and no package property puts it there: the package's
+    build\Common.targets copies it for a managed project as a Content item to runtimes\win-x86\native\ (with EffectivePlatform x86, from
+    PlatformTarget x86 of Directory.Build.props, only the x86 one; the x64 and arm64 loaders only for AnyCPU), and
+    WebView2LoaderPreference decides only for a native (C++) project. The package's
     targets set WebView2ProjectKind and NugetRoot (its folder); this gives that Content item the file name as its Link, so it lands at the
     top of the output folder and no runtimes folder is written (tools\Build-Release.ps1 refuses a sub folder in the program's output). As a
     Content item that is copied, it also goes to the output of every project that references one with the package's build files, as the
