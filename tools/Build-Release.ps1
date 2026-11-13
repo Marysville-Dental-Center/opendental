@@ -573,6 +573,8 @@ function Test-PackageFiles([string]$folder){
 		if($differing.Count -gt 0){
 			$stagedVersion=[System.Diagnostics.FileVersionInfo]::GetVersionInfo($staged).FileVersion
 			$packageVersion=[System.Diagnostics.FileVersionInfo]::GetVersionInfo($differing[0]).FileVersion
+			if(-not $stagedVersion){ $stagedVersion='none' }
+			if(-not $packageVersion){ $packageVersion='none' }
 			$problems.Add("Not the package's file: $name (file version $stagedVersion) differs from $($record.Asset) of the NuGet package $($record.Id) $($record.Version) (file version $packageVersion), the version $ProgramLockFile names: $($differing -join '; ')")
 		}
 		if($compared.Count -eq 0){
