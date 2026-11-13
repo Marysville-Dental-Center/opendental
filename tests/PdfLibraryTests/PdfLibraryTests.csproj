@@ -19,6 +19,11 @@
     <Compile Include="..\ProjectFileTests\ProjectFile.cs">
       <Link>ProjectFile.cs</Link>
     </Compile>
+    <!-- The packages of a lock file and the files the build copies from them (S2-4 of the .NET 10 move: the support assemblies are the
+         packages' own files, no longer copies in "Required dlls"). -->
+    <Compile Include="..\ProjectFileTests\NuGetFiles.cs">
+      <Link>NuGetFiles.cs</Link>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\third-party\build\MigraDoc.DocumentObjectModel\MigraDoc.DocumentObjectModel.csproj" />

@@ -47,7 +47,7 @@ namespace ReleaseFlowTests {
 		};
 
 		///<summary>The native x86 files the program loads at run time that no reference copies: the WebView2 package's loader (since S2-3 of the
-		///.NET 10 move; until then a None item of Required dlls, which keeps the same bytes until S2-4).</summary>
+		///.NET 10 move; until then a None item of Required dlls, which S2-4 deleted).</summary>
 		private static readonly string[] _arrayRuntimeDlls=new string[] { "WebView2Loader.dll" };
 
 		[TestMethod]
@@ -137,11 +137,18 @@ namespace ReleaseFlowTests {
 				BuildOutput.NotBuilt(@"OpenPmsDental\bin\Debug is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
 			}
 			List<string> listFileNames=Directory.GetFiles(folder).Select(x => Path.GetFileName(x)).ToList();
+			//The files the program's restore copies from its packages, each of the package at the version its lock file names (S2-4 of the .NET 10
+			//move: "Required dlls" no longer holds a copy).
+			Dictionary<string,PackageFile> dictPackageFiles=NuGetFiles.ReadCopiedFiles(TestPaths.RepoRoot,Path.Combine(TestPaths.RepoRoot,"OpenPmsDental"));
+			Assert.IsNotNull(dictPackageFiles,"OpenPmsDental is built, so it is restored.");
 			foreach(string fileName in _arrayRuntimeDlls) {
 				Assert.IsTrue(listFileNames.Contains(fileName,StringComparer.OrdinalIgnoreCase),"The output folder does not list "+fileName+".");
 				string pathOutput=Path.Combine(folder,fileName);
-				string pathRequired=Path.Combine(TestPaths.RepoRoot,"Required dlls",fileName);
-				CollectionAssert.AreEqual(File.ReadAllBytes(pathRequired),File.ReadAllBytes(pathOutput),fileName+" is the copy from Required dlls.");
+				Assert.IsTrue(dictPackageFiles.TryGetValue(fileName,out PackageFile packageFile),fileName+" is a file of a package of the program.");
+				Assert.AreEqual("runtimes/win-x86/native/"+fileName,packageFile.Asset,"The package's x86 native file.");
+				Assert.IsNotNull(packageFile.Path,packageFile+" is neither in the offline folder nor in the restore's global packages folder.");
+				CollectionAssert.AreEqual(File.ReadAllBytes(packageFile.Path),File.ReadAllBytes(pathOutput),fileName+" is the file of "+packageFile+".");
+				Assert.IsFalse(File.Exists(Path.Combine(TestPaths.RepoRoot,"Required dlls",fileName)),"Required dlls holds no copy of "+fileName+" any more.");
 				Assert.AreEqual(0x014C,GetPeMachine(pathOutput),fileName+" is x86, like OpenPmsDental.exe.");
 			}
 		}
@@ -164,6 +171,7 @@ namespace ReleaseFlowTests {
 				if(!File.Exists(projectFile.GetProperty("ProjectAssetsFile"))) {
 					BuildOutput.NotBuilt("OpenPmsDental is not restored yet, so its package's build files are not imported. Build OpenDental.Local.slnf first.");
 				}
+				Dictionary<string,PackageFile> dictPackageFiles=NuGetFiles.ReadCopiedFiles(TestPaths.RepoRoot,Path.GetDirectoryName(pathProject));
 				List<ProjectItem> listCopied=projectFile.GetItems("None").Concat(projectFile.GetItems("Content"))
 					.Where(x => x.GetMetadata("CopyToOutputDirectory")!="").ToList();
 				foreach(string fileName in _arrayRuntimeDlls) {
@@ -175,9 +183,13 @@ namespace ReleaseFlowTests {
 						configuration+": the package's x86 loader.");
 					Assert.AreEqual(fileName,projectItem.GetMetadata("Link"),configuration+": copied to the top of the output.");
 					Assert.AreEqual("PreserveNewest",projectItem.GetMetadata("CopyToOutputDirectory"),configuration);
-					//The same bytes as "Required dlls", which keeps the file until S2-4 moves the release tooling to the packages.
-					CollectionAssert.AreEqual(File.ReadAllBytes(Path.Combine(TestPaths.RepoRoot,"Required dlls",fileName)),File.ReadAllBytes(projectItem.FullPath),
-						configuration+": "+fileName+" of the package is the file of Required dlls.");
+					//The same bytes as the package's native asset of the program's win-x86 target, which tools\Build-Release.ps1 compares the staged
+					//loader with; "Required dlls" holds no copy since S2-4.
+					PackageFile packageFile=dictPackageFiles[fileName];
+					Assert.AreEqual("Microsoft.Web.WebView2 1.0.2420.47 runtimes/win-x86/native/"+fileName,packageFile.Id+" "+packageFile.Version+" "+packageFile.Asset,configuration);
+					CollectionAssert.AreEqual(File.ReadAllBytes(packageFile.Path),File.ReadAllBytes(projectItem.FullPath),
+						configuration+": "+fileName+" of the build files is the package's native asset.");
+					Assert.IsFalse(File.Exists(Path.Combine(TestPaths.RepoRoot,"Required dlls",fileName)),"Required dlls holds no copy of "+fileName+" any more.");
 				}
 				//The package's loaders for x64 and arm64 (only for an AnyCPU project) and its runtimes folders stay out.
 				List<ProjectItem> listElsewhere=listCopied.Where(x => x.GetMetadata("Link").StartsWith("runtimes\\",StringComparison.OrdinalIgnoreCase)

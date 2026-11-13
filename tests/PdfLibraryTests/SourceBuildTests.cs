@@ -144,28 +144,45 @@ namespace PdfLibraryTests {
 		}
 
 		[TestMethod]
-		public void Outputs_HoldTheSupportAssembliesOfRequiredDlls_NotOlderCopies() {
-			//Reference resolution must take the support assemblies (System.Memory, Microsoft.Extensions.Logging.Abstractions, ...) from "Required
-			//dlls", not older copies of the exact versions a dependency was built against (Visual Studio's test platform folder has some).
+		public void Outputs_HoldTheSupportAssembliesOfTheLockedPackages_NotOlderCopies() {
+			//The support assemblies (System.Memory, Microsoft.Extensions.Logging.Abstractions, ...) in each output folder must be the files of their
+			//packages at the versions the project's lock file names (the files the restore copies, NuGetFiles.ReadCopiedFiles; "Required dlls" held
+			//copies of them until S2-4 of the .NET 10 move), not older copies of the exact versions a dependency was built against (Visual Studio's
+			//test platform folder has some). A file that "Required dlls" still holds is compared with that copy, as before.
 			string folderRequired=SourceBuild.Combine("Required dlls");
 			List<string> listProblems=new List<string>();
 			int countFolders=0;
+			int countCompared=0;
 			foreach(string project in _arrayProjects.Select(x => x.Project).Concat(new[] { "WeCantSpell.Hunspell" })) {
+				Dictionary<string,PackageFile> dictPackageFiles=NuGetFiles.ReadCopiedFiles(SourceBuild.RepoRoot,SourceBuild.Combine("third-party/build/"+project));
 				foreach(string configuration in new[] { "Debug","Release" }) {
 					string folder=SourceBuild.Combine("third-party/build/"+project+"/bin/"+configuration);
 					if(!Directory.Exists(folder)) {
 						continue;
 					}
 					countFolders++;
+					Assert.IsNotNull(dictPackageFiles,project+" is built, so it is restored.");
 					foreach(string path in Directory.GetFiles(folder,"*.dll")) {
 						string pathRequired=Path.Combine(folderRequired,Path.GetFileName(path));
 						if(File.Exists(pathRequired) && !File.ReadAllBytes(path).SequenceEqual(File.ReadAllBytes(pathRequired))) {
 							listProblems.Add(SourceBuild.Relative(path)+" is not the file of Required dlls.");
 						}
+						PackageFile packageFile;
+						if(!dictPackageFiles.TryGetValue(Path.GetFileName(path),out packageFile)) {
+							continue;
+						}
+						countCompared++;
+						if(packageFile.Path==null || !File.Exists(packageFile.Path)) {
+							listProblems.Add(SourceBuild.Relative(path)+": "+packageFile+" is neither in the offline folder nor in the restore's global packages folder.");
+						}
+						else if(!File.ReadAllBytes(path).SequenceEqual(File.ReadAllBytes(packageFile.Path))) {
+							listProblems.Add(SourceBuild.Relative(path)+" is not the file of "+packageFile+".");
+						}
 					}
 				}
 			}
 			Assert.IsTrue(countFolders>=7,"third-party\\build is not built.");
+			Assert.IsTrue(countCompared>=countFolders,"Each output folder holds the support assemblies of its packages: "+countCompared+" compared in "+countFolders+" folders.");
 			Assert.AreEqual(0,listProblems.Count,string.Join("\r\n",listProblems));
 		}
 

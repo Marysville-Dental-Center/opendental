@@ -83,11 +83,16 @@ namespace VendorDirectTests.BridgesRemoval {
 			string folder=Path.Combine(GetRoot(),"Required dlls");
 			List<string> listLeft=_arrayRemovedFiles.Where(x => File.Exists(Path.Combine(folder,x))).ToList();
 			Assert.AreEqual(0,listLeft.Count,"Still in Required dlls: "+string.Join(", ",listLeft));
-			//MSAL stays for the Microsoft 365 sign-in, with the one IdentityModel assembly it needs.
-			Assert.IsTrue(File.Exists(Path.Combine(folder,"Microsoft.Identity.Client.dll")));
-			Assert.IsTrue(File.Exists(Path.Combine(folder,"Microsoft.IdentityModel.Abstractions.dll")));
-			//The Graph SDK was not the only user of Microsoft.Bcl.AsyncInterfaces: SSH.NET references it too.
-			Assert.IsTrue(File.Exists(Path.Combine(folder,"Microsoft.Bcl.AsyncInterfaces.dll")),"SSH.NET's dependency must stay in Required dlls.");
+			//MSAL stays for the Microsoft 365 sign-in, with the one IdentityModel assembly it needs, and the Graph SDK was not the only user of
+			//Microsoft.Bcl.AsyncInterfaces: SSH.NET references it too. Since S2-4 of the .NET 10 move the program gets all three from their NuGet
+			//packages (its lock file), and "Required dlls" holds no copy of them.
+			List<LockedPackage> listLocked=NuGetFiles.ReadLockFile(Path.Combine(GetRoot(),"OpenPmsDental","packages.lock.json"));
+			foreach(string packageId in new[] { "Microsoft.Identity.Client","Microsoft.IdentityModel.Abstractions","Microsoft.Bcl.AsyncInterfaces" }) {
+				Assert.IsTrue(listLocked.Any(x => x.Id==packageId),"The program gets "+packageId+" (OpenPmsDental's lock file).");
+				Assert.IsFalse(File.Exists(Path.Combine(folder,packageId+".dll")),"Required dlls\\"+packageId+".dll is back; the package supplies it.");
+			}
+			Assert.AreEqual("4.92.0",listLocked.Single(x => x.Id=="Microsoft.Identity.Client").Version);
+			Assert.AreEqual("8.14.0",listLocked.Single(x => x.Id=="Microsoft.IdentityModel.Abstractions").Version);
 		}
 
 		[TestMethod]
@@ -173,7 +178,7 @@ namespace VendorDirectTests.BridgesRemoval {
 			//Renci.SshNet (SSH.NET 2026.0.0, net462) references Microsoft.Bcl.AsyncInterfaces 8.0.0.0. The Graph SDK used to bring a newer copy and
 			//its redirect in, so OpenPmsDentalStorage now references it itself. Without it, SFTP A to Z storage and the TSI uploads fail when SftpClient loads.
 			//The evaluated reference: the package of Directory.Packages.props, 10.0.15 since S2-2 of the .NET 10 move (10.0.14, the file Required dlls held,
-			//in S2-1), whose file is the one Required dlls holds.
+			//in S2-1), whose own file the program gets (Required dlls holds no copy since S2-4).
 			Assert.AreEqual("10.0.15",
 				ProjectFile.Load(Path.Combine(GetRoot(),@"OpenPmsDentalStorage\OpenPmsDentalStorage.csproj")).GetPackageVersion("Microsoft.Bcl.AsyncInterfaces"),
 				"OpenPmsDentalStorage should reference the Microsoft.Bcl.AsyncInterfaces package next to SSH.NET's.");

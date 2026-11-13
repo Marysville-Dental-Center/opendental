@@ -19,6 +19,16 @@
     <Reference Include="System.Security" />
   </ItemGroup>
   <ItemGroup>
+    <!-- The packages of a lock file and the files the build copies from them (S2-4 of the .NET 10 move: the library files are the packages'
+         own, no longer copies in "Required dlls"), and the rule for tests that check a built file. -->
+    <Compile Include="..\ProjectFileTests\NuGetFiles.cs">
+      <Link>NuGetFiles.cs</Link>
+    </Compile>
+    <Compile Include="..\ProjectFileTests\BuildOutput.cs">
+      <Link>BuildOutput.cs</Link>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\..\CodeBase\xCodeBase.csproj" />
     <ProjectReference Include="..\..\DataConnectionBase\xDataConnectionBase.csproj" />
     <ProjectReference Include="..\..\OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj" />

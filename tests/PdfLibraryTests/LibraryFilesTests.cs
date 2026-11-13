@@ -27,11 +27,13 @@ namespace PdfLibraryTests {
 			"PdfSharp.Snippets-gdi.dll","PdfSharp.WPFonts.dll","MigraDoc.RtfRendering-gdi.dll","MigraDoc.RtfRendering.dll" };
 
 		private static string RequiredDlls {
-			get { return Path.GetDirectoryName(TestDb.FindRepoFile(Path.Combine("Required dlls","MySqlConnector.dll"))); }
+			get { return Path.Combine(RepoRoot,"Required dlls"); }
 		}
 
+		///<summary>Found by NOTICE, not by a file of "Required dlls": MySqlConnector.dll, which found it before, comes from its NuGet package since
+		///S2-4 of the .NET 10 move.</summary>
 		private static string RepoRoot {
-			get { return Path.GetDirectoryName(RequiredDlls); }
+			get { return SourceBuild.RepoRoot; }
 		}
 
 		[TestMethod]

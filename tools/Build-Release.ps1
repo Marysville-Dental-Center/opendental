@@ -9,9 +9,11 @@ Builds an Open PMS - Dental release: a Release x86 build, one checked staging fo
    XML documentation). A file on the deny-list, an unknown file or a sub folder fails the script.
 3. Stages the allowed files into one folder (<OutDir>\staging), with LICENSE, LICENSE-GPL-3.0.txt, LICENSE-AGPL-3.0.txt,
    LICENSE-LGPL-2.1.txt, NOTICE, THIRD-PARTY-NOTICES.txt, db\init\new-database.sql and db\README.md, and checks the staging folder again: allow-list, deny-list, every allowed file present,
-   every third-party file named in THIRD-PARTY-NOTICES.txt, every file built from this repository equal to its project's own output, the
-   native files x86 and free of the debug C runtime, and OpenPmsDental.exe's versions (file version 24.3.63.0, the database compatibility version; product version the
-   release version of SharedAssemblyInfo.cs).
+   every third-party file named in THIRD-PARTY-NOTICES.txt, every file built from this repository equal to its project's own output, every
+   third-party file of a NuGet package byte for byte the package's file at the version OpenPmsDental\packages.lock.json names (from the
+   offline package folder or the global packages folder the restore used; Test-PackageFiles), every other third-party file equal to its copy
+   in "Required dlls", the native files x86 and free of the debug C runtime, and OpenPmsDental.exe's versions (file version 24.3.63.0, the
+   database compatibility version; product version the release version of SharedAssemblyInfo.cs).
 4. Prints the build id (ForkReleases.ComputeBuildId over ForkReleases.ListBuildIdFiles) and writes <OutDir>\SHA256SUMS.txt.
 5. Writes the setup's information page (installer\setup-info.txt with NOTICE) and License Agreement page (installer\setup-license.txt:
    how the installed program is licensed, then LICENSE-GPL-3.0.txt) into <OutDir>, compiles installer\OpenPmsDental.iss with Inno Setup 6
@@ -62,6 +64,11 @@ A folder (created if missing) to copy the setup, SHA256SUMS.txt and the release 
 Only run the list checks (allow-list, deny-list, required files, third-party notices) on this folder, as if it were the staging folder,
 and print its build id. Nothing is built or written. Used by tests\ReleaseFlowTests\InstallerTests.cs.
 
+.PARAMETER Full
+With -CheckFolder: also the checks a release runs on its staging folder that need the Release build and the program's restore (step 3):
+every file built here equal to its project's Release output, every third-party file the file of its NuGet package or of "Required dlls",
+the native files and the versions. Used by tests\ReleaseFlowTests\PackageFilesTests.cs.
+
 .PARAMETER ListFiles
 Only print the allow-list, one "own|name", "third|name" or "doc|path" line per file.
 
@@ -87,6 +94,7 @@ param(
 	[string]$Iscc='',
 	[string]$CopyTo='',
 	[string]$CheckFolder='',
+	[switch]$Full,
 	[switch]$ListFiles,
 	[string]$WriteSetupTexts='',
 	[string]$WriteSourceArchive=''
@@ -135,23 +143,60 @@ $OwnFiles=[ordered]@{
 	'OpenPmsDentalDbSettings.exe.config'=''
 }
 
-#Third-party files. Each must be named in THIRD-PARTY-NOTICES.txt. Value: where its bytes come from, a byte copy of the repository's
-#"Required dlls" file or the project output it is built from.
-$ThirdPartyFiles=[ordered]@{}
-foreach($name in @('BouncyCastle.Cryptography.dll','Google.Apis.dll','Google.Apis.Auth.dll',
-	'Google.Apis.Core.dll','Google.Apis.Gmail.v1.dll','Health.Direct.Agent.dll','Health.Direct.Common.dll','Health.Direct.ResolverPlugins.dll',
-	'MailKit.dll','Microsoft.Bcl.AsyncInterfaces.dll','Microsoft.Bcl.Cryptography.dll',
-	'Microsoft.Extensions.DependencyInjection.Abstractions.dll','Microsoft.Extensions.Logging.Abstractions.dll','Microsoft.Identity.Client.dll',
-	'Microsoft.IdentityModel.Abstractions.dll','Microsoft.Web.WebView2.Core.dll','Microsoft.Web.WebView2.WinForms.dll',
-	'Microsoft.Web.WebView2.Wpf.dll','MimeKit.dll','MySqlConnector.dll',
-	'Newtonsoft.Json.dll','Renci.SshNet.dll','SharpDX.dll','SharpDX.Direct3D9.dll',
-	'SharpDX.Mathematics.dll','System.Buffers.dll','System.Diagnostics.DiagnosticSource.dll','System.Formats.Asn1.dll','System.IO.Pipelines.dll',
-	'System.Memory.dll','System.Numerics.Vectors.dll','System.Runtime.CompilerServices.Unsafe.dll','System.Text.Encodings.Web.dll',
-	'System.Text.Json.dll','System.Threading.Tasks.Extensions.dll','Tao.OpenGl.dll','Tao.Platform.Windows.dll',
-	'WebView2Loader.dll'))
-{
-	$ThirdPartyFiles[$name]='Required dlls'
+#Third-party files. Each must be named in THIRD-PARTY-NOTICES.txt. Value: where its bytes come from:
+#- 'package:<id>': a file of the NuGet package <id> (stage 2 of the .NET 10 move, docs/specs/net10-plan.md). The build copies it into the
+#  program's output from the package at the version OpenPmsDental\packages.lock.json names, and the staged file must be byte for byte that
+#  package's file, the runtime or native asset the program's restore names (Test-PackageFiles). Nothing of these comes from "Required dlls" any
+#  more (S2-4).
+#- 'Required dlls': a byte copy of the repository's "Required dlls" file, for the files that have no NuGet package (the plan's "Left in
+#  Required dlls after stage 2": the Direct Project, SharpDX and Tao).
+#- otherwise the project output it is built from.
+$ThirdPartyFiles=[ordered]@{
+	'BouncyCastle.Cryptography.dll'='package:BouncyCastle.Cryptography'
+	'Google.Apis.dll'='package:Google.Apis'
+	'Google.Apis.Auth.dll'='package:Google.Apis.Auth'
+	'Google.Apis.Core.dll'='package:Google.Apis.Core'
+	'Google.Apis.Gmail.v1.dll'='package:Google.Apis.Gmail.v1'
+	'Health.Direct.Agent.dll'='Required dlls'
+	'Health.Direct.Common.dll'='Required dlls'
+	'Health.Direct.ResolverPlugins.dll'='Required dlls'
+	'MailKit.dll'='package:MailKit'
+	'Microsoft.Bcl.AsyncInterfaces.dll'='package:Microsoft.Bcl.AsyncInterfaces'
+	'Microsoft.Bcl.Cryptography.dll'='package:Microsoft.Bcl.Cryptography'
+	'Microsoft.Extensions.DependencyInjection.Abstractions.dll'='package:Microsoft.Extensions.DependencyInjection.Abstractions'
+	'Microsoft.Extensions.Logging.Abstractions.dll'='package:Microsoft.Extensions.Logging.Abstractions'
+	'Microsoft.Identity.Client.dll'='package:Microsoft.Identity.Client'
+	'Microsoft.IdentityModel.Abstractions.dll'='package:Microsoft.IdentityModel.Abstractions'
+	'Microsoft.Web.WebView2.Core.dll'='package:Microsoft.Web.WebView2'
+	'Microsoft.Web.WebView2.WinForms.dll'='package:Microsoft.Web.WebView2'
+	'Microsoft.Web.WebView2.Wpf.dll'='package:Microsoft.Web.WebView2'
+	'MimeKit.dll'='package:MimeKit'
+	'MySqlConnector.dll'='package:MySqlConnector'
+	'Newtonsoft.Json.dll'='package:Newtonsoft.Json'
+	'Renci.SshNet.dll'='package:SSH.NET'
+	'SharpDX.dll'='Required dlls'
+	'SharpDX.Direct3D9.dll'='Required dlls'
+	'SharpDX.Mathematics.dll'='Required dlls'
+	'System.Buffers.dll'='package:System.Buffers'
+	'System.Diagnostics.DiagnosticSource.dll'='package:System.Diagnostics.DiagnosticSource'
+	'System.Formats.Asn1.dll'='package:System.Formats.Asn1'
+	'System.IO.Pipelines.dll'='package:System.IO.Pipelines'
+	'System.Memory.dll'='package:System.Memory'
+	'System.Numerics.Vectors.dll'='package:System.Numerics.Vectors'
+	'System.Runtime.CompilerServices.Unsafe.dll'='package:System.Runtime.CompilerServices.Unsafe'
+	'System.Text.Encodings.Web.dll'='package:System.Text.Encodings.Web'
+	'System.Text.Json.dll'='package:System.Text.Json'
+	'System.Threading.Tasks.Extensions.dll'='package:System.Threading.Tasks.Extensions'
+	'Tao.OpenGl.dll'='Required dlls'
+	'Tao.Platform.Windows.dll'='Required dlls'
+	#The native x86 loader: the package's runtimes\win-x86\native asset, which NuGet copies for the program's win-x86 target and the package's
+	#build files copy to the top of the output (Directory.Build.targets).
+	'WebView2Loader.dll'='package:Microsoft.Web.WebView2'
 }
+#The program whose restore names the package files: its lock file and the restore's record of the files it copies (MSBuildProjectExtensionsPath
+#is obj\ for every project of the repository).
+$ProgramLockFile='OpenPmsDental\packages.lock.json'
+$ProgramAssetsFile='OpenPmsDental\obj\project.assets.json'
 $ThirdPartyFiles['RdlEngine.dll']='RdlEngine\bin\Release'
 $ThirdPartyFiles['RdlViewer.dll']='RdlViewer\bin\Release'
 #Built here from the upstream source in the git submodules under third-party\ (docs\third-party-source-builds.md): PDFsharp and MigraDoc
@@ -195,7 +240,8 @@ $RequiredReasons=[ordered]@{
 #(third-party\PDFsharp, third-party\WeCantSpell.Hunspell) at the commit the release commit pins (git ls-tree HEAD, .gitmodules).
 $SourceArchiveName='OpenPmsDental-{0}-source'
 
-#Native files: they must be x86 and must not need the debug C runtime, which may not be redistributed.
+#Native files: they must be x86 and must not need the debug C runtime, which may not be redistributed. WebView2Loader.dll is the WebView2
+#package's (runtimes\win-x86\native, since S2-3 of the .NET 10 move): an x64 or arm64 loader of the same package fails here.
 $NativeFiles=@('Direct2dWrapper.dll','WebView2Loader.dll')
 $DebugRuntimeNames=@('VCRUNTIME140D.dll','MSVCP140D.dll','ucrtbased.dll','VCRUNTIME140_1D.dll')
 
@@ -378,7 +424,167 @@ function Write-SetupTexts([string]$folder,[string]$version){
 	return @($infoPath,$licensePath)
 }
 
-#The checks of a staging folder. -Full adds the checks that need the real build: built-from-source copies, native files, versions.
+#The value of the object's property, or $null when it has none (Set-StrictMode refuses a missing property).
+function Get-JsonValue($object,[string]$name){
+	if($null -eq $object){ return $null }
+	$property=$object.PSObject.Properties[$name]
+	if($property){ return $property.Value }
+	return $null
+}
+
+#The NuGet package files the build copies into the program's output, by file name (ignoring case): for each, the package id and version, the
+#asset (its path in the package, with '/'), the content hash OpenPmsDental\packages.lock.json names for that package, and the package's folders
+#the file may be compared with: the global packages folder the restore used (project.assets.json, packageFolders) and the offline package folder
+#nuget.config restores from (OPMS_NUGET_OFFLINE, tools\Initialize-BuildEnvironment.ps1). The assets are the runtime and native ones of every
+#target of the program's restore (lib\net4x of .NET Framework 4.8, runtimes\win-x86\native of the win-x86 target), as the SDK copies them.
+#Returns Files (name to record) and Problems (what could not be read).
+function Get-ProgramPackageFiles {
+	$result=[pscustomobject]@{ Files=@{}; Problems=(New-Object 'System.Collections.Generic.List[string]') }
+	$lockPath=Join-Path $RepoRoot $ProgramLockFile
+	$assetsPath=Join-Path $RepoRoot $ProgramAssetsFile
+	if(-not (Test-Path -LiteralPath $lockPath -PathType Leaf)){
+		$result.Problems.Add("No lock file: $ProgramLockFile")
+		return $result
+	}
+	if(-not (Test-Path -LiteralPath $assetsPath -PathType Leaf)){
+		$result.Problems.Add("No restore of the program: $ProgramAssetsFile is missing, so the files the build copies from each package are unknown (build OpenDental.Local.slnf first).")
+		return $result
+	}
+	#The lock file: each package once, by id (NuGet's ids ignore case, as a PowerShell hashtable does).
+	$locked=@{}
+	$lock=[System.IO.File]::ReadAllText($lockPath) | ConvertFrom-Json
+	foreach($target in (Get-JsonValue $lock 'dependencies').PSObject.Properties){
+		foreach($entry in $target.Value.PSObject.Properties){
+			$type=Get-JsonValue $entry.Value 'type'
+			if($type -eq 'Project'){ continue }
+			$version=Get-JsonValue $entry.Value 'resolved'
+			$contentHash=Get-JsonValue $entry.Value 'contentHash'
+			if(-not $version -or -not $contentHash){
+				$result.Problems.Add("$ProgramLockFile names the package $($entry.Name) without a resolved version and content hash.")
+				continue
+			}
+			if($locked.Contains($entry.Name) -and $locked[$entry.Name].Version -ne $version){
+				$result.Problems.Add("$ProgramLockFile names the package $($entry.Name) at $($locked[$entry.Name].Version) and at $version.")
+				continue
+			}
+			$locked[$entry.Name]=[pscustomobject]@{ Id=$entry.Name; Version=$version; ContentHash=$contentHash }
+		}
+	}
+	$assets=[System.IO.File]::ReadAllText($assetsPath) | ConvertFrom-Json
+	$packageFolders=@()
+	$folders=Get-JsonValue $assets 'packageFolders'
+	if($folders){ $packageFolders=@($folders.PSObject.Properties | ForEach-Object { $_.Name }) }
+	$offline=(Initialize-BuildEnvironment -RepoRoot $RepoRoot).OfflineFolder
+	$libraries=Get-JsonValue $assets 'libraries'
+	foreach($target in (Get-JsonValue $assets 'targets').PSObject.Properties){
+		foreach($library in $target.Value.PSObject.Properties){
+			if((Get-JsonValue $library.Value 'type') -ne 'package'){ continue }
+			$parts=$library.Name.Split('/')
+			$id=$parts[0]
+			$version=$parts[1]
+			$entry=$locked[$id]
+			if(-not $entry){
+				$result.Problems.Add("The restore ($ProgramAssetsFile) has the package $($library.Name), which $ProgramLockFile does not name.")
+				continue
+			}
+			if($entry.Version -ne $version){
+				$result.Problems.Add("The restore ($ProgramAssetsFile) has the package $($library.Name), but $ProgramLockFile names $($entry.Version).")
+				continue
+			}
+			$relative=Get-JsonValue (Get-JsonValue $libraries $library.Name) 'path'
+			if(-not $relative){ $relative=$id.ToLowerInvariant()+'/'+$version.ToLowerInvariant() }
+			foreach($section in @('runtime','native')){
+				$sectionValue=Get-JsonValue $library.Value $section
+				if(-not $sectionValue){ continue }
+				foreach($asset in @($sectionValue.PSObject.Properties | ForEach-Object { $_.Name })){
+					$name=$asset.Split('/')[-1]
+					if($name -eq '_._'){ continue }
+					if($result.Files.Contains($name)){
+						if($result.Files[$name].Id -ne $entry.Id -or $result.Files[$name].Asset -ne $asset){
+							$result.Problems.Add("Two package files named ${name}: $($result.Files[$name].Id) $($result.Files[$name].Asset) and $($entry.Id) $asset.")
+						}
+						continue
+					}
+					$restored=@($packageFolders | ForEach-Object { Join-Path $_ ($relative.Replace('/','\')) })
+					$result.Files[$name]=[pscustomobject]@{ Id=$entry.Id; Version=$entry.Version; ContentHash=$entry.ContentHash; Asset=$asset
+						RestoredFolders=$restored
+						OfflineFolder=$(if($offline){ Join-Path $offline ($entry.Id.ToLowerInvariant()+'\'+$entry.Version.ToLowerInvariant()) }else{ '' }) }
+				}
+			}
+		}
+	}
+	return $result
+}
+
+#Whether each staged third-party file of a NuGet package ('package:<id>' in $ThirdPartyFiles) is byte for byte the package's file: the asset
+#the program's restore names for that file name, of the package the list names, at the version OpenPmsDental\packages.lock.json names. The
+#file is compared with the package in the global packages folder the restore used, whose .nupkg.metadata must hold the lock file's content
+#hash, and with the package in the offline folder, wherever the package is; at least one of the two must hold it. Returns the problems found.
+function Test-PackageFiles([string]$folder){
+	$problems=New-Object 'System.Collections.Generic.List[string]'
+	$packageFiles=$null
+	foreach($name in $ThirdPartyFiles.Keys){
+		$source=$ThirdPartyFiles[$name]
+		if(-not $source.StartsWith('package:')){ continue }
+		$staged=Join-Path $folder $name
+		if(-not (Test-Path -LiteralPath $staged -PathType Leaf)){ continue }
+		if($null -eq $packageFiles){
+			$packageFiles=Get-ProgramPackageFiles
+			foreach($problem in $packageFiles.Problems){ $problems.Add($problem) }
+		}
+		$id=$source.Substring('package:'.Length)
+		$record=$packageFiles.Files[$name]
+		if(-not $record){
+			$problems.Add("No package for: $name (the list names the NuGet package $id, but the program's restore copies no file of that name from any package)")
+			continue
+		}
+		if($record.Id -ne $id){
+			$problems.Add("Another package: $name comes from the NuGet package $($record.Id) $($record.Version), but the list names $id")
+			continue
+		}
+		$stagedSha=Get-Sha256 $staged
+		$compared=New-Object 'System.Collections.Generic.List[string]'
+		$differing=New-Object 'System.Collections.Generic.List[string]'
+		foreach($packageFolder in $record.RestoredFolders){
+			$path=Join-Path $packageFolder ($record.Asset.Replace('/','\'))
+			if(-not (Test-Path -LiteralPath $path -PathType Leaf)){ continue }
+			$metadataPath=Join-Path $packageFolder '.nupkg.metadata'
+			$contentHash=$null
+			if(Test-Path -LiteralPath $metadataPath -PathType Leaf){
+				$contentHash=Get-JsonValue ([System.IO.File]::ReadAllText($metadataPath) | ConvertFrom-Json) 'contentHash'
+			}
+			if($contentHash -ne $record.ContentHash){
+				$problems.Add("Not the locked package: $packageFolder has the content hash $contentHash, $ProgramLockFile names $($record.ContentHash) for $($record.Id) $($record.Version)")
+				continue
+			}
+			$compared.Add($path)
+			if((Get-Sha256 $path) -ne $stagedSha){ $differing.Add($path) }
+		}
+		if($record.OfflineFolder -and (Test-Path -LiteralPath $record.OfflineFolder -PathType Container)){
+			$path=Join-Path $record.OfflineFolder ($record.Asset.Replace('/','\'))
+			if(Test-Path -LiteralPath $path -PathType Leaf){
+				$compared.Add($path)
+				if((Get-Sha256 $path) -ne $stagedSha){ $differing.Add($path) }
+			}
+			else{
+				$problems.Add("Not in the package: the offline folder's $($record.Id) $($record.Version) has no $($record.Asset)")
+			}
+		}
+		if($differing.Count -gt 0){
+			$stagedVersion=[System.Diagnostics.FileVersionInfo]::GetVersionInfo($staged).FileVersion
+			$packageVersion=[System.Diagnostics.FileVersionInfo]::GetVersionInfo($differing[0]).FileVersion
+			if(-not $stagedVersion){ $stagedVersion='none' }
+			if(-not $packageVersion){ $packageVersion='none' }
+			$problems.Add("Not the package's file: $name (file version $stagedVersion) differs from $($record.Asset) of the NuGet package $($record.Id) $($record.Version) (file version $packageVersion), the version $ProgramLockFile names: $($differing -join '; ')")
+		}
+		if($compared.Count -eq 0){
+			$problems.Add("Package not found: $($record.Id) $($record.Version) is neither in the global packages folder the restore used ($($record.RestoredFolders -join ', ')) nor in the offline folder ($($record.OfflineFolder)), so $name cannot be compared with it")
+		}
+	}
+	return ,$problems
+}
+
+#The checks of a staging folder. -Full adds the checks that need the real build: built-from-source copies, package files, native files, versions.
 #Returns the problems found; none means the folder may ship.
 function Test-StagingFolder([string]$folder,[switch]$Full){
 	$problems=New-Object 'System.Collections.Generic.List[string]'
@@ -423,10 +629,13 @@ function Test-StagingFolder([string]$folder,[switch]$Full){
 	if(-not $Full){
 		return ,$problems
 	}
-	#Built from this repository, or byte copies of the repository's own files (repository-relative source paths).
+	#Built from this repository, or byte copies of the repository's own files (repository-relative source paths). The files of NuGet packages
+	#are compared with their packages (Test-PackageFiles).
 	$sources=[ordered]@{}
 	foreach($key in $OwnFiles.Keys){ if($OwnFiles[$key]){ $sources[$key]=$OwnFiles[$key]+'\'+$key } }
-	foreach($key in $ThirdPartyFiles.Keys){ $sources[$key]=$ThirdPartyFiles[$key]+'\'+$key }
+	foreach($key in $ThirdPartyFiles.Keys){
+		if(-not $ThirdPartyFiles[$key].StartsWith('package:')){ $sources[$key]=$ThirdPartyFiles[$key]+'\'+$key }
+	}
 	foreach($key in $DocumentFiles.Keys){ $sources[$key]=$DocumentFiles[$key] }
 	foreach($name in $sources.Keys){
 		$staged=Join-Path $folder $name
@@ -439,6 +648,8 @@ function Test-StagingFolder([string]$folder,[switch]$Full){
 			$problems.Add("Not the file of this repository: $name differs from $($sources[$name])")
 		}
 	}
+	$packageProblems=Test-PackageFiles $folder
+	foreach($problem in $packageProblems){ $problems.Add($problem) }
 	foreach($name in $NativeFiles){
 		$path=Join-Path $folder $name
 		if(-not (Test-Path -LiteralPath $path -PathType Leaf)){ continue }
@@ -656,7 +867,7 @@ if($CheckFolder){
 		Write-Host "No such folder: $CheckFolder"
 		exit 4
 	}
-	$problems=Test-StagingFolder $CheckFolder
+	$problems=Test-StagingFolder $CheckFolder -Full:$Full
 	Write-Host "Build id: $(Get-BuildId (Resolve-Path -LiteralPath $CheckFolder).Path)"
 	if($problems.Count -gt 0){
 		Write-Problems $problems 'The check'

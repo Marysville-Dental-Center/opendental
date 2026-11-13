@@ -1,5 +1,6 @@
-// The tier 1 library files: "Required dlls" holds the versions the owner approved (NuGet packages restored for net48, lib-manifest), and the
-// libraries they replace stay out of the repository, the projects, the source and the build output: OpenPop.NET (MailKit's POP3 client),
+// The tier 1 library files: the program gets the versions the owner approved (the NuGet packages of the program's lock file, whose own files the
+// build copies since S2-4 of the .NET 10 move; "Required dlls" held copies of them until then), and the libraries they replace stay out of the
+// repository, the projects, the source and the build output: OpenPop.NET (MailKit's POP3 client),
 // SharpSSH with its Mentalis.org and DiffieHellman helpers (SSH.NET), the Google APIs 1.44 platform shims, and MimeKit 2's BouncyCastle.Crypto.
 // Reads files and assembly metadata only. Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
@@ -11,6 +12,7 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using ProjectFileTests;
 
 namespace LibraryUpdateTests {
 	[TestClass]
@@ -68,13 +70,39 @@ namespace LibraryUpdateTests {
 			return listFiles;
 		}
 
+		///<summary>Each library is the file the program's restore copies from its package, at the version the program's lock file names, which is
+		///the approved one (the package's own file in the offline folder, or in the global packages folder the restore used), with the approved
+		///assembly and file versions, and "Required dlls" holds no copy of it (S2-4 of the .NET 10 move).</summary>
 		[TestMethod]
-		public void RequiredDlls_HoldTheApprovedVersions() {
+		public void PackageFiles_AreTheApprovedVersions() {
+			string folderProgram=Path.Combine(RepoRoot,"OpenPmsDental");
+			List<LockedPackage> listLocked=NuGetFiles.ReadLockFile(Path.Combine(folderProgram,"packages.lock.json"));
 			List<string> listProblems=new List<string>();
 			foreach(string[] arrayRow in _arrayLibraries) {
-				string path=Path.Combine(RepoRoot,"Required dlls",arrayRow[0]);
-				if(!File.Exists(path)) {
-					listProblems.Add(arrayRow[0]+" is missing ("+arrayRow[3]+").");
+				string[] arrayPackage=arrayRow[3].Split(' ');
+				LockedPackage lockedPackage=listLocked.FirstOrDefault(x => x.Id.Equals(arrayPackage[0],StringComparison.OrdinalIgnoreCase));
+				if(lockedPackage==null || lockedPackage.Version!=arrayPackage[1]) {
+					listProblems.Add("OpenPmsDental's lock file names "+arrayPackage[0]+" "+(lockedPackage==null ? "nowhere" : lockedPackage.Version)+", not "+arrayPackage[1]+".");
+				}
+				if(File.Exists(Path.Combine(RepoRoot,"Required dlls",arrayRow[0]))) {
+					listProblems.Add("Required dlls\\"+arrayRow[0]+" is back; the build takes it from "+arrayRow[3]+".");
+				}
+			}
+			Assert.AreEqual(0,listProblems.Count,string.Join("\r\n",listProblems));
+			Dictionary<string,PackageFile> dictCopied=NuGetFiles.ReadCopiedFiles(RepoRoot,folderProgram);
+			if(dictCopied==null) {
+				BuildOutput.NotBuilt("OpenPmsDental is not restored yet (obj\\project.assets.json): build OpenDental.Local.slnf first.");
+				return;
+			}
+			foreach(string[] arrayRow in _arrayLibraries) {
+				PackageFile packageFile;
+				if(!dictCopied.TryGetValue(arrayRow[0],out packageFile) || packageFile.Id+" "+packageFile.Version!=arrayRow[3]) {
+					listProblems.Add(arrayRow[0]+" is "+(packageFile==null ? "copied from no package" : packageFile.ToString())+", not a file of "+arrayRow[3]+".");
+					continue;
+				}
+				string path=packageFile.Path;
+				if(path==null || !File.Exists(path)) {
+					listProblems.Add(arrayRow[0]+" is missing: "+packageFile+" is neither in the offline folder nor in the restore's global packages folder.");
 					continue;
 				}
 				string version=AssemblyName.GetAssemblyName(path).Version.ToString();
