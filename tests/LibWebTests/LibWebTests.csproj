@@ -12,12 +12,9 @@
     <!-- Reads the built assemblies' type references without loading them. The NuGet package, from the offline package folder (nuget.config),
          at the version of Directory.Packages.props. -->
     <PackageReference Include="Mono.Cecil" />
-    <Reference Include="Microsoft.Web.WebView2.Core">
-      <HintPath>..\..\Required dlls\Microsoft.Web.WebView2.Core.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Web.WebView2.WinForms">
-      <HintPath>..\..\Required dlls\Microsoft.Web.WebView2.WinForms.dll</HintPath>
-    </Reference>
+    <!-- The WebView2 SDK, the version of Directory.Packages.props, named here for its build files: the smoke test's window needs the native
+         WebView2Loader.dll (x86), which they bring and Directory.Build.targets puts at the top of the output folder. -->
+    <PackageReference Include="Microsoft.Web.WebView2" />
     <!-- The scratch database of EmailPreviewTemplateTests (ScratchDb.cs) uses MySqlConnector, which comes as a package through the
          projects below. -->
     <!-- PresentationCore, PresentationFramework, System.Xaml and WindowsBase: FrmMessageReplacements (WpfControlsOD) is a WPF window class. -->
@@ -36,13 +33,6 @@
     <Compile Include="..\ProjectFileTests\BuildOutput.cs">
       <Link>BuildOutput.cs</Link>
     </Compile>
-  </ItemGroup>
-  <ItemGroup>
-    <!-- The native loader of the WebView2 SDK (x86), which OpenPmsDental.exe also keeps next to itself. -->
-    <None Include="..\..\Required dlls\WebView2Loader.dll">
-      <Link>WebView2Loader.dll</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\CodeBase\xCodeBase.csproj" />

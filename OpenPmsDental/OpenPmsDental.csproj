@@ -4,12 +4,12 @@
     obj\ excepted), so a new form, a new partial file or a new .resx needs no edit here; every other file under the folder is a None item
     unless an item below makes it something else. Only items with their own metadata are listed: the linked SharedAssemblyInfo.cs, the
     designer and partial files (DependentUpon), the .resx files whose resource names come from their form's class (DependentUpon), the
-    generated files, the embedded cursors and branding, the WPF resources, the Content items, the web reference and the native file copied
-    to the output.
+    generated files, the embedded cursors and branding, the WPF resources, the Content items and the web reference. The native
+    WebView2Loader.dll comes from the WebView2 package (below).
 
     Sdk.props and Sdk.targets are imported explicitly, not through the Sdk attribute, so that the build stamp block at the end comes after
     Sdk.targets: its file is $(IntermediateOutputPath)ForkBuildStamp.cs, and the SDK computes $(IntermediateOutputPath) in Sdk.targets.
-    Every item stays before the Sdk.targets import, where the SDK gives an item outside the folder its Link (WebView2Loader.dll).
+    Every item stays before the Sdk.targets import, where the SDK gives an item outside the folder its Link.
 
     AutoGenerateBindingRedirects is left to its default, on for an exe, as for the classic project: OpenPmsDental.exe.config is app.config
     with the redirects it holds (tests\LibraryBindingTests checks them).
@@ -61,14 +61,11 @@
     </Reference>
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="Microsoft.VisualBasic" />
-    <Reference Include="Microsoft.Web.WebView2.Core, Version=1.0.2420.47, Culture=neutral, PublicKeyToken=2a8ab48044d2601e, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\Microsoft.Web.WebView2.Core.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Web.WebView2.WinForms, Version=1.0.2420.47, Culture=neutral, PublicKeyToken=2a8ab48044d2601e, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\Microsoft.Web.WebView2.WinForms.dll</HintPath>
-    </Reference>
+    <!-- The WebView2 SDK, the version of Directory.Packages.props, with its build files: they bring the native WebView2Loader.dll (x86),
+         which Microsoft.Web.WebView2.Core.dll loads for every WebView2 window (CodeBase/Controls/ODWebView2.cs), and Directory.Build.targets
+         puts it at the top of the output folder, next to the exe, in Debug and Release alike; from there it also goes to the output of every
+         project that references this one, as the None item of "Required dlls\WebView2Loader.dll" did before S2-3 of the .NET 10 move. -->
+    <PackageReference Include="Microsoft.Web.WebView2" />
     <PackageReference Include="MySqlConnector" />
     <!-- Newtonsoft.Json, the version of Directory.Packages.props. -->
     <PackageReference Include="Newtonsoft.Json" />
@@ -5811,14 +5808,6 @@
     <None Update="Web References\CallFireService\Reference.map">
       <Generator>MSDiscoCodeGenerator</Generator>
       <LastGenOutput>Reference.cs</LastGenOutput>
-    </None>
-    <!-- The native (x86) file that the program loads at run time but that no reference brings into the output, in Debug and Release alike:
-         WebView2Loader.dll, loaded by Microsoft.Web.WebView2.Core.dll for every WebView2 window (CodeBase/Controls/ODWebView2.cs). The spell
-         checker needs no native file: WeCantSpell.Hunspell is managed and comes with WpfControlsOD. The SDK gives it its Link, the file name,
-         so it lands at the top of the output folder. -->
-    <None Include="..\Required dlls\WebView2Loader.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Visible>False</Visible>
     </None>
   </ItemGroup>
   <ItemGroup>

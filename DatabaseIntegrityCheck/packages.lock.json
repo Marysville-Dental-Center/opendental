@@ -17,6 +17,7 @@
       "CodeBase": {
         "type": "Project",
         "dependencies": {
+          "Microsoft.Web.WebView2": "[1.0.2420.47, )",
           "Newtonsoft.Json": "[13.0.4, )"
         }
       },
@@ -66,6 +67,12 @@
           "System.Diagnostics.DiagnosticSource": "10.0.15",
           "System.Memory": "4.6.3"
         }
+      },
+      "Microsoft.Web.WebView2": {
+        "type": "CentralTransitive",
+        "requested": "[1.0.2420.47, )",
+        "resolved": "1.0.2420.47",
+        "contentHash": "XYZjxkepD+MwmIdeiWqjm2T8x4UmVZq4CDKUe7U6L1r+9VGo2Q88OeEgvyLYtgvebGGuSP6D74Z3wxdRwjH8IQ=="
       },
       "Newtonsoft.Json": {
         "type": "CentralTransitive",
@@ -122,6 +129,13 @@
         }
       }
     },
-    ".NETFramework,Version=v4.8/win-x86": {}
+    ".NETFramework,Version=v4.8/win-x86": {
+      "Microsoft.Web.WebView2": {
+        "type": "CentralTransitive",
+        "requested": "[1.0.2420.47, )",
+        "resolved": "1.0.2420.47",
+        "contentHash": "XYZjxkepD+MwmIdeiWqjm2T8x4UmVZq4CDKUe7U6L1r+9VGo2Q88OeEgvyLYtgvebGGuSP6D74Z3wxdRwjH8IQ=="
+      }
+    }
   }
 }

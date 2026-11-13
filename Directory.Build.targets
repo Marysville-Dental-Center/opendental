@@ -46,6 +46,24 @@
     4.0.5.0, a version no computer has; a .config with that redirect makes every load of System.ValueTuple
     fail. The suggestion is dropped, so the framework's own binding stays in charge.
   -->
+  <!--
+    The native WebView2Loader.dll of the WebView2 package (Microsoft.Web.WebView2 1.0.2420.47, S2-3 of the .NET 10 move), next to the
+    program. Microsoft.Web.WebView2.Core.dll loads it for every WebView2 window; the program and the test projects have always kept it at the
+    top of their output folders, and no package property puts it there: the package's build\Common.targets copies it for a managed project as
+    a Content item to runtimes\win-x86\native\ (with EffectivePlatform x86, from PlatformTarget x86 of Directory.Build.props, only the x86
+    one; the x64 and arm64 loaders only for AnyCPU), and WebView2LoaderPreference decides only for a native (C++) project. The package's
+    targets set WebView2ProjectKind and NugetRoot (its folder); this gives that Content item the file name as its Link, so it lands at the
+    top of the output folder and no runtimes folder is written (tools\Build-Release.ps1 refuses a sub folder in the program's output). As a
+    Content item that is copied, it also goes to the output of every project that references one with the package's build files, as the
+    None item of "Required dlls\WebView2Loader.dll" in OpenPmsDental.csproj did before. The libraries reference the package without its
+    build files (ExcludeAssets="build"), so only the program and the test projects that name the package get it, and those that reference
+    them. For an exe NuGet also copies the package's native asset of its win-x86 target (runtimes\win-x86\native\WebView2Loader.dll) to the
+    same place: the same file.
+  -->
+  <ItemGroup Condition="'$(WebView2ProjectKind)' == 'managed' and '$(NugetRoot)' != ''">
+    <Content Update="$(NugetRoot)runtimes\win-x86\native\WebView2Loader.dll" Link="WebView2Loader.dll" />
+  </ItemGroup>
+
   <Target Name="ODDropValueTupleRedirect" AfterTargets="ResolveAssemblyReferences" BeforeTargets="GenerateBindingRedirects">
     <ItemGroup>
       <_ODValueTupleRedirect Include="@(SuggestedBindingRedirects)" Condition="$([System.String]::Copy('%(Identity)').StartsWith('System.ValueTuple,'))" />
