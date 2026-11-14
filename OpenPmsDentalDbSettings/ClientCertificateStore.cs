@@ -15,11 +15,6 @@ using System.Text;
 using System.Threading;
 
 namespace OpenPmsDentalDbSettings {
-	///<summary>The client certificate (owner decision Q2): one shared certificate on every workstation, or one per computer later, in
-	///LocalMachine\My, read by MySqlConnector by thumbprint. A .pfx is imported with MachineKeySet and PersistKeySet and never Exportable, and
-	///BUILTIN\Users get read access to its private key, because the program runs as the signed-in user (docs/specs/db-connection-security.md
-	///section 4.3). So the tool never leaves a key the users may read behind, and never touches a key it did not create (owner decision of
-	///2026-11-02).</summary>
 	///<summary>Whether the store held the client certificate before ImportPfx, and what became of its entry's earlier key: the caller says so
 	///when it undoes the import (DbSettingsRunner, a save that fails after the import), since that removes the whole entry.</summary>
 	public enum ClientCertificateEntryBefore {
@@ -33,6 +28,11 @@ namespace OpenPmsDentalDbSettings {
 		InStoreKeyLeft,
 	}
 
+	///<summary>The client certificate (owner decision Q2): one shared certificate on every workstation, or one per computer later, in
+	///LocalMachine\My, read by MySqlConnector by thumbprint. A .pfx is imported with MachineKeySet and PersistKeySet and never Exportable, and
+	///BUILTIN\Users get read access to its private key, because the program runs as the signed-in user (docs/specs/db-connection-security.md
+	///section 4.3). So the tool never leaves a key the users may read behind, and never touches a key it did not create (owner decision of
+	///2026-11-02).</summary>
 	public static class ClientCertificateStore {
 		///<summary>Extended Key Usage OID of TLS client authentication.</summary>
 		private const string OID_CLIENT_AUTHENTICATION="1.3.6.1.5.5.7.3.2";
