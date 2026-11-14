@@ -246,11 +246,29 @@ afterwards.
    LocalMachine\My (`New-SelfSignedCertificate -Subject "CN=synthetic-tpm" -Provider "Microsoft Platform Crypto Provider"
    -CertStoreLocation Cert:\LocalMachine\My`), then do checks 4 and 3 again: no prompt, no error, and the TPM certificate stays; remove it
    afterwards with `Remove-Item Cert:\LocalMachine\My\<thumbprint> -DeleteKey`.
-10. Put the connection settings back, remove what is left with `Remove-Item Cert:\LocalMachine\My\<thumbprint> -DeleteKey`, delete the
+10. **A usable key the tool did not create** (DCFU3 fix round, review finding 2). With the settings on the password and no copy of
+   `client-cng.pfx`'s certificate in LocalMachine\My, put it there as an administrator would, with a machine key:
+   `Import-PfxCertificate -FilePath .\client-cng.pfx -CertStoreLocation Cert:\LocalMachine\My -Password $password`. Note its "Unique
+   container name" (`certutil -store My <thumbprint>`) and check the Security tab of that file in `%ProgramData%\Microsoft\Crypto\Keys`:
+   no Users. Import `client-cng.pfx` with the tool: the result says that the certificate was already there "with a usable private key
+   that this tool did not import, so the tool gives the program's users no read access to that key", that the import gave the entry the
+   key it stored, and names the earlier key with `certutil -csp "Microsoft Software Key Storage Provider" -delkey "<container>"`.
+   `certutil -store My <thumbprint>` names a new container, whose file gives Users Read; the earlier file still has no Users;
+   `imported-client-certificate.txt` holds the thumbprint. Import the same file again: no warning, the same container, no new key file.
+   Save with the password: the certificate and the new key file are gone, the earlier file is still there. Delete it with the command
+   the result gave.
+11. **A save that fails after the import** (DCFU3 fix round, review finding 1). With the settings on the password, list the files of
+   `%ProgramData%\Microsoft\Crypto\Keys`, hold `FreeDentalConfig.xml` open in another PowerShell window
+   (`$f = [IO.File]::Open("<program folder>\FreeDentalConfig.xml", "Open", "Read", "Read")`), and import `client-cng.pfx` with the tool:
+   it fails with exit code 3, saying that the settings could not be saved and that the client certificate this save imported was removed
+   again with its private key. LocalMachine\My does not hold it, the key files are as listed, and `imported-client-certificate.txt` is
+   absent. `$f.Close()`, then import it again: it is saved and recorded.
+12. Put the connection settings back, remove what is left with `Remove-Item Cert:\LocalMachine\My\<thumbprint> -DeleteKey`, delete the
    `.pfx` files and forget the passwords.
 
-The refused import and a key that cannot be deleted (DCFU2), a CAPI delete that Windows does not do (DCFU3, decision 4) and a key provider
-information that cannot be read (DCFU3, decision 3) are checked by the tests only: Windows gives no simple way to make LocalMachine\My
+The refused import and a key that cannot be deleted (DCFU2), a CAPI delete that Windows does not do (DCFU3, decision 4), a key provider
+information that cannot be read (DCFU3, decision 3) and rights of `FreeDentalConfig.xml` that cannot be reset (DCFU3 fix round) are
+checked by the tests only: Windows gives no simple way to make LocalMachine\My
 refuse a certificate, a key refuse its deletion, or a certificate's property refuse to be read.
 
 ## For the .NET 10 switch package

@@ -235,15 +235,19 @@ store, which for a key on a TPM or a smart card could ask for a PIN or fail (DCF
 read may use any key, so then no key is deleted, and the result says so. A CAPI key's delete is checked: the container must no longer open
 and its file must be gone. A key it cannot delete is named, with its file, in the result.
 
-A `.pfx` whose certificate the store already holds with a usable private key, as when setup runs again with the same file, is not added
-again, as the Direct certificate import leaves such a certificate (DCFU2 fix round): the store's entry stays as it is, with its key; every
-key the import stored is deleted, the client certificate's own too; and the users get read access to the entry's key. The store's add
-would give the entry the new key and leave the old one on the computer, readable by the users and named by no certificate. Usable means
-(DCFU3) that the entry's key provider information names a key in the machine key set, the one the import uses, and that the key opens and
-signs, or decrypts, a test value. An entry whose key cannot be used (deleted, or it does not open) is added again and takes the import's
-key; so is one whose key is in another key set (an administrator's own user key set, say, which the program's users cannot read) or
-cannot be identified, and the result then says that the entry's earlier key was left untouched, where it is, and the
-`certutil [-user] -csp "<provider>" -delkey "<container>"` command that deletes it once no other certificate uses it.
+A `.pfx` whose certificate the store already holds with a usable private key of the tool's own, as when setup runs again with the same
+file, is not added again, as the Direct certificate import leaves such a certificate (DCFU2 fix round): the store's entry stays as it is,
+with its key; every key the import stored is deleted, the client certificate's own too; and the users get read access to the entry's key.
+The store's add would give the entry the new key and leave the old one on the computer, readable by the users and named by no
+certificate. Usable means (DCFU3) that the entry's key provider information names a key in the machine key set, the one the import uses,
+and that the key opens and signs, or decrypts, a test value. The tool's own means (DCFU3 fix round) that the entry names the key container
+this import stored the key in, or that the tool's record (below) names the certificate, which the tool imported before with the key its
+entry took then. An entry whose key cannot be used (deleted, or it does not open) is added again and takes the import's key; so is one
+whose key is in another key set (an administrator's own user key set, say, which the program's users cannot read) or cannot be
+identified, and so is one with a usable key that the tool did not create (an administrator put the certificate there with certlm.msc or
+`Import-PfxCertificate`, say): the tool never gives the users read access to a key it did not create. The result then says that the
+entry's earlier key was left untouched, where it is, and the `certutil [-user] -csp "<provider>" -delkey "<container>"` command that
+deletes it once no other certificate uses it.
 
 The certificate it replaces (owner decision of 2026-11-02): the tool removes a client certificate from the store, with its private key
 (CNG `Delete`, or the CAPI key container), only when it imported that certificate itself and a save stops using it (another certificate,
@@ -255,12 +259,17 @@ says that the certificate was removed and names the key's file, which certlm.msc
 imported in `<program folder>\ConnectionSettings\imported-client-certificate.txt` (`ImportedCertificateRecord`), written with the
 protection of the office CA copy (section 4.4), not in `FreeDentalConfig.xml`, whose content must never decide what the tool deletes.
 Only a certificate whose store entry uses the private key the tool's import stored is recorded: one the store did not have before its
-`.pfx` was imported, or (DCFU3) one whose entry had no usable key and took the import's, so that the tool later removes it with the key it
-made. One named with `/thumbprint=`, or put into the store some other way with a usable key, is never recorded and never removed (remove it
-with its private key as an administrator, in PowerShell: `Remove-Item Cert:\LocalMachine\My\<thumbprint> -DeleteKey`; certlm.msc's Delete
+`.pfx` was imported, or (DCFU3) one whose entry had no usable key of the tool's own and took the import's, so that the tool later removes
+it with the key it made. One named with `/thumbprint=`, whose entry keeps its own key, is never recorded and never removed (remove it with
+its private key as an administrator, in PowerShell: `Remove-Item Cert:\LocalMachine\My\<thumbprint> -DeleteKey`; certlm.msc's Delete
 leaves the key). A missing or untrusted record (a link, or a file an administrator does not own) means none. The certificate goes only
 after the new settings are saved (`DbSettingsRunner.PlanImportedCertificate`); when it cannot be removed, the result says so, with the
-command that removes it with its key (certlm.msc's Delete leaves the key), and the save stands.
+command that removes it with its key (certlm.msc's Delete leaves the key), and the save stands. A save that fails after the import gave
+the store's entry the key it stored (`FreeDentalConfig.xml` cannot be written, for example) leaves no key of the tool's that the record
+does not name (DCFU3 fix round): the imported certificate is removed again with that key, unless the settings as they still are, or the
+record, name it, in which case it stays and is recorded at once; the error says what was done. When only the rights of
+`FreeDentalConfig.xml` cannot be set back (section 3), the settings are saved, so the record and the removal of the certificate they
+replaced happen as after any save, and the error says what to do about the rights.
 
 ### 4.4 The office CA copy
 
