@@ -240,6 +240,60 @@ namespace DbConnectionSecurityTests {
 			return path;
 		}
 
+		///<summary>Two providers with one key container name (the DCFU3 fix round's second review, finding 1): adds to the store a self-signed
+		///client certificate whose entry has a CNG key of the Microsoft Software Key Storage Provider in the current user's key set (imported
+		///from a .pfx that names the CNG provider, as AddCertificate imports one), and writes into the folder a .pfx of the same certificate and
+		///key that names a CAPI provider and records a CAPI key container with the CNG key's name. That CAPI container is made only to write the
+		///file and deleted again at once (after checking that no CAPI container had the name before), so an import of the file stores its key in
+		///a CAPI container of that very name (WritePfxTwice's measurement). Returns the path; testKeyEntry is the entry's CNG key.</summary>
+		public string AddCngEntryAndWriteCapiPfxOfItsName(string folder,out string thumbprint,out TestKey testKeyEntry) {
+			string subject="CN=synthetic-dbsec-key-"+Guid.NewGuid().ToString("N");
+			string path=Path.Combine(folder,"client-capi-named-as-cng-"+Guid.NewGuid().ToString("N").Substring(0,8)+".pfx");
+			using(RSACng rsaCng=new RSACng(2048))//Ephemeral: only the store's import below stores it.
+			using(X509Certificate2 x509Certificate2=CreateSelfSigned(NewRequest(subject,rsaCng,isCa:false),DateTimeOffset.Now.AddDays(30)))
+			{
+				thumbprint=x509Certificate2.Thumbprint;
+				testKeyEntry=AddPfx(x509Certificate2.Export(X509ContentType.Pfx,_password));
+				Assert.IsFalse(testKeyEntry.IsCapi,"The test's premise: the entry's key is a CNG key.");
+				Assert.IsFalse(testKeyEntry.IsMachine,"The test's premise: in the current user's key set.");
+				CspParameters cspParameters=new CspParameters(PROV_RSA_AES,PROVIDER_CAPI,testKeyEntry.Name);
+				Assert.IsFalse(IsCapiContainerThere(cspParameters),"The test's premise: no CAPI container of the current user is named "
+					+testKeyEntry.Name+"; the test never writes into one it did not make.");
+				RSACryptoServiceProvider rsaCryptoServiceProviderCapi=new RSACryptoServiceProvider(cspParameters);
+				try {
+					rsaCryptoServiceProviderCapi.ImportParameters(rsaCng.ExportParameters(true));
+					using(X509Certificate2 x509Certificate2Public=new X509Certificate2(x509Certificate2.RawData))
+					using(X509Certificate2 x509Certificate2Capi=x509Certificate2Public.CopyWithPrivateKey(rsaCryptoServiceProviderCapi))
+					{
+						File.WriteAllBytes(path,x509Certificate2Capi.Export(X509ContentType.Pfx,_password));
+					}
+				}
+				finally {
+					DeleteScratchKey(rsaCryptoServiceProviderCapi);
+				}
+				if(IsCapiContainerThere(cspParameters)) {
+					AddCleanUpProblem("The scratch CAPI container "+testKeyEntry.Name+" of the current user is still there. Delete it by hand: certutil "
+						+"-user -csp \""+PROVIDER_CAPI+"\" -delkey \""+testKeyEntry.Name+"\".");
+					Assert.Fail("The test's premise: the scratch CAPI container "+testKeyEntry.Name+" is deleted before the import.");
+				}
+			}
+			return path;
+		}
+
+		///<summary>True when a CAPI key container with these parameters' provider and name opens in the current user's key set.</summary>
+		private static bool IsCapiContainerThere(CspParameters cspParameters) {
+			CspParameters cspParametersExisting=new CspParameters(cspParameters.ProviderType,cspParameters.ProviderName,cspParameters.KeyContainerName);
+			cspParametersExisting.Flags=CspProviderFlags.UseExistingKey;
+			try {
+				using(new RSACryptoServiceProvider(cspParametersExisting)) {
+				}
+				return true;
+			}
+			catch(CryptographicException) {
+				return false;//"Keyset does not exist".
+			}
+		}
+
 		///<summary>Makes the store's entry for the certificate name its key container in the machine key set instead of the user's (the
 		///CRYPT_MACHINE_KEYSET flag of its key provider information, TestKeyProvInfo), as an entry whose key is in another key set than the
 		///import's (the test store's import uses the user's): nothing is made, opened or deleted in the machine key set, and the user key the

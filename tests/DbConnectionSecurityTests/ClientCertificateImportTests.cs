@@ -355,6 +355,91 @@ namespace DbConnectionSecurityTests {
 			}
 		}
 
+		///<summary>The DCFU3 fix round's second review, finding 1, through DbSettingsRunner.Apply with the test store (StoreNameForTests) and the
+		///grant seam (ActionInsteadOfUsersReadGrantForTests): a store entry whose usable key is a CNG key of the Microsoft Software Key Storage
+		///Provider named N, in the import's key set, and a .pfx of the same certificate that names a CAPI provider and records container N, with
+		///no CAPI container N before the import (AddCngEntryAndWriteCapiPfxOfItsName); the import then stores its key in CAPI container N, the
+		///test's premise. One container name in one key set, two providers: the entry's key is not the tool's. The grant seam never sees the
+		///CNG key, the certificate is added with the import's key and recorded, the warning names the CNG key with its certutil command, and a
+		///later save with the password removes the certificate with the import's key and leaves the CNG key. Before the fix the import took the
+		///entry's key for its own (KeyProvInfo.Identity leaves the provider out): it kept the entry, granted the CNG key, recorded it, left the
+		///import's CAPI key with no certificate naming it, and the later save deleted the CNG key.</summary>
+		[TestMethod]
+		public void Apply_AnEntryWithACngKeyNamedAsTheImportsCapiContainer_IsNotTakenForTheToolsKey() {
+			string label="a CNG entry key named as the import's CAPI container";
+			string config=TestHelpers.WriteConfig(_folder,"ComputerName","localhost","Database","opendental","User","root","Password","");
+			string caCopy=DbConnectionConfig.GetOfficeCaCopyPath(Path.Combine(_folder,"program"));
+			string pathRecord=ImportedCertificateRecord.GetPath(caCopy);
+			using(ClientCertificateTestStore clientCertificateTestStore=new ClientCertificateTestStore()) {
+				string pathPfx=clientCertificateTestStore.AddCngEntryAndWriteCapiPfxOfItsName(_folder,out string thumbprintClient,out TestKey testKeyFirst);
+				Assert.IsTrue(clientCertificateTestStore.CanSign(thumbprintClient),label+": the test's premise, the entry's key is usable.");
+				TestKeyProvInfo testKeyProvInfoFirst;
+				using(X509Certificate2 x509Certificate2Entry=clientCertificateTestStore.Find(thumbprintClient)) {
+					testKeyProvInfoFirst=TestKeyProvInfo.Read(x509Certificate2Entry);
+				}
+				Assert.AreEqual(0u,testKeyProvInfoFirst.ProviderType,label+": the test's premise, the entry names a CNG key storage provider.");
+				Assert.IsFalse(testKeyProvInfoFirst.IsMachine,label+": the test's premise, in the user key set, the test store's import's.");
+				Assert.IsTrue(string.Equals(testKeyFirst.Name,testKeyProvInfoFirst.ContainerName,StringComparison.OrdinalIgnoreCase),
+					label+": the test's premise, the entry names the CNG key the test stored.");
+				Dictionary<string,TestKey> dictKeys=null;
+				ClientCertificateStore.ActionAfterKeysStoredForTests=x509Certificate2Collection => {
+					dictKeys=clientCertificateTestStore.TrackKeys(x509Certificate2Collection);
+				};
+				List<TestKeyProvInfo> listGranted=new List<TestKeyProvInfo>();
+				ClientCertificateStore.ActionInsteadOfUsersReadGrantForTests=x509Certificate2 => {
+					listGranted.Add(TestKeyProvInfo.Read(x509Certificate2));
+				};
+				bool isAdded=false;
+				ClientCertificateStore.ActionBeforeStoreAddForTests=x509Certificate2 => {
+					isAdded=true;
+				};
+				ClientCertificateStore.StoreNameForTests=clientCertificateTestStore.Name;
+				DbSettingsResult dbSettingsResult=DbSettingsRunner.Apply(new DbSettingsRequest() { Auth=DbSettingsAuth.Certificate,PfxFile=pathPfx,
+					PfxPassword=clientCertificateTestStore.Password },config,caCopy);
+				ClientCertificateStore.ActionAfterKeysStoredForTests=null;
+				ClientCertificateStore.ActionBeforeStoreAddForTests=null;
+				Assert.IsNotNull(dictKeys,label+": the import stored its key.");
+				TestKey testKeyImport=dictKeys[thumbprintClient];
+				Assert.IsTrue(testKeyImport.IsCapi && !testKeyImport.IsMachine
+					&& string.Equals(testKeyImport.Name,testKeyFirst.Name,StringComparison.OrdinalIgnoreCase),label+": the test's premise, the import "
+					+"stored its key in a CAPI container of the CNG key's name, in the same key set: "+testKeyImport.Provider+", "+testKeyImport.Name);
+				Assert.AreEqual(DbSettingsRunner.EXIT_OK,dbSettingsResult.ExitCode,label+": "+dbSettingsResult.Message);
+				Assert.AreEqual("Saved the connection settings for the database opendental on localhost (client certificate). The client "
+					+"certificate was already in the computer's certificate store (CurrentUser\\"+clientCertificateTestStore.Name+") with a usable "
+					+"private key that this tool did not import. The import gave the entry the private key it stored, and left the entry's earlier "
+					+"key untouched: provider "+testKeyProvInfoFirst.ProviderName+", key container "+testKeyProvInfoFirst.ContainerName+", in the user "
+					+"key set of the Windows account that put it there. That account can delete it, once no other certificate uses it: certutil -user "
+					+"-csp \""+testKeyProvInfoFirst.ProviderName+"\" -delkey \""+testKeyProvInfoFirst.ContainerName+"\".",dbSettingsResult.Message,label);
+				Assert.IsTrue(isAdded,label+": the certificate is added with the import's key.");
+				Assert.AreEqual(1,listGranted.Count,label+": one grant.");
+				Assert.AreNotEqual(0u,listGranted[0].ProviderType,label+": the grant seam never sees the CNG key, only the import's CAPI key.");
+				Assert.IsTrue(string.Equals(testKeyImport.Provider,listGranted[0].ProviderName,StringComparison.OrdinalIgnoreCase),label+": "
+					+listGranted[0].ProviderName);
+				Assert.AreEqual(thumbprintClient,ImportedCertificateRecord.Read(pathRecord),label+": the import is recorded.");
+				AssertEntryUsesKey(clientCertificateTestStore,thumbprintClient,testKeyImport,label);
+				using(X509Certificate2 x509Certificate2Entry=clientCertificateTestStore.Find(thumbprintClient)) {
+					Assert.AreNotEqual(0u,TestKeyProvInfo.Read(x509Certificate2Entry).ProviderType,label+": the entry names the CAPI key now.");
+				}
+				Assert.IsTrue(testKeyFirst.Exists(),label+": the CNG key is left untouched (the store's clean-up deletes it).");
+				Assert.IsTrue(File.Exists(testKeyFirst.FilePath),label+": and its file.");
+				//A later save with the password removes the certificate with the import's key, and leaves the CNG key.
+				listGranted.Clear();
+				dbSettingsResult=DbSettingsRunner.Apply(new DbSettingsRequest() { Auth=DbSettingsAuth.Password,DbPassword="" },config,caCopy);
+				ClientCertificateStore.StoreNameForTests=null;
+				ClientCertificateStore.ActionInsteadOfUsersReadGrantForTests=null;
+				Assert.AreEqual(DbSettingsRunner.EXIT_OK,dbSettingsResult.ExitCode,label+" (later save): "+dbSettingsResult.Message);
+				Assert.AreEqual("Saved the connection settings for the database opendental on localhost (password).",dbSettingsResult.Message,
+					label+" (later save): no warning.");
+				Assert.AreEqual("",ImportedCertificateRecord.Read(pathRecord),label+" (later save): no record is left.");
+				Assert.AreEqual(0,clientCertificateTestStore.GetThumbprints().Count,label+" (later save): the recorded certificate is removed.");
+				Assert.IsFalse(testKeyImport.Exists(),label+" (later save): with the import's key.");
+				Assert.IsFalse(File.Exists(testKeyImport.FilePath),label+" (later save): its file is gone: "+testKeyImport.FilePath);
+				Assert.IsTrue(File.Exists(testKeyFirst.FilePath),label+" (later save): the CNG key's file is still there: "+testKeyFirst.FilePath);
+				Assert.IsTrue(testKeyFirst.Exists(),label+" (later save): the CNG key still opens.");
+				Assert.AreEqual(0,listGranted.Count,label+" (later save)");
+			}
+		}
+
 		///<summary>The DCFU3 fix round, review finding 1, through DbSettingsRunner.Apply with the test store (StoreNameForTests): a save that fails
 		///after the import gave the store's entry the key it stored leaves no key of the tool's that no record names. (1) FreeDentalConfig.xml is
 		///locked (another program holds it open without sharing its deletion, so its replace fails): the import is undone, the certificate goes
@@ -363,11 +448,15 @@ namespace DbConnectionSecurityTests {
 		///key, and is recorded at once; once the file is free, a save with the password removes it with that key. (3) The settings are saved but
 		///their file's rights cannot be reset (a seam): the error says so, the record names the new certificate, and a save with the password
 		///then removes it with its key. Before the fix, (1) and (3) left the certificate and the import's key unrecorded, and (2) unrecorded too.
-		///For each kind of key.</summary>
+		///(4) The fix round's second review, finding 2: as (1), over a store entry with a usable key the tool did not create (AddCertificate):
+		///the entry took the import's key, so the undo removes it with that key, and the error gives the import's warning, which names the
+		///entry's earlier key with its certutil -delkey command, then says that the certificate was already in the store and that its earlier
+		///key was left. That key and its file stay, nothing is recorded. Before, the warning was dropped and the error said "the client
+		///certificate this save imported" was removed. For each kind of key.</summary>
 		[TestMethod]
 		public void Apply_ASaveThatFailsAfterTheImport_UndoesTheImportOrRecordsIt() {
 			foreach(TestKeyKind testKeyKind in _arrayKinds) {
-				for(int i=1;i<=3;i++) {
+				for(int i=1;i<=4;i++) {
 					string label=testKeyKind+" ("+i+")";
 					string folder=Path.Combine(_folder,testKeyKind+"-failed-"+i);
 					Directory.CreateDirectory(folder);
@@ -377,9 +466,10 @@ namespace DbConnectionSecurityTests {
 						string pathPfx;
 						string thumbprintClient;
 						string config;
+						TestKey testKeyFirst=null;
 						if(i==2) {
 							string pathPfxEntry=clientCertificateTestStore.WritePfxTwice(folder,testKeyKind,out thumbprintClient,out pathPfx);
-							TestKey testKeyFirst=clientCertificateTestStore.AddCertificate(pathPfxEntry);
+							testKeyFirst=clientCertificateTestStore.AddCertificate(pathPfxEntry);
 							DeleteEntryKey(clientCertificateTestStore,thumbprintClient,testKeyFirst,label);
 							config=TestHelpers.WriteConfig(folder,"ComputerName","localhost","Database","opendental","User","root","Password","",
 								"ClientCertThumbprint",thumbprintClient);
@@ -387,6 +477,14 @@ namespace DbConnectionSecurityTests {
 						else {
 							pathPfx=clientCertificateTestStore.WritePfx(folder,testKeyKind,out thumbprintClient);
 							config=TestHelpers.WriteConfig(folder,"ComputerName","localhost","Database","opendental","User","root","Password","");
+						}
+						TestKeyProvInfo testKeyProvInfoFirst=null;
+						if(i==4) {
+							testKeyFirst=clientCertificateTestStore.AddCertificate(pathPfx);//Put there another way, not by the tool, with a usable key.
+							Assert.IsTrue(clientCertificateTestStore.CanSign(thumbprintClient),label+": the test's premise, the entry's key is usable.");
+							using(X509Certificate2 x509Certificate2Entry=clientCertificateTestStore.Find(thumbprintClient)) {
+								testKeyProvInfoFirst=TestKeyProvInfo.Read(x509Certificate2Entry);
+							}
 						}
 						Dictionary<string,TestKey> dictKeys=null;
 						ClientCertificateStore.ActionAfterKeysStoredForTests=x509Certificate2Collection => {
@@ -423,6 +521,28 @@ namespace DbConnectionSecurityTests {
 							Assert.AreEqual("",ImportedCertificateRecord.Read(pathRecord),label+": nothing recorded.");
 							Assert.AreEqual("",DbConnectionConfig.ReadFile(config).ClientCertThumbprint,label+": the settings are as they were.");
 							ClientCertificateStore.StoreNameForTests=null;
+							continue;
+						}
+						if(i==4) {
+							ClientCertificateStore.StoreNameForTests=null;
+							string warningEntryKey="The client certificate was already in the computer's certificate store (CurrentUser\\"
+								+clientCertificateTestStore.Name+") with a usable private key that this tool did not import. The import gave the entry the "
+								+"private key it stored, and left the entry's earlier key untouched: provider "+testKeyProvInfoFirst.ProviderName+", key "
+								+"container "+testKeyProvInfoFirst.ContainerName+", in the user key set of the Windows account that put it there. That account "
+								+"can delete it, once no other certificate uses it: certutil -user -csp \""+testKeyProvInfoFirst.ProviderName+"\" -delkey \""
+								+testKeyProvInfoFirst.ContainerName+"\".";
+							StringAssert.StartsWith(dbSettingsResult.Message,"The connection settings could not be saved: ",label);
+							StringAssert.EndsWith(dbSettingsResult.Message," "+warningEntryKey+" The client certificate was already in the computer's "
+								+"certificate store before this save; it was removed from the store, with the private key this save gave it, and its earlier "
+								+"key was left untouched, where said above.",label);
+							Assert.IsFalse(dbSettingsResult.Message.Contains("this save imported"),label+": "+dbSettingsResult.Message);
+							Assert.AreEqual(0,clientCertificateTestStore.GetThumbprints().Count,label+": the entry, which took the import's key, is removed.");
+							Assert.IsTrue(testKeyFirst.Exists(),label+": the entry's earlier key is left untouched (the store's clean-up deletes it).");
+							Assert.IsTrue(File.Exists(testKeyFirst.FilePath),label+": and its file: "+testKeyFirst.FilePath);
+							Assert.IsFalse(testKeyImport.Exists(),label+": the import's key is gone.");
+							Assert.IsFalse(File.Exists(testKeyImport.FilePath),label+": its file is gone: "+testKeyImport.FilePath);
+							Assert.AreEqual("",ImportedCertificateRecord.Read(pathRecord),label+": nothing recorded.");
+							Assert.AreEqual("",DbConnectionConfig.ReadFile(config).ClientCertThumbprint,label+": the settings are as they were.");
 							continue;
 						}
 						if(i==2) {
