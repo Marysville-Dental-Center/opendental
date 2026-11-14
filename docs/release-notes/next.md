@@ -133,7 +133,8 @@ server computer must then connect with `<db-server>` (the name the workstations 
   key set, which the program's users cannot use, or whose working key someone else put there, gets the imported computer-wide key, and the
   result names the earlier key, which the tool leaves alone and never opens to the computer's users; an imported key that a certificate
   already there took is removed with it later. A save that fails after the import removes the imported certificate and key again, or
-  records them so that a later save removes them. To compare keys the tool never opens another certificate's private key, so a smart-card
+  records them so that a later save removes them; the error still names an earlier key the import left, with the command that deletes it,
+  and says when the certificate it removed was one the computer had before (its earlier key is left). To compare keys the tool never opens another certificate's private key, so a smart-card
   or TPM key asks for no PIN.
 - **The client certificate of a `.pfx` is chosen by what it is.** The tool takes the file's one certificate with a private key that is
   not a certificate authority (and is for client authentication), wherever the file lists it; a CA certificate with its key listed first is

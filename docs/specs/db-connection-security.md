@@ -241,7 +241,8 @@ with its key; every key the import stored is deleted, the client certificate's o
 The store's add would give the entry the new key and leave the old one on the computer, readable by the users and named by no
 certificate. Usable means (DCFU3) that the entry's key provider information names a key in the machine key set, the one the import uses,
 and that the key opens and signs, or decrypts, a test value. The tool's own means (DCFU3 fix round) that the entry names the key container
-this import stored the key in, or that the tool's record (below) names the certificate, which the tool imported before with the key its
+this import stored the key in, in the same key set and through the same provider, its type and name both (a CNG key with the name of the
+import's CAPI container is another key: second fix round), or that the tool's record (below) names the certificate, which the tool imported before with the key its
 entry took then. An entry whose key cannot be used (deleted, or it does not open) is added again and takes the import's key; so is one
 whose key is in another key set (an administrator's own user key set, say, which the program's users cannot read) or cannot be
 identified, and so is one with a usable key that the tool did not create (an administrator put the certificate there with certlm.msc or
@@ -267,7 +268,10 @@ after the new settings are saved (`DbSettingsRunner.PlanImportedCertificate`); w
 command that removes it with its key (certlm.msc's Delete leaves the key), and the save stands. A save that fails after the import gave
 the store's entry the key it stored (`FreeDentalConfig.xml` cannot be written, for example) leaves no key of the tool's that the record
 does not name (DCFU3 fix round): the imported certificate is removed again with that key, unless the settings as they still are, or the
-record, name it, in which case it stays and is recorded at once; the error says what was done. When only the rights of
+record, name it, in which case it stays and is recorded at once. The error gives the import's warning first (a store entry's earlier
+key that the import left, with the `certutil -delkey` command that deletes it; a key it could not delete; a grant that failed), then
+what was done: when the store already held the certificate before the save, that this entry was removed with the key the save gave it
+and its earlier key was left; otherwise that the certificate the save imported was removed with its key. When only the rights of
 `FreeDentalConfig.xml` cannot be set back (section 3), the settings are saved, so the record and the removal of the certificate they
 replaced happen as after any save, and the error says what to do about the rights.
 

@@ -263,7 +263,29 @@ afterwards.
    it fails with exit code 3, saying that the settings could not be saved and that the client certificate this save imported was removed
    again with its private key. LocalMachine\My does not hold it, the key files are as listed, and `imported-client-certificate.txt` is
    absent. `$f.Close()`, then import it again: it is saved and recorded.
-12. Put the connection settings back, remove what is left with `Remove-Item Cert:\LocalMachine\My\<thumbprint> -DeleteKey`, delete the
+
+   **Over a certificate an administrator put there** (DCFU3 second fix round, review finding 2). Save with the password (the tool removes
+   the certificate), put `client-cng.pfx`'s certificate back as check 10 does (`Import-PfxCertificate`), note its "Unique container name"
+   and list the files of `%ProgramData%\Microsoft\Crypto\Keys`. Hold `FreeDentalConfig.xml` open again and import `client-cng.pfx` with
+   the tool: it fails with exit code 3. The error says that the settings could not be saved, then gives the import's warning (the
+   certificate was already there "with a usable private key that this tool did not import", and the earlier key with its provider,
+   container and `certutil -csp "Microsoft Software Key Storage Provider" -delkey "<container>"`), and ends: "The client certificate was
+   already in the computer's certificate store before this save; it was removed from the store, with the private key this save gave it,
+   and its earlier key was left untouched, where said above." LocalMachine\My no longer holds the certificate, the key files are as
+   listed (the earlier one still there, its Security tab still without Users), and `imported-client-certificate.txt` is absent. `$f.Close()`,
+   and delete the earlier key with the command the error gave.
+12. **Two providers with one container name** (DCFU3 second fix round, review finding 1). With the settings on the password and no copy of
+   `client-capi.pfx`'s certificate in LocalMachine\My, put it there with a key of the CNG software provider, as an administrator might:
+   `certutil -csp "Microsoft Software Key Storage Provider" -importpfx .\client-capi.pfx` (it asks for the password). `certutil -store My
+   <thumbprint>` shows the provider and the "Key Container" name; note both. Check that `RSA\MachineKeys` has no CAPI container of that
+   name (`certutil -csp "Microsoft Enhanced RSA and AES Cryptographic Provider" -key "<container>"` finds none). Import `client-capi.pfx`
+   with the tool: the result says the certificate was already there "with a usable private key that this tool did not import", and names
+   the earlier key with `certutil -csp "Microsoft Software Key Storage Provider" -delkey "<container>"`. `certutil -store My <thumbprint>`
+   now shows the CAPI provider; its key file in `RSA\MachineKeys` gives Users Read, and the earlier file in `%ProgramData%\Microsoft\Crypto\Keys`
+   still has no Users; `imported-client-certificate.txt` holds the thumbprint. Save with the password: the certificate and the CAPI key
+   file are gone, the earlier file is still there. Delete it with the command the result gave. (Whether the CAPI key takes the name the
+   `.pfx` records is Windows' choice; the tests measured that it does. If it takes another name, this is check 10 again.)
+13. Put the connection settings back, remove what is left with `Remove-Item Cert:\LocalMachine\My\<thumbprint> -DeleteKey`, delete the
    `.pfx` files and forget the passwords.
 
 The refused import and a key that cannot be deleted (DCFU2), a CAPI delete that Windows does not do (DCFU3, decision 4), a key provider
@@ -861,8 +883,9 @@ fails is checked by the tests only.
 
 - **Undoing or later removing an import removes the whole store entry.** That includes a certificate that was in the store before and took
   the import's key: one without a usable key, with its key in another key set, or (now) with a usable key the tool did not create.
-  `RemoveImported` deletes the certificate and the import's key. The entry's earlier key is left, as the import's warning said. Decision
-  6 does the same on a later save. Putting back the entry's earlier key provider information instead would mean the tool writes to a
+  `RemoveImported` deletes the certificate and the import's key. The entry's earlier key is left, as the import's warning said: after a
+  successful save, in the result; after a save that fails, in the error, which gives that warning before saying that the certificate that
+  was already in the store was removed (the second fix round below). Decision 6 does the same on a later save. Putting back the entry's earlier key provider information instead would mean the tool writes to a
   certificate it did not import.
 - **The record names a thumbprint, not a key container.** If an administrator gives a recorded certificate's entry another key by hand
   (certlm.msc's import of the same certificate with another key), the tool takes that key for its own: on a re-import it keeps it and
