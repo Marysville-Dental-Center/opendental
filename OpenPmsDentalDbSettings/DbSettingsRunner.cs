@@ -49,7 +49,9 @@ namespace OpenPmsDentalDbSettings {
 	///window and the silent switches both come here. Everything is checked before anything is changed: the CA file, the .pfx and its password,
 	///the certificate in the store, the rule. Then the CA is copied, the .pfx imported, the password protected (DPAPI, machine scope) and
 	///FreeDentalConfig.xml written, keeping its other elements; after that, a client certificate the tool imported itself and the saved
-	///settings no longer use is removed from the store (PlanImportedCertificate).</summary>
+	///settings no longer use is removed from the store (PlanImportedCertificate). When the save fails after the import gave the store's entry
+	///the key it stored, the import is undone or recorded (UndoImportOfFailedSave), so no key of the tool's is left that the record does not
+	///name.</summary>
 	public static class DbSettingsRunner {
 		public const int EXIT_OK=0;
 		public const int EXIT_BAD_ARGS=1;
@@ -58,6 +60,9 @@ namespace OpenPmsDentalDbSettings {
 		public const int EXIT_TEST_FAILED=4;
 		public const int EXIT_REFUSED=5;
 		public const int EXIT_CANCELLED=6;
+		///<summary>The tests only: called right before ApplyOrThrow resets the rights of the saved FreeDentalConfig.xml (ResetConfigFileRights);
+		///an IOException there is rights that cannot be reset, after the settings were saved. Null in the tool.</summary>
+		internal static Action ActionBeforeConfigFileRightsResetForTests;
 
 		///<summary>The settings of the file at configPath, or new empty ones when there is no file or no DatabaseConnection element. Throws
 		///DbSettingsException (exit code 2) when the file is not XML.</summary>
@@ -187,8 +192,9 @@ namespace OpenPmsDentalDbSettings {
 			DbSettingsAuth dbSettingsAuth=ResolveAuth(dbSettingsRequest,dbConnectionConfigCurrent);
 			bool isPfxImport=false;
 			//Whether the store's entry of the .pfx's certificate uses the private key this save's import stored (ClientCertificateStore.ImportPfx):
-			//then the tool made the key the certificate has, records it, and removes it with that key when a later save stops using it. Not when
-			//the store held the certificate with a usable key before, which the import leaves as it is: the tool never removes that one.
+			//then the tool made the key the certificate has, records it, and removes it with that key when a later save stops using it; a save
+			//that fails after the import undoes it, or records it (UndoImportOfFailedSave). Not when the store held the certificate with a usable
+			//key of the tool's own before (the record names it), which the import leaves as it is.
 			bool isStoreKeyImported=false;
 			string password="";
 			if(dbSettingsAuth==DbSettingsAuth.Certificate) {
@@ -257,14 +263,19 @@ namespace OpenPmsDentalDbSettings {
 			string warning="";
 			string pathRecord=ImportedCertificateRecord.GetPath(caCopyPath);
 			string thumbprintRecorded=ImportedCertificateRecord.Read(pathRecord);
+			//The thumbprint this save's import returned, once ImportPfx has returned; "" before, and without an import.
+			string thumbprintImported="";
 			try {
 				if(listCaCertificates!=null) {
 					OfficeCaFile.WriteCopy(listCaCertificates,caCopyPath);
 				}
 				if(isPfxImport) {
-					string thumbprintImported=ClientCertificateStore.ImportPfx(dbSettingsRequest.PfxFile.Trim(),dbSettingsRequest.PfxPassword,out warning,
-						out isStoreKeyImported);
-					dbConnectionConfigNew.ClientCertThumbprint=DbConnectionConfig.NormalizeThumbprint(thumbprintImported);
+					//isStoreKeyImported is set only once ImportPfx has returned: an import that throws has undone itself.
+					string thumbprintReturned=ClientCertificateStore.ImportPfx(dbSettingsRequest.PfxFile.Trim(),dbSettingsRequest.PfxPassword,
+						thumbprintRecorded,out warning,out bool isStoreKeyImportedReturned);
+					thumbprintImported=DbConnectionConfig.NormalizeThumbprint(thumbprintReturned);
+					isStoreKeyImported=isStoreKeyImportedReturned;
+					dbConnectionConfigNew.ClientCertThumbprint=thumbprintImported;
 				}
 				if(dbSettingsAuth==DbSettingsAuth.Certificate) {
 					dbConnectionConfigNew.SetPassword("");
@@ -275,6 +286,14 @@ namespace OpenPmsDentalDbSettings {
 				}
 				dbConnectionConfigNew.SaveFile(configPath);
 			}
+			catch(Exception ex) when(isStoreKeyImported && !ClientCertificateStore.IsCriticalException(ex)) {
+				//The import gave the store's entry a key the tool made, which the users may read, and the settings were not saved: the import is
+				//undone, or recorded (UndoImportOfFailedSave), so that no key of the tool is left that no record names.
+				string message=(ex is DbSettingsException) ? ex.Message : "The connection settings could not be saved: "+ex.Message;
+				int exitCode=(ex is DbSettingsException) ? ((DbSettingsException)ex).ExitCode : EXIT_WRITE_FAILED;
+				throw new DbSettingsException(exitCode,AppendSentence(EndSentence(message),UndoImportOfFailedSave(thumbprintImported,
+					dbConnectionConfigCurrent.ClientCertThumbprint,thumbprintRecorded,pathRecord)));
+			}
 			catch(DbSettingsException) {
 				throw;
 			}
@@ -283,19 +302,21 @@ namespace OpenPmsDentalDbSettings {
 			{
 				throw new DbSettingsException(EXIT_WRITE_FAILED,"The connection settings could not be saved: "+ex.Message);
 			}
+			//The settings are saved: only now does the certificate they replaced go, and only one this tool imported itself. Also when the rights
+			//of the file cannot be reset below: the saved settings use the new certificate, so the record must name it, and the replaced one goes.
+			PlanImportedCertificate(thumbprintRecorded,dbConnectionConfigCurrent.ClientCertThumbprint,dbConnectionConfigNew.ClientCertThumbprint,isPfxImport,
+				isStoreKeyImported,out string thumbprintToRecord,out string thumbprintToRemove);
+			string warningRights="";
 			try {
+				ActionBeforeConfigFileRightsResetForTests?.Invoke();
 				ResetConfigFileRights(configPath);
 			}
 			catch(Exception ex) when(ex is IOException || ex is UnauthorizedAccessException || ex is InvalidOperationException
 				|| ex is System.Security.SecurityException)
 			{
-				throw new DbSettingsException(EXIT_WRITE_FAILED,"The connection settings were saved, but the rights of "+ProgramNames.ConfigFileName
-					+" could not be set back to those of the program folder: "+ex.Message+" Remove any right of Users on the file in its Properties, "
-					+"Security tab, then save again.");
+				warningRights="The connection settings were saved, but the rights of "+ProgramNames.ConfigFileName+" could not be set back to those "
+					+"of the program folder: "+ex.Message+" Remove any right of Users on the file in its Properties, Security tab, then save again.";
 			}
-			//The settings are saved: only now does the certificate they replaced go, and only one this tool imported itself.
-			PlanImportedCertificate(thumbprintRecorded,dbConnectionConfigCurrent.ClientCertThumbprint,dbConnectionConfigNew.ClientCertThumbprint,isPfxImport,
-				isStoreKeyImported,out string thumbprintToRecord,out string thumbprintToRemove);
 			try {
 				ImportedCertificateRecord.Write(pathRecord,thumbprintToRecord);
 			}
@@ -304,17 +325,63 @@ namespace OpenPmsDentalDbSettings {
 					+"that certificate when it is replaced.");
 			}
 			warning=AppendSentence(warning,ClientCertificateStore.RemoveImported(thumbprintToRemove));
+			if(warningRights!="") {
+				throw new DbSettingsException(EXIT_WRITE_FAILED,AppendSentence(warningRights,warning));
+			}
 			#endregion Change things
 			return warning;
 		}
 
+		///<summary>After a save that failed once ImportPfx had given the store's entry the key it stored (isStoreKeyImported), before the settings
+		///were saved: the tool's key must not be left Users-readable with no record naming it (owner decision of 2026-11-02). The imported
+		///certificate is removed with that key (RemoveImported), unless the settings as they still are use it, or the record names it: then it
+		///stays, and is recorded at once, so that the save that later stops using it removes it with that key. Returns what was done, or the
+		///warning that says what is left; never throws.</summary>
+		private static string UndoImportOfFailedSave(string thumbprintImported,string thumbprintCurrent,string thumbprintRecorded,string pathRecord) {
+			thumbprintImported=DbConnectionConfig.NormalizeThumbprint(thumbprintImported);
+			thumbprintCurrent=DbConnectionConfig.NormalizeThumbprint(thumbprintCurrent);
+			thumbprintRecorded=DbConnectionConfig.NormalizeThumbprint(thumbprintRecorded);
+			if(thumbprintImported=="") {
+				return "";
+			}
+			if(thumbprintImported!=thumbprintCurrent && thumbprintImported!=thumbprintRecorded) {
+				string warningRemove=ClientCertificateStore.RemoveImported(thumbprintImported);
+				if(warningRemove!="") {
+					return warningRemove;
+				}
+				return "The client certificate this save imported was removed from the computer's certificate store again, with its private key.";
+			}
+			if(thumbprintImported==thumbprintRecorded) {
+				return "";//Recorded already: a later save that stops using it removes it.
+			}
+			try {
+				ImportedCertificateRecord.Write(pathRecord,thumbprintImported);
+			}
+			catch(Exception ex) when(!ClientCertificateStore.IsCriticalException(ex)) {
+				return "The client certificate this save imported ("+thumbprintImported+") stays in the computer's certificate store, which the "
+					+"settings use, but the tool could not record it ("+ex.Message.Trim()+"), so it will not remove that certificate when it is "
+					+"replaced. Remove it with its private key as an administrator once no settings use it, in PowerShell: Remove-Item "
+					+"Cert:\\LocalMachine\\My\\"+thumbprintImported+" -DeleteKey.";
+			}
+			return "";
+		}
+
+		///<summary>The text, trimmed, ending with a full stop, so that the next sentence can follow it.</summary>
+		private static string EndSentence(string text) {
+			text=(text??"").Trim();
+			if(text=="" || text.EndsWith(".") || text.EndsWith("!") || text.EndsWith("?")) {
+				return text;
+			}
+			return text+".";
+		}
+
 		///<summary>What a save does with the certificate the tool imported itself (owner decision of 2026-11-02). thumbprintToRecord: the
 		///certificate the saved settings use when its store entry uses the private key the tool's import stored (isStoreKeyImported, from
-		///ClientCertificateStore.ImportPfx: a certificate the store did not have, or one whose entry had no usable key in the import's key set and
-		///took the import's, DCFU3), or the one already recorded when the settings keep it; else "". thumbprintToRemove: the recorded certificate
-		///when the settings used it and now stop (another certificate, or the password); else "". A certificate whose key the tool did not make
-		///(one named by thumbprint, or one the store held with a usable key before its .pfx was imported) is never recorded, so never removed.
-		///Thumbprints are normalized; "" means none.</summary>
+		///ClientCertificateStore.ImportPfx: a certificate the store did not have, or one whose entry had no usable key of the tool's own in the
+		///import's key set and took the import's, DCFU3), or the one already recorded when the settings keep it; else "". thumbprintToRemove: the
+		///recorded certificate when the settings used it and now stop (another certificate, or the password); else "". A certificate whose key
+		///the tool did not make and whose entry keeps that key (one named by thumbprint) is never recorded, so never removed. Thumbprints are
+		///normalized; "" means none.</summary>
 		public static void PlanImportedCertificate(string thumbprintRecorded,string thumbprintCurrent,string thumbprintNew,bool isPfxImported,
 			bool isStoreKeyImported,out string thumbprintToRecord,out string thumbprintToRemove)
 		{

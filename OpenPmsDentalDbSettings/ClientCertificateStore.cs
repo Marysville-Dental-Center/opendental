@@ -54,6 +54,11 @@ namespace OpenPmsDentalDbSettings {
 		///<summary>The tests only: called instead of the CAPI delete (PersistKeyInCsp=false and Clear) of DeleteCapiKey; doing nothing there is a
 		///CRYPT_DELETEKEYSET that fails without a word, which the check after the delete must report. Null in the tool.</summary>
 		internal static Action<RSACryptoServiceProvider> ActionInsteadOfCapiKeyDeleteForTests;
+		///<summary>The tests only: called instead of GrantUsersReadToPrivateKey with each certificate whose private key the tool would give
+		///BUILTIN\Users read access to, also for the tests' store of the current user, where the tool grants nothing otherwise; so a test sees
+		///which keys the tool makes readable for the users in LocalMachine\My (never one it did not create). Throwing there is a grant that fails.
+		///Null in the tool.</summary>
+		internal static Action<X509Certificate2> ActionInsteadOfUsersReadGrantForTests;
 		///<summary>The tests only: the name of a store of the current user (the tests' ClientCertificateTestStore) that the tool's public methods
 		///(ImportPfx, RemoveImported, FindInStore) use instead of LocalMachine\My, so that DbSettingsRunner.Apply can be tested without the
 		///computer's store; the import then uses the user's key set and gives no read access, as the internal overloads do for such a store.
@@ -116,27 +121,37 @@ namespace OpenPmsDentalDbSettings {
 		///BUILTIN\Users read access to its private key. Reading the file with PersistKeySet stores the key of every certificate of the file that
 		///has one; the import deletes again the ones it does not use, as DirectCertificateImport does: the keys of the file's other certificates
 		///(its CA's, for example), and every key it stored, the client certificate's too, when the store refuses the certificate, or when the
-		///store already holds it with a usable key in the machine key set (its entry then stays as it is, with that key: KeepCertificateInStore).
+		///store already holds it with a usable key in the machine key set that is the tool's own (its entry then stays as it is, with that key:
+		///KeepCertificateInStore). The tool's own: the key this import stored, or that of the certificate thumbprintRecorded names, which the
+		///tool's record says it imported before (ImportedCertificateRecord; "" for none). A usable key the tool did not create is left untouched,
+		///and never made readable for the users: the entry takes the import's key, as one with a key in another key set does (IsEntryKeyUsable).
 		///Never a key that a certificate of the store uses (DeleteKeysNotInStore). Returns its thumbprint; warning is "" or says what the
 		///program's users may lack, which key could not be deleted, and which earlier key of the store's entry was left. isStoreKeyImported: the
 		///store's entry uses the private key this import stored, so the tool made the key the certificate now has (DbSettingsRunner then
 		///records it). Needs administrator rights. Throws DbSettingsException (exit code 2 for the file, 3 for the store), whose message also
 		///names a key that could not be deleted again.</summary>
-		public static string ImportPfx(string pfxPath,string password,out string warning,out bool isStoreKeyImported) {
-			return ImportPfx(pfxPath,password,GetToolStoreLocation(),GetToolStoreName(),out warning,out isStoreKeyImported);
+		public static string ImportPfx(string pfxPath,string password,string thumbprintRecorded,out string warning,out bool isStoreKeyImported) {
+			return ImportPfx(pfxPath,password,GetToolStoreLocation(),GetToolStoreName(),thumbprintRecorded,out warning,out isStoreKeyImported);
 		}
 
-		///<summary>ImportPfx into the store with this location and name, without isStoreKeyImported.</summary>
+		///<summary>ImportPfx into the store with this location and name, with no record and without isStoreKeyImported.</summary>
 		internal static string ImportPfx(string pfxPath,string password,StoreLocation storeLocation,string storeName,out string warning) {
-			return ImportPfx(pfxPath,password,storeLocation,storeName,out warning,out bool isStoreKeyImported);
+			return ImportPfx(pfxPath,password,storeLocation,storeName,"",out warning,out bool isStoreKeyImported);
+		}
+
+		///<summary>ImportPfx into the store with this location and name, with no record.</summary>
+		internal static string ImportPfx(string pfxPath,string password,StoreLocation storeLocation,string storeName,out string warning,
+			out bool isStoreKeyImported)
+		{
+			return ImportPfx(pfxPath,password,storeLocation,storeName,"",out warning,out isStoreKeyImported);
 		}
 
 		///<summary>ImportPfx into the store with this location and name. The tool's is LocalMachine\My: the machine key set, and the users' read
 		///access to the key. The tests use a store of the current user with a name of its own, which they make and delete: the current user's key
 		///set, and no read access for the users (the key is the user's own), as DirectCertificateImport does for a store of the current user.
 		///</summary>
-		internal static string ImportPfx(string pfxPath,string password,StoreLocation storeLocation,string storeName,out string warning,
-			out bool isStoreKeyImported)
+		internal static string ImportPfx(string pfxPath,string password,StoreLocation storeLocation,string storeName,string thumbprintRecorded,
+			out string warning,out bool isStoreKeyImported)
 		{
 			X509KeyStorageFlags x509KeyStorageFlags=X509KeyStorageFlags.PersistKeySet;
 			if(storeLocation==StoreLocation.LocalMachine) {
@@ -158,7 +173,7 @@ namespace OpenPmsDentalDbSettings {
 				X509Certificate2Collection x509Certificate2Collection=ImportCollection(pfxPath,password,x509KeyStorageFlags);
 				try {
 					return AddClientCertificate(x509Store,storeText,x509Certificate2Collection,pfxPath,storeLocation==StoreLocation.LocalMachine,
-						out warning,out isStoreKeyImported);
+						thumbprintRecorded,out warning,out isStoreKeyImported);
 				}
 				finally {
 					ResetAll(x509Certificate2Collection);//The keys in use stay in the key set (PersistKeySet); only these objects are released.
@@ -168,12 +183,13 @@ namespace OpenPmsDentalDbSettings {
 
 		///<summary>ImportPfx after the file's keys were stored: adds the client certificate to the open store, deletes the keys of the file's
 		///other certificates, and gives the users read access to its key (isMachine, which is also the key set the import stored the keys in). A
-		///client certificate that the store already holds with a usable key in that key set is not added again (KeepCertificateInStore). When
-		///anything fails before the certificate is in the store, every key the import stored is deleted again and DbSettingsException says why,
-		///and which key could not be deleted. The catch lets the critical exceptions through (IsCriticalException), where
-		///DirectCertificateImport.AddPrivate catches every one: docs/port-notes/DIRECT-CERT-FOLLOWUP.md, last round, item 5.</summary>
+		///client certificate that the store already holds with a usable key in that key set that is the tool's own (IsEntryKeyTools) is not added
+		///again (KeepCertificateInStore). When anything fails before the certificate is in the store, every key the import stored is deleted
+		///again and DbSettingsException says why, and which key could not be deleted. The catch lets the critical exceptions through
+		///(IsCriticalException), where DirectCertificateImport.AddPrivate catches every one: docs/port-notes/DIRECT-CERT-FOLLOWUP.md, last round,
+		///item 5.</summary>
 		private static string AddClientCertificate(X509Store x509Store,string storeText,X509Certificate2Collection x509Certificate2Collection,
-			string pfxPath,bool isMachine,out string warning,out bool isStoreKeyImported)
+			string pfxPath,bool isMachine,string thumbprintRecorded,out string warning,out bool isStoreKeyImported)
 		{
 			warning="";
 			isStoreKeyImported=false;
@@ -182,13 +198,22 @@ namespace OpenPmsDentalDbSettings {
 			List<X509Certificate2> listKeysStored=x509Certificate2Collection.Cast<X509Certificate2>().Where(x => x.HasPrivateKey).ToList();
 			X509Certificate2 x509Certificate2;
 			X509Certificate2 x509Certificate2InStore=null;
-			//The store's entry's earlier key, when it is in another key set or cannot be identified: left untouched, and the warning says where.
+			//The store's entry's earlier key, when it is in another key set, cannot be identified, or is a usable key the tool did not create: left
+			//untouched, and the warning says where.
 			string warningEntryKey="";
+			//The kept entry's key is the one this import stored (IsEntryKeyTools).
+			bool isEntryKeyImported=false;
 			try {
 				ActionAfterKeysStoredForTests?.Invoke(x509Certificate2Collection);
 				x509Certificate2=GetClientCertificate(x509Certificate2Collection,pfxPath);
 				x509Certificate2InStore=FindInStoreNow(x509Store,x509Certificate2.Thumbprint);
 				if(x509Certificate2InStore!=null && !IsEntryKeyUsable(x509Certificate2InStore,isMachine,storeText,out warningEntryKey)) {
+					x509Certificate2InStore.Reset();
+					x509Certificate2InStore=null;
+				}
+				if(x509Certificate2InStore!=null && !IsEntryKeyTools(x509Certificate2InStore,x509Certificate2,thumbprintRecorded,isMachine,storeText,
+					out warningEntryKey,out isEntryKeyImported))
+				{
 					x509Certificate2InStore.Reset();
 					x509Certificate2InStore=null;
 				}
@@ -214,7 +239,7 @@ namespace OpenPmsDentalDbSettings {
 			}
 			if(x509Certificate2InStore!=null) {
 				try {
-					return KeepCertificateInStore(x509Store,x509Certificate2InStore,x509Certificate2,listKeysStored,isMachine,out warning,
+					return KeepCertificateInStore(x509Store,x509Certificate2InStore,listKeysStored,isMachine,isEntryKeyImported,out warning,
 						out isStoreKeyImported);
 				}
 				finally {
@@ -229,9 +254,9 @@ namespace OpenPmsDentalDbSettings {
 			warning=AppendSentence(warning,GetKeysNotDeletedText(listUnused,x509Store,new List<X509Certificate2> { x509Certificate2 },
 				"The client certificate was imported, but a private key of another certificate of the file, which the tool stored and does not use, "
 				+"could not be deleted").Trim());
-			if(isMachine) {
+			if(IsUsersReadGranted(isMachine)) {
 				try {
-					GrantUsersReadToPrivateKey(x509Certificate2);
+					GrantUsersRead(x509Certificate2);//The key this import stored.
 				}
 				catch(Exception ex) {
 					warning=AppendSentence(warning,"The client certificate was imported, but the users of this computer may not be able to use "
@@ -240,6 +265,55 @@ namespace OpenPmsDentalDbSettings {
 				}
 			}
 			return x509Certificate2.Thumbprint;
+		}
+
+		///<summary>True when the import gives BUILTIN\Users read access to the key it keeps: for LocalMachine\My (isMachine), and for the tests'
+		///store when they watch the grants (ActionInsteadOfUsersReadGrantForTests).</summary>
+		private static bool IsUsersReadGranted(bool isMachine) {
+			return isMachine || ActionInsteadOfUsersReadGrantForTests!=null;
+		}
+
+		///<summary>GrantUsersReadToPrivateKey, or the tests' ActionInsteadOfUsersReadGrantForTests in its place. Only ever for a key the tool
+		///created: the one an import stored, or that of the certificate the tool's record names (IsEntryKeyTools).</summary>
+		private static void GrantUsersRead(X509Certificate2 x509Certificate2) {
+			if(ActionInsteadOfUsersReadGrantForTests!=null) {
+				ActionInsteadOfUsersReadGrantForTests(x509Certificate2);
+				return;
+			}
+			GrantUsersReadToPrivateKey(x509Certificate2);
+		}
+
+		///<summary>True when the store's entry of the client certificate, whose key is usable (IsEntryKeyUsable), has a key the tool created, so
+		///that the entry can stay as it is and its key may get the users' read access (KeepCertificateInStore): the entry names the key container
+		///this import stored the client certificate's key in (isEntryKeyImported: a CAPI key whose container the entry names, deleted before and
+		///stored there again by this import), or the tool's record names the certificate (thumbprintRecorded: the tool imported it before, with
+		///the key its entry took then). Any other usable key is not the tool's (an administrator put the certificate there with certlm.msc or
+		///Import-PfxCertificate, say): the owner's rule of 2026-11-02 forbids touching it, so it never gets the users' read access; the entry takes
+		///the import's key instead, and warningEntryKey says that the earlier key was left untouched, where it is, and how to delete it. Read from
+		///the key provider information, without opening a key.</summary>
+		private static bool IsEntryKeyTools(X509Certificate2 x509Certificate2InStore,X509Certificate2 x509Certificate2,string thumbprintRecorded,
+			bool isMachine,string storeText,out string warningEntryKey,out bool isEntryKeyImported)
+		{
+			warningEntryKey="";
+			KeyProvInfo keyProvInfoEntry=ReadKeyProvInfo(x509Certificate2InStore);
+			KeyProvInfo keyProvInfoImport=ReadKeyProvInfo(x509Certificate2);
+			isEntryKeyImported=keyProvInfoEntry.IsNamed && !keyProvInfoEntry.IsUnknown && keyProvInfoImport.IsNamed && !keyProvInfoImport.IsUnknown
+				&& string.Equals(keyProvInfoEntry.Identity,keyProvInfoImport.Identity,StringComparison.OrdinalIgnoreCase);
+			if(isEntryKeyImported) {
+				return true;
+			}
+			if(!string.IsNullOrWhiteSpace(thumbprintRecorded)
+				&& string.Equals(thumbprintRecorded.Trim(),x509Certificate2InStore.Thumbprint,StringComparison.OrdinalIgnoreCase))
+			{
+				return true;
+			}
+			if(keyProvInfoEntry.IsUnknown) {
+				//IsEntryKeyUsable already turned such an entry away; this keeps the warning true if that changes.
+				warningEntryKey=GetEntryKeyLeftText(keyProvInfoEntry,isMachine,storeText);
+				return false;
+			}
+			warningEntryKey=GetEntryKeyNotToolsText(keyProvInfoEntry,isMachine,storeText);
+			return false;
 		}
 
 		///<summary>True when the store's entry of the client certificate can stay as it is (KeepCertificateInStore): its key provider information
@@ -270,39 +344,56 @@ namespace OpenPmsDentalDbSettings {
 				return start+"but the private key its entry names could not be identified: "+EndSentence(keyProvInfoEntry.Problem)+" The import gave "
 					+"the entry the private key it stored, and left the entry's earlier key, if there is one, untouched.";
 			}
-			string keySetEntry=keyProvInfoEntry.IsMachine ? "the computer's key set" : "the user key set of the Windows account that put it there";
+			string keySetEntry=GetKeySetText(keyProvInfoEntry);
 			string keySetImport=isMachine ? "the computer's key set" : "the current user's key set";
+			return start+"with its private key in "+keySetEntry+(isMachine ? ", which the program's users cannot use" : "")+", not in "+keySetImport
+				+", which the import uses. The import gave the entry the private key it stored, and left the entry's earlier key untouched: "
+				+GetEntryKeyWhereText(keyProvInfoEntry);
+		}
+
+		///<summary>The warning for a store entry of the client certificate with a usable private key in the import's key set that the tool did
+		///not create (IsEntryKeyTools): the import gave the entry the key it stored, and left the entry's earlier key untouched, without giving the
+		///users read access to it, where it is, with the command that deletes it once no other certificate uses it.</summary>
+		private static string GetEntryKeyNotToolsText(KeyProvInfo keyProvInfoEntry,bool isMachine,string storeText) {
+			return "The client certificate was already in the computer's certificate store ("+storeText+") with a usable private key that this "
+				+"tool did not import"+(isMachine ? ", so the tool gives the program's users no read access to that key" : "")+". The import gave the "
+				+"entry the private key it stored, and left the entry's earlier key untouched: "+GetEntryKeyWhereText(keyProvInfoEntry);
+		}
+
+		///<summary>"the computer's key set", or the user key set of the account that put the entry's key there.</summary>
+		private static string GetKeySetText(KeyProvInfo keyProvInfo) {
+			return keyProvInfo.IsMachine ? "the computer's key set" : "the user key set of the Windows account that put it there";
+		}
+
+		///<summary>Where the entry's earlier key is, and the certutil command that deletes it: "provider ..., key container ..., in .... Who can
+		///delete it, once no other certificate uses it: certutil ...".</summary>
+		private static string GetEntryKeyWhereText(KeyProvInfo keyProvInfoEntry) {
 			string who=keyProvInfoEntry.IsMachine ? "An administrator" : "That account";
 			string certutil="certutil "+(keyProvInfoEntry.IsMachine ? "" : "-user ")+"-csp \""+keyProvInfoEntry.ProviderName+"\" -delkey \""
 				+keyProvInfoEntry.ContainerName+"\"";
-			return start+"with its private key in "+keySetEntry+(isMachine ? ", which the program's users cannot use" : "")+", not in "+keySetImport
-				+", which the import uses. The import gave the entry the private key it stored, and left the entry's earlier key untouched: provider "
-				+keyProvInfoEntry.ProviderName+", key container "+keyProvInfoEntry.ContainerName+", in "+keySetEntry+". "+who+" can delete it, once "
-				+"no other certificate uses it: "+certutil+".";
+			return "provider "+keyProvInfoEntry.ProviderName+", key container "+keyProvInfoEntry.ContainerName+", in "+GetKeySetText(keyProvInfoEntry)
+				+". "+who+" can delete it, once no other certificate uses it: "+certutil+".";
 		}
 
-		///<summary>AddClientCertificate for a client certificate that the store already holds with a usable key in the import's key set (as when
-		///setup runs again with the same .pfx): the store's entry stays as it is, with its key, as DirectCertificateImport leaves such a
-		///certificate; the store's add would give the entry the key the import just stored and leave the key it had on the computer, named by no
-		///certificate and readable by the users. So every key this import stored is deleted again, the client certificate's own too;
-		///DeleteKeysNotInStore keeps the entry's key, which a certificate of the store uses, so no key that was there before is deleted. The users
-		///get read access to the entry's key (isMachine), as to an imported one: the program reads the certificate as the signed-in user. Returns
-		///its thumbprint; warning is "" or says which key could not be deleted and what the users may lack. isStoreKeyImported: the entry names
-		///the key container the import stored the client certificate's key in (a CAPI key whose container the entry names, deleted before and
-		///stored there again by this import), so the entry's key is the one this import made.</summary>
-		private static string KeepCertificateInStore(X509Store x509Store,X509Certificate2 x509Certificate2InStore,X509Certificate2 x509Certificate2,
-			List<X509Certificate2> listKeysStored,bool isMachine,out string warning,out bool isStoreKeyImported)
+		///<summary>AddClientCertificate for a client certificate that the store already holds with a usable key in the import's key set that is
+		///the tool's own (IsEntryKeyTools; as when setup runs again with the same .pfx): the store's entry stays as it is, with its key, as
+		///DirectCertificateImport leaves such a certificate; the store's add would give the entry the key the import just stored and leave the key
+		///it had on the computer, named by no certificate and readable by the users. So every key this import stored is deleted again, the client
+		///certificate's own too; DeleteKeysNotInStore keeps the entry's key, which a certificate of the store uses, so no key that was there
+		///before is deleted. The users get read access to the entry's key (isMachine), the tool's own, as to an imported one: the program reads
+		///the certificate as the signed-in user. Returns its thumbprint; warning is "" or says which key could not be deleted and what the users
+		///may lack. isStoreKeyImported: isEntryKeyImported, the entry names the key container the import stored the client certificate's key in,
+		///so the entry's key is the one this import made (one the record names is recorded already).</summary>
+		private static string KeepCertificateInStore(X509Store x509Store,X509Certificate2 x509Certificate2InStore,List<X509Certificate2> listKeysStored,
+			bool isMachine,bool isEntryKeyImported,out string warning,out bool isStoreKeyImported)
 		{
-			KeyProvInfo keyProvInfoEntry=ReadKeyProvInfo(x509Certificate2InStore);
-			KeyProvInfo keyProvInfoImport=ReadKeyProvInfo(x509Certificate2);
-			isStoreKeyImported=keyProvInfoEntry.IsNamed && !keyProvInfoEntry.IsUnknown && keyProvInfoImport.IsNamed && !keyProvInfoImport.IsUnknown
-				&& string.Equals(keyProvInfoEntry.Identity,keyProvInfoImport.Identity,StringComparison.OrdinalIgnoreCase);
+			isStoreKeyImported=isEntryKeyImported;
 			string start="The client certificate was already in the computer's certificate store with a usable private key and stays as it is, but ";
 			warning=GetKeysNotDeletedText(listKeysStored,x509Store,new List<X509Certificate2>(),start+"a private key of the file, which the tool "
 				+"stored and does not use, could not be deleted").Trim();
-			if(isMachine) {
+			if(IsUsersReadGranted(isMachine)) {
 				try {
-					GrantUsersReadToPrivateKey(x509Certificate2InStore);
+					GrantUsersRead(x509Certificate2InStore);//The tool's own key (IsEntryKeyTools).
 				}
 				catch(Exception ex) {
 					warning=AppendSentence(warning,start+"the users of this computer may not be able to use its private key: "+EndSentence(ex.Message)
