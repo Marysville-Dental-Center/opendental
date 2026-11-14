@@ -275,6 +275,7 @@ namespace OpenPmsDentalBusiness{
 				string command=GetVerifyGridListQuery(dateStartStandard,dateEndStandard,datePatEligibilityLastVerifiedStandard,datePlanBenefitsLastVerifiedStandard,
 					listClinicNums,listRegionDefNums,statusDefNum,userNum,listCarrierNums,excludePatVerifyWhenNoIns,excludePatClones,listInsFilingCodeNumsStandard);
 				DataTable table=Db.GetTable(command);
+				RemoveLaterAppointmentRows(table);
 				List<InsVerifyGridObject> listInsVerifyGridObjectsStandard=TableToListInsVerifyGridObjects(table,isForMedicaid:false);
 				listInsVerifyGridObjects.AddRange(listInsVerifyGridObjectsStandard);
 			}
@@ -283,6 +284,7 @@ namespace OpenPmsDentalBusiness{
 				string command=GetVerifyGridListQuery(dateStartMedicaid,dateEndMedicaid,datePatEligibilityLastVerifiedMedicaid,datePlanBenefitsLastVerifiedMedicaid,
 					listClinicNums,listRegionDefNums,statusDefNum,userNum,listCarrierNums,excludePatVerifyWhenNoIns,excludePatClones,listInsFilingCodeNumsMedicaid);
 				DataTable table=Db.GetTable(command);
+				RemoveLaterAppointmentRows(table);
 				List<InsVerifyGridObject> listInsVerifyGridObjectsMedicaid=TableToListInsVerifyGridObjects(table,isForMedicaid:true);
 				listInsVerifyGridObjects.AddRange(listInsVerifyGridObjectsMedicaid);
 			}
@@ -352,9 +354,19 @@ namespace OpenPmsDentalBusiness{
 					AND (insverify.DateLastVerified<"+POut.Date(datePatEligibilityLastVerified)+@"
 						"+(checkPatEnrollmentYear?@"OR (insverify.DateLastVerified<DATE_FORMAT(appointment.AptDateTime,CONCAT('%Y-',LPAD(MonthRenew,2,'0'),'-01')) 
 							AND DATE_FORMAT(appointment.AptDateTime,CONCAT('%Y-',LPAD(MonthRenew,2,'0'),'-01'))<="+DbHelper.DtimeToDate("appointment.AptDateTime")+")":"")+@"))	";
+			//Only the latest verification of a verify type and key, as Open Dental 23.3.54 to 24.2.1 picked it (JobNum 53236) and GetOneByFKey does: a row of
+			//the same type and key verified later, or on the same date and inserted later, rules a row out (insverifylater.InsVerifyNum IS NULL below), before
+			//the conditions of the list. So a key whose latest verification is not due is not listed for an older row that is. Joined on insverify.FKey,
+			//so MySQL uses that index here too; 24.2.1 joined a subquery over the whole table instead (INSV2).
+			string insVerifyLaterJoin=@"
+				LEFT JOIN insverify insverifylater ON insverifylater.VerifyType=insverify.VerifyType
+					AND insverifylater.FKey=insverify.FKey
+					AND (insverifylater.DateLastVerified>insverify.DateLastVerified
+						OR (insverifylater.DateLastVerified=insverify.DateLastVerified AND insverifylater.InsVerifyNum>insverify.InsVerifyNum)) ";
 			string whereClause=@"
 				WHERE appointment.AptDateTime BETWEEN "+DbHelper.DtimeToDate(POut.Date(dateStart))+" AND "+DbHelper.DtimeToDate(POut.Date(dateEnd.AddDays(1)))+@" 
 				AND appointment.AptStatus IN ("+POut.Int((int)ApptStatus.Scheduled)+","+POut.Int((int)ApptStatus.Complete)+@")
+				AND insverifylater.InsVerifyNum IS NULL
 				"+(userNum==-1 ? "" : "AND insverify.UserNum="+POut.Long(userNum))+@"
 				"+(defNumStatus<1 ? "" : "AND insverify.DefNum="+POut.Long(defNumStatus))+@"
 				"+(excludePatClones ? "AND patientlink.PatNumTo IS NULL" : "")+@"
@@ -364,13 +376,45 @@ namespace OpenPmsDentalBusiness{
 			string command=
 				mainQuery+
 				insVerifyJoin1+
+				insVerifyLaterJoin+
 				whereClause+@"
 				UNION ALL
 				"+
 				mainQuery+
 				insVerifyJoin2+
+				insVerifyLaterJoin+
 				whereClause;
-			return "SELECT * FROM ("+command+") AS iv GROUP BY PatPlanNum,FKey HAVING MAX(DateLastVerified) ORDER BY AptDateTime";
+			//A row for each appointment that passes the list's conditions, with the latest verification of its patient plan, verify type and key; the
+			//verify type keeps a patient plan's eligibility row (FKey=PatPlanNum) and its plan's benefits row (FKey=PlanNum) apart when the plan's PlanNum
+			//equals the PatPlanNum (INSVERIFY). Open Dental's GROUP BY PatPlanNum,FKey HAVING MAX(DateLastVerified) (24.1.71) kept whichever row MariaDB
+			//read first of a group (INSV2); RemoveLaterAppointmentRows keeps the earliest appointment of each key instead, in C#, after this query.
+			//DateLastVerified alone is that HAVING on the rows of one key, which share one verification: false only for the zero date 0000-00-00, which
+			//the program never writes. The order is complete: AptDateTime, then AptNum, puts the earliest appointment of each key first, which
+			//RemoveLaterAppointmentRows relies on, and the grid rows TableToListInsVerifyGridObjects builds (the first row of a plan carries its
+			//benefits) do not vary either.
+			return "SELECT * FROM ("+command+") AS iv WHERE DateLastVerified ORDER BY AptDateTime,AptNum,PatPlanNum,VerifyType";
+		}
+
+		///<summary>Removes from the rows of GetVerifyGridListQuery every row of a patient plan, verify type and key but the first, so each key keeps
+		///the earliest appointment in the range: the query orders the rows by AptDateTime, then AptNum (the lower AptNum among appointments at the same
+		///time). Only appointments that passed the query's conditions are there to choose from, so with a year check on it is the earliest appointment
+		///the verification is due for. The rows left keep the query's order.</summary>
+		private static void RemoveLaterAppointmentRows(DataTable table) {
+			Meth.NoCheckMiddleTierRole();
+			//The choice is made here, not in the query: SQL would need a window function, ROW_NUMBER() OVER(PARTITION BY ...), which needs MariaDB 10.2
+			//or MySQL 8.0, while the program still starts on MySQL 5.0 and later (PrefL.CheckMySqlVersion). A bug fix must not raise the database the
+			//program needs (INSV3). GetVerifyGridList calls it after its query, so with the Middle Tier it runs on the server side of the call.
+			HashSet<(long PatPlanNum,int VerifyType,long FKey)> hashSetKeys=new HashSet<(long PatPlanNum,int VerifyType,long FKey)>();
+			List<DataRow> listRowsLater=new List<DataRow>();
+			for(int i=0;i<table.Rows.Count;i++) {
+				DataRow row=table.Rows[i];
+				if(!hashSetKeys.Add((PIn.Long(row["PatPlanNum"].ToString()),PIn.Int(row["VerifyType"].ToString()),PIn.Long(row["FKey"].ToString())))) {
+					listRowsLater.Add(row);
+				}
+			}
+			for(int i=0;i<listRowsLater.Count;i++) {
+				table.Rows.Remove(listRowsLater[i]);
+			}
 		}
 
 		///<summary>Converts a table of insverify objects into a list of InsVerifyGridObject.</summary>

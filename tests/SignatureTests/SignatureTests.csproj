@@ -3,11 +3,6 @@
        (25.1), domain login in change-user prompts and sheetfield.UserSigned (25.2), and the Treatment Planned Procedure Edit Fee permission (25.2).
        Every .cs file under this folder is compiled. Database tests use a scratch database on the local MariaDB and are skipped when it is unreachable. -->
   <ItemGroup>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\..\CodeBase\xCodeBase.csproj" />
     <ProjectReference Include="..\..\DataConnectionBase\xDataConnectionBase.csproj" />
     <ProjectReference Include="..\..\OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj" />

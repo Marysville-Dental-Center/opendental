@@ -16,6 +16,9 @@ namespace DataConnectionBase {
 	///SslMode=VerifyFull, SslCa (the office CA certificate file, this computer's own once one is configured) and a client credential: a
 	///certificate from the LocalMachine store by thumbprint, or a password. Every MySqlConnection a shipped binary creates comes from
 	///NewMySqlConnection, so the refusal happens before any network connection is attempted. DNS is never asked to decide.
+	///SslMode=VerifyFull and SslCa are what the program's string says; for a server over the network MySqlConnector gets SslMode=Required without
+	///SslCa and the program's own check of the server's certificate in the TLS handshake, before any login (GetDriverConnectionString,
+	///OfficeCaServerVerifier; DB-SEC 3 of the spec, decided as (c)).
 	///A read-only or reporting server of its own, named in the database preferences, connects as it did before (owner decision of 2026-11-02,
 	///spec section 5.1): only the exact strings DataConnection.BuildPreferenceServerConnectionString built in this process pass without the rule
 	///(IsPreferenceServerConnection), never a string because of what it contains.
@@ -294,10 +297,11 @@ namespace DataConnectionBase {
 		}
 
 		///<summary>The only way a shipped binary creates a MySqlConnection: checks the string with the rule first (CheckConnectionString), so a
-		///refused connection never reaches the network. Throws DbConnectionRefusedException.</summary>
+		///refused connection never reaches the network, then creates the connection the driver gets for it (CreateConnection: for a server over
+		///the network with a CA, the program verifies the server itself in the TLS handshake). Throws DbConnectionRefusedException.</summary>
 		public static MySqlConnection NewMySqlConnection(string connectionString) {
 			CheckConnectionString(connectionString);
-			return new MySqlConnection(connectionString);
+			return CreateConnection(connectionString);
 		}
 
 		///<summary>NewMySqlConnection for a connection of its own, outside the pool (Pooling=false), as DataConnectionCancelable keeps for a user
@@ -307,9 +311,139 @@ namespace DataConnectionBase {
 			CheckConnectionString(connectionString);
 			MySqlConnectionStringBuilder builder=new MySqlConnectionStringBuilder(connectionString??"");
 			builder.Pooling=false;
-			return new MySqlConnection(builder.ConnectionString);
+			return CreateConnection(builder.ConnectionString);
 		}
 		#endregion The rule
+
+		#region The server's certificate (DB-SEC 3)
+		///<summary>The driver strings of GetDriverConnectionString, by the program's string. Emptied when it grows past MAX_PASSED.</summary>
+		private static readonly Dictionary<string,DriverConnection> _dictDriverConnections=new Dictionary<string,DriverConnection>(StringComparer.Ordinal);
+		private static readonly object _lockDriverConnections=new object();
+		///<summary>Which check each driver string that the program verifies itself was first given: "VerifyFull|<CA path>" or "VerifyCA|<CA path>".
+		///MySqlConnector pools sessions by connection string, and a pooled session was verified once, by the check of the connection that made it.
+		///Two program strings that differ only in SslMode or SslCa give the same driver string, so the second check gets Pooling=false instead of
+		///sharing the first one's pool. Never emptied (one entry per server, database and account); past MAX_DRIVER_POOLS a new driver string gets
+		///Pooling=false.</summary>
+		private static readonly Dictionary<string,string> _dictPoolChecks=new Dictionary<string,string>(StringComparer.Ordinal);
+		private const int MAX_DRIVER_POOLS=1024;
+		///<summary>The program's string of each connection CreateConnection made with a driver string of its own, for GetConnectionString.</summary>
+		private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<MySqlConnection,string> _tableProgramStrings
+			=new System.Runtime.CompilerServices.ConditionalWeakTable<MySqlConnection,string>();
+
+		///<summary>What GetDriverConnectionString decided for a program string: the driver string, and the check when the program verifies the
+		///server itself (CaPath "" otherwise).</summary>
+		private class DriverConnection {
+			public string DriverString;
+			public string CaPath="";
+			public string Server="";
+			public bool IsHostNameChecked;
+		}
+
+		///<summary>The connection string MySqlConnector gets for connectionString, the program's string (checked by the rule, or a read-only or
+		///reporting server of its own). verifier is null when the string goes to the driver as it is: a server on this computer
+		///(IsLoopbackConnectorServer, exempt from the rule, as before), or a string without SslCa or without SslMode VerifyCA or VerifyFull (a
+		///read-only or reporting server without a CA preference, SslMode=none, as before).
+		///For any other string, a server over the network with a CA (the program's own account under the rule: VerifyFull with the office CA; a
+		///read-only or reporting server with its CA preference: VerifyCA), the driver never gets SslCa: MySqlConnector 2.6.2 with SslCa logs in
+		///before it decides on the certificate and accepts a server that proves the account's stored hash with any certificate, and it ignores the
+		///connection's own certificate callback while SslCa is set (docs/port-notes/S2-2.md section 3.6). The driver string has no SslCa and
+		///SslMode=Required (SkipCertificateRevocationCheck, which the driver allows only with VerifyFull, is left out), and verifier is the check
+		///the connection must use as its RemoteCertificateValidationCallback: the chain to the CA of SslCa, under VerifyFull also the host name
+		///and revocation (OfficeCaServerVerifier). The driver passes that callback to the TLS handshake, which fails when it returns false, so
+		///nothing of the login is sent to a server it refuses, and the session never carries the policy errors that MySqlConnector's stored-hash
+		///check (ValidateFingerprint) needs. Everything else of the string (the client certificate from the store, the password, the timeouts)
+		///goes to the driver unchanged. A driver string whose check differs from the one its pool was made with gets Pooling=false (_dictPoolChecks).
+		///Throws ArgumentException when MySqlConnector cannot read the string.</summary>
+		public static string GetDriverConnectionString(string connectionString,out OfficeCaServerVerifier verifier) {
+			connectionString=connectionString??"";
+			DriverConnection driverConnection;
+			lock(_lockDriverConnections) {
+				_dictDriverConnections.TryGetValue(connectionString,out driverConnection);
+			}
+			if(driverConnection==null) {
+				driverConnection=GetDriverConnection(connectionString);
+				lock(_lockDriverConnections) {
+					if(_dictDriverConnections.Count>=MAX_PASSED) {
+						_dictDriverConnections.Clear();
+					}
+					_dictDriverConnections[connectionString]=driverConnection;
+				}
+			}
+			verifier=null;
+			if(driverConnection.CaPath!="") {
+				verifier=new OfficeCaServerVerifier(driverConnection.CaPath,driverConnection.Server,driverConnection.IsHostNameChecked);
+			}
+			return driverConnection.DriverString;
+		}
+
+		private static DriverConnection GetDriverConnection(string connectionString) {
+			DriverConnection driverConnection=new DriverConnection();
+			driverConnection.DriverString=connectionString;
+			MySqlConnectionStringBuilder builder=new MySqlConnectionStringBuilder(connectionString);
+			if(IsLoopbackConnectorServer(builder.Server)
+				|| string.IsNullOrWhiteSpace(builder.SslCa)
+				|| (builder.SslMode!=MySqlSslMode.VerifyCA && builder.SslMode!=MySqlSslMode.VerifyFull))
+			{
+				return driverConnection;
+			}
+			driverConnection.CaPath=builder.SslCa;
+			driverConnection.Server=builder.Server;
+			driverConnection.IsHostNameChecked=builder.SslMode==MySqlSslMode.VerifyFull;
+			builder.Remove("SslCa");
+			builder.Remove("SkipCertificateRevocationCheck");
+			builder.SslMode=MySqlSslMode.Required;
+			if(!string.IsNullOrEmpty(builder.SslCa) || builder.SkipCertificateRevocationCheck) {
+				throw new ArgumentException("The connection string's CA could not be taken off for the driver.");
+			}
+			string check=(driverConnection.IsHostNameChecked ? "VerifyFull|" : "VerifyCA|")+GetFullPathQuietly(driverConnection.CaPath).ToLowerInvariant();
+			string driverString=builder.ConnectionString;
+			lock(_lockDriverConnections) {
+				string checkPool;
+				if(_dictPoolChecks.TryGetValue(driverString,out checkPool)) {
+					if(checkPool!=check) {
+						builder.Pooling=false;
+					}
+				}
+				else if(_dictPoolChecks.Count>=MAX_DRIVER_POOLS) {
+					builder.Pooling=false;
+				}
+				else {
+					_dictPoolChecks.Add(driverString,check);
+				}
+			}
+			driverConnection.DriverString=builder.ConnectionString;
+			return driverConnection;
+		}
+
+		///<summary>The MySqlConnection for connectionString, already checked by the rule (NewMySqlConnection): the driver string of
+		///GetDriverConnectionString, with its check as the connection's RemoteCertificateValidationCallback when the program verifies the server
+		///itself. MySqlConnection.Clone and CloneWith keep the callback.</summary>
+		private static MySqlConnection CreateConnection(string connectionString) {
+			OfficeCaServerVerifier verifier;
+			string driverString=GetDriverConnectionString(connectionString,out verifier);
+			MySqlConnection mySqlConnection=new MySqlConnection(driverString);
+			if(verifier!=null) {
+				mySqlConnection.RemoteCertificateValidationCallback=verifier.ValidateServerCertificate;
+				_tableProgramStrings.Add(mySqlConnection,connectionString??"");
+			}
+			return mySqlConnection;
+		}
+
+		///<summary>The program's connection string of a connection that NewMySqlConnection made: the string it was given, also when the driver got
+		///another one (GetDriverConnectionString). For any other connection its ConnectionString. DataConnection.GetCurrentConnectionString reads
+		///this, because its string seeds other connections (child threads, ODR, reports, the Connection Lost retry) that go through the rule
+		///again.</summary>
+		public static string GetConnectionString(MySqlConnection mySqlConnection) {
+			if(mySqlConnection==null) {
+				return "";
+			}
+			string connectionString;
+			if(_tableProgramStrings.TryGetValue(mySqlConnection,out connectionString)) {
+				return connectionString;
+			}
+			return mySqlConnection.ConnectionString;
+		}
+		#endregion The server's certificate (DB-SEC 3)
 
 		#region Read-only and reporting servers of their own
 		///<summary>Lets exactly this connection string through without the rule: a read-only or reporting server of its own, named in the
@@ -356,6 +490,16 @@ namespace DataConnectionBase {
 					+(provider??"")+". "+ToolSentence());
 			}
 			CheckConnectionString(connectionString);
+		}
+
+		///<summary>For RdlEngine's connection factory hook (RdlEngineConfig.CreateConnection), called after CheckReportConnection: the report's
+		///MySqlConnector connection, made by NewMySqlConnection, so a server over the network is verified by the program before the login as every
+		///other connection is (GetDriverConnectionString). Null for any other class, which CheckReportConnection has already refused.</summary>
+		public static System.Data.IDbConnection NewReportConnection(string provider,string className,string connectionString) {
+			if(className!=typeof(MySqlConnection).FullName) {
+				return null;
+			}
+			return NewMySqlConnection(connectionString);
 		}
 		#endregion Reports
 

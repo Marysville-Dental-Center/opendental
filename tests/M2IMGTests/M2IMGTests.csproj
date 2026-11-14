@@ -5,15 +5,9 @@
        M2IMG_SKIP_WEBVIEW2=1. The database test uses a scratch MariaDB database with a unique per-run name and drops it afterwards; it is skipped
        when the server does not answer or when FORKMIGRATION_TEST_DB=skip. Every .cs file under this folder is compiled. -->
   <ItemGroup>
-    <Reference Include="Microsoft.Web.WebView2.Core">
-      <HintPath>..\..\Required dlls\Microsoft.Web.WebView2.Core.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Web.WebView2.WinForms">
-      <HintPath>..\..\Required dlls\Microsoft.Web.WebView2.WinForms.dll</HintPath>
-    </Reference>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
+    <!-- The WebView2 SDK, the version of Directory.Packages.props, named here for its build files: the WebView2 test's window needs the
+         native WebView2Loader.dll (x86), which they bring and Directory.Build.targets puts at the top of the output folder. -->
+    <PackageReference Include="Microsoft.Web.WebView2" />
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <ItemGroup>
@@ -21,13 +15,6 @@
     <Compile Include="..\ForkMigrationTests\TestDb.cs">
       <Link>TestDb.cs</Link>
     </Compile>
-  </ItemGroup>
-  <ItemGroup>
-    <!-- The native loader of the WebView2 SDK (x86), which OpenPmsDental.exe also keeps next to itself. -->
-    <None Include="..\..\Required dlls\WebView2Loader.dll">
-      <Link>WebView2Loader.dll</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\CodeBase\xCodeBase.csproj" />

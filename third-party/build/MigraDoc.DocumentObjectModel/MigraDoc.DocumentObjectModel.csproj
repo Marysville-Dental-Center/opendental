@@ -18,9 +18,8 @@
     <MigraDocDomFolder>$(PdfSharpSourceRoot)MigraDoc\src\MigraDoc.DocumentObjectModel\</MigraDocDomFolder>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Microsoft.Extensions.Logging.Abstractions">
-      <HintPath>..\..\..\Required dlls\Microsoft.Extensions.Logging.Abstractions.dll</HintPath>
-    </Reference>
+    <!-- Its logging source generator stays off (Directory.Packages.props): LoggerMessages.cs below is what it writes (SourceBuild.props). -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
   </ItemGroup>

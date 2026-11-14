@@ -5,9 +5,6 @@
        Package RDL-SRC (docs/port-notes/RDL-SRC.md): the RDL reports that load ODR.dll, rendered by RdlEngine and RdlViewer built from source,
        on a scratch database built from the 24.3.63 seed and the fork migrations (TestDb.cs of the fork migration tests, names forkmig_). -->
   <ItemGroup>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <ItemGroup>

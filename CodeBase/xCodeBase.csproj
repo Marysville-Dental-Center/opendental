@@ -16,16 +16,10 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.VisualBasic" />
-    <Reference Include="Microsoft.Web.WebView2.Core">
-      <HintPath>..\Required dlls\Microsoft.Web.WebView2.Core.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Web.WebView2.WinForms">
-      <HintPath>..\Required dlls\Microsoft.Web.WebView2.WinForms.dll</HintPath>
-    </Reference>
-    <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Required dlls\Newtonsoft.Json.dll</HintPath>
-    </Reference>
+    <!-- The WebView2 SDK, the version of Directory.Packages.props (ODWebView2). Its build files are left out (ExcludeAssets="build"): in a
+         library they would only copy the native WebView2Loader.dll into this output folder and every one that references it; the program
+         and the tests that open WebView2 windows take it themselves (Directory.Build.targets). -->
+    <PackageReference Include="Microsoft.Web.WebView2" ExcludeAssets="build" />
     <Reference Include="PresentationCore" />
     <Reference Include="System" />
     <Reference Include="System.Data" />
@@ -45,6 +39,10 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\Required dlls\Tao.Platform.Windows.dll</HintPath>
     </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Newtonsoft.Json, the version of Directory.Packages.props. -->
+    <PackageReference Include="Newtonsoft.Json" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="..\SharedAssemblyInfo.cs">

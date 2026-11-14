@@ -9,18 +9,14 @@
        root, blank password) whose name starts with s0t_, built from the seed dump and dropped afterwards; it is inconclusive without the server.
        No other test uses a database. Every .cs file under this folder is compiled. -->
   <ItemGroup>
-    <!-- Reads the built assemblies' type references without loading them. The NuGet package, from the offline package folder (nuget.config). -->
-    <PackageReference Include="Mono.Cecil" Version="0.10.3" />
-    <Reference Include="Microsoft.Web.WebView2.Core">
-      <HintPath>..\..\Required dlls\Microsoft.Web.WebView2.Core.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Web.WebView2.WinForms">
-      <HintPath>..\..\Required dlls\Microsoft.Web.WebView2.WinForms.dll</HintPath>
-    </Reference>
-    <!-- The scratch database of EmailPreviewTemplateTests (ScratchDb.cs). -->
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
+    <!-- Reads the built assemblies' type references without loading them. The NuGet package, from the offline package folder (nuget.config),
+         at the version of Directory.Packages.props. -->
+    <PackageReference Include="Mono.Cecil" />
+    <!-- The WebView2 SDK, the version of Directory.Packages.props, named here for its build files: the smoke test's window needs the native
+         WebView2Loader.dll (x86), which they bring and Directory.Build.targets puts at the top of the output folder. -->
+    <PackageReference Include="Microsoft.Web.WebView2" />
+    <!-- The scratch database of EmailPreviewTemplateTests (ScratchDb.cs) uses MySqlConnector, which comes as a package through the
+         projects below. -->
     <!-- PresentationCore, PresentationFramework, System.Xaml and WindowsBase: FrmMessageReplacements (WpfControlsOD) is a WPF window class. -->
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
@@ -37,13 +33,10 @@
     <Compile Include="..\ProjectFileTests\BuildOutput.cs">
       <Link>BuildOutput.cs</Link>
     </Compile>
-  </ItemGroup>
-  <ItemGroup>
-    <!-- The native loader of the WebView2 SDK (x86), which OpenPmsDental.exe also keeps next to itself. -->
-    <None Include="..\..\Required dlls\WebView2Loader.dll">
-      <Link>WebView2Loader.dll</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <!-- The package folders (S2-4 of the .NET 10 move: the WebView2 files are the package's own, no longer copies in "Required dlls"). -->
+    <Compile Include="..\ProjectFileTests\NuGetFiles.cs">
+      <Link>NuGetFiles.cs</Link>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\CodeBase\xCodeBase.csproj" />

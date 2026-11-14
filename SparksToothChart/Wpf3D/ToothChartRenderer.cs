@@ -589,6 +589,27 @@ namespace SparksToothChart.Wpf3D {
 		public static Matrix3D ToMatrix3D(ChartMatrix m) {
 			return new Matrix3D(m.M11,m.M12,m.M13,m.M14,m.M21,m.M22,m.M23,m.M24,m.M31,m.M32,m.M33,m.M34,m.M41,m.M42,m.M43,m.M44);
 		}
+
+		///<summary>The scene's 3D models with the one light, frozen: each item's frozen mesh from meshCache (reversed when its transform mirrors) with its
+		///material from materialCache and its transform. A model the cache does not have (a group index past the model's groups) is left out. Shared by
+		///the render thread and the live view (ToothChartWpfView), each with the caches of its own thread.</summary>
+		public static Model3DGroup BuildModel(ToothScene scene,ToothMeshCache meshCache,ToothMaterialCache materialCache) {
+			Model3DGroup model3DGroup=new Model3DGroup();
+			model3DGroup.Children.Add(CreateLight());
+			foreach(ToothSceneItem3D item in scene.Items3D) {
+				MeshGeometry3D mesh=meshCache.GetMesh(item.ToothId,item.GroupIndex,item.IsReversed);
+				if(mesh==null) {
+					continue;
+				}
+				GeometryModel3D geometryModel3D=new GeometryModel3D(mesh,materialCache.GetMaterial(item.Color,item.Specular,scene));
+				MatrixTransform3D matrixTransform3D=new MatrixTransform3D(ToMatrix3D(item.Transform));
+				matrixTransform3D.Freeze();
+				geometryModel3D.Transform=matrixTransform3D;
+				model3DGroup.Children.Add(geometryModel3D);
+			}
+			model3DGroup.Freeze();
+			return model3DGroup;
+		}
 		#endregion Static parts of the image
 
 		#region Render thread
@@ -609,7 +630,7 @@ namespace SparksToothChart.Wpf3D {
 			//The thread's own, used only by its jobs:
 			public ToothMeshCache ToothMeshCache;
 			public readonly List<RenderTargets> ListRenderTargets=new List<RenderTargets>();
-			private readonly Dictionary<string,Material> _dictMaterials=new Dictionary<string,Material>();
+			private readonly ToothMaterialCache _toothMaterialCache=new ToothMaterialCache();
 			private ContainerVisual _containerVisual3D;
 			private DrawingVisual _drawingVisualBackground;
 			private Viewport3DVisual _viewport3DVisual;
@@ -734,7 +755,7 @@ namespace SparksToothChart.Wpf3D {
 				}
 				if(_countFailuresInRow%FailuresInRowBeforeReset==0) {
 					ListRenderTargets.Clear();
-					_dictMaterials.Clear();
+					_toothMaterialCache.Clear();
 					_containerVisual3D=null;
 					_drawingVisualBackground=null;
 					_viewport3DVisual=null;
@@ -807,7 +828,7 @@ namespace SparksToothChart.Wpf3D {
 				}
 				_viewport3DVisual.Viewport=new Rect(0,0,width,height);
 				_viewport3DVisual.Camera=CreateCamera(scene);
-				_modelVisual3D.Content=BuildModel(scene);
+				_modelVisual3D.Content=BuildModel(scene,ToothMeshCache,_toothMaterialCache);
 				VisualTreeHelper.SetRootDpi(_containerVisual3D,new DpiScale(1,1));
 				double millisecondsModel=stopwatch.Elapsed.TotalMilliseconds;
 				stopwatch.Restart();
@@ -851,42 +872,6 @@ namespace SparksToothChart.Wpf3D {
 				_viewport3DVisual.Children.Add(_modelVisual3D);
 				_containerVisual3D.Children.Add(_drawingVisualBackground);
 				_containerVisual3D.Children.Add(_viewport3DVisual);
-			}
-
-			///<summary>The scene's 3D models with the one light, frozen. A model the cache does not have (a group index past the model's groups) is
-			///left out.</summary>
-			private Model3DGroup BuildModel(ToothScene scene) {
-				Model3DGroup model3DGroup=new Model3DGroup();
-				model3DGroup.Children.Add(CreateLight());
-				foreach(ToothSceneItem3D item in scene.Items3D) {
-					MeshGeometry3D mesh=ToothMeshCache.GetMesh(item.ToothId,item.GroupIndex,item.IsReversed);
-					if(mesh==null) {
-						continue;
-					}
-					GeometryModel3D geometryModel3D=new GeometryModel3D(mesh,GetMaterial(item.Color,item.Specular,scene));
-					MatrixTransform3D matrixTransform3D=new MatrixTransform3D(ToMatrix3D(item.Transform));
-					matrixTransform3D.Freeze();
-					geometryModel3D.Transform=matrixTransform3D;
-					model3DGroup.Children.Add(geometryModel3D);
-				}
-				model3DGroup.Freeze();
-				return model3DGroup;
-			}
-
-			///<summary>A material of three parts (section 5.3): a diffuse brush of the colour times DiffuseFactor, a specular brush of the specular value
-			///with power 70, and an emissive brush of the colour times EmissiveFactor, which is DirectX's ambient term. Cached and frozen.</summary>
-			private Material GetMaterial(System.Drawing.Color color,float specular,ToothScene scene) {
-				string key=color.ToArgb()+"|"+specular.ToString("R")+"|"+scene.DiffuseFactor.ToString("R")+"|"+scene.EmissiveFactor.ToString("R");
-				Material material;
-				if(_dictMaterials.TryGetValue(key,out material)) {
-					return material;
-				}
-				if(_dictMaterials.Count>4096) {
-					_dictMaterials.Clear();
-				}
-				material=CreateMaterial(color,specular,scene.DiffuseFactor,scene.EmissiveFactor);
-				_dictMaterials[key]=material;
-				return material;
 			}
 
 			///<summary>The render targets of one chart size: the 3D layer's at the supersampling factor and the composite's at the exact size, made when
@@ -936,5 +921,30 @@ namespace SparksToothChart.Wpf3D {
 			}
 		}
 		#endregion Render thread
+	}
+	///<summary>The frozen three-part materials of section 5.3 (ToothChartRenderer.CreateMaterial) by colour, specular value and the scene's light
+	///factors. Not thread-safe: one cache belongs to one thread (the render thread's, or the live view's UI thread). At most 4096 are kept.</summary>
+	public sealed class ToothMaterialCache {
+		private readonly Dictionary<string,Material> _dictMaterials=new Dictionary<string,Material>();
+
+		///<summary>A material of three parts: a diffuse brush of the colour times DiffuseFactor, a specular brush of the specular value with power 70,
+		///and an emissive brush of the colour times EmissiveFactor, which is DirectX's ambient term. Made and frozen the first time.</summary>
+		public Material GetMaterial(System.Drawing.Color color,float specular,ToothScene scene) {
+			string key=color.ToArgb()+"|"+specular.ToString("R")+"|"+scene.DiffuseFactor.ToString("R")+"|"+scene.EmissiveFactor.ToString("R");
+			Material material;
+			if(_dictMaterials.TryGetValue(key,out material)) {
+				return material;
+			}
+			if(_dictMaterials.Count>4096) {
+				_dictMaterials.Clear();
+			}
+			material=ToothChartRenderer.CreateMaterial(color,specular,scene.DiffuseFactor,scene.EmissiveFactor);
+			_dictMaterials[key]=material;
+			return material;
+		}
+
+		public void Clear() {
+			_dictMaterials.Clear();
+		}
 	}
 }

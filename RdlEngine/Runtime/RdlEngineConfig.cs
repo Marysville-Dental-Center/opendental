@@ -25,6 +25,8 @@
 // MySql.Data.dll, which it no longer ships. Report definitions keep naming the provider MySQL.NET.
 // Changed by Open PMS - Dental contributors, 2026-11-02 (docs/specs/db-connection-security.md): GetConnection calls the host's
 // CheckConnection hook, when one is set, before it creates any connection.
+// Changed by Open PMS - Dental contributors, 2026-11-11 (docs/port-notes/S2-2.md section 3.6, DB-SEC 3): GetConnection asks the host's
+// CreateConnection hook, when one is set, for the connection of a configured provider class before it creates one itself.
 using System;
 using System.Xml;
 using System.Collections;
@@ -50,6 +52,11 @@ namespace fyiReporting.RDL
 		///(SqlConnection, OdbcConnection, OleDbConnection, or the configured class of the provider) and the connection string, before any
 		///connection is created. It throws to refuse the connection. Null: no check.</summary>
 		public static Action<string,string,string> CheckConnection;
+		///<summary>Set by the host program: called after CheckConnection with the same three values for a provider of the configuration file
+		///(the default branch of GetConnection); a connection it returns is the one the engine uses, null lets the engine create the class itself.
+		///Open PMS - Dental makes its MySqlConnector connections there, so a server over the network is verified by the program before the login.
+		///Null: the engine creates every connection itself.</summary>
+		public static Func<string,string,string,IDbConnection> CreateConnection;
         static internal IDictionary<string, CustomReportItemEntry> CustomReportItemEntries = new System.Collections.Generic.Dictionary<string, CustomReportItemEntry>(5);	// list of entries
 
 		// Compression entries
@@ -342,6 +349,13 @@ namespace fyiReporting.RDL
 					}
 					if (checkConnection != null)
 						checkConnection(provider, sce.ClassName, cstring);
+					Func<string,string,string,IDbConnection> createConnection = CreateConnection;
+					if (createConnection != null)
+					{
+						cn = createConnection(provider, sce.ClassName, cstring);
+						if (cn != null)
+							break;
+					}
 					object[] args = new object[] {cstring};
 					Assembly asm = sce.CodeModule;
 					object o = asm.CreateInstance(sce.ClassName, false, 

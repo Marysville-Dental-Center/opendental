@@ -129,13 +129,31 @@ namespace LibWebTests {
 			foreach(string name in _arrayIeAssemblies) {
 				Assert.IsFalse(File.Exists(Path.Combine(folder,name+".dll")),name+".dll");
 			}
-			//The browser that replaces it is there, at the SDK version the program is built against.
+			//The browser that replaces it comes from the WebView2 package (since S2-3 of the .NET 10 move) at the SDK version the program is built
+			//against; since S2-4 "Required dlls" holds no copy of its files.
+			foreach(string name in new[] { "Microsoft.Web.WebView2.Core.dll","Microsoft.Web.WebView2.WinForms.dll","Microsoft.Web.WebView2.Wpf.dll","WebView2Loader.dll" }) {
+				Assert.IsFalse(File.Exists(Path.Combine(folder,name)),"Required dlls\\"+name+" is back; the package supplies it.");
+			}
+			string folderPackage=NuGetFiles.FindPackageFolder(TestPaths.RepoRoot,"Microsoft.Web.WebView2","1.0.2420.47",
+				Path.Combine(TestPaths.RepoRoot,"OpenPmsDental","obj","project.assets.json"));
+			if(folderPackage==null) {
+				BuildOutput.NotBuilt("Microsoft.Web.WebView2 1.0.2420.47 is neither in the offline package folder nor restored for OpenPmsDental yet.");
+			}
 			foreach(string name in new[] { "Microsoft.Web.WebView2.Core","Microsoft.Web.WebView2.WinForms","Microsoft.Web.WebView2.Wpf" }) {
-				string path=Path.Combine(folder,name+".dll");
+				string path=Path.Combine(folderPackage,"lib","net45",name+".dll");
 				Assert.IsTrue(File.Exists(path),name);
 				Assert.AreEqual(new Version(1,0,2420,47),System.Reflection.AssemblyName.GetAssemblyName(path).Version,name);
 			}
-			Assert.IsTrue(File.Exists(Path.Combine(folder,"WebView2Loader.dll")));
+			Assert.IsTrue(File.Exists(Path.Combine(folderPackage,"runtimes","win-x86","native","WebView2Loader.dll")));
+			//The projects take it from the WebView2 package at that same version, by no HintPath.
+			foreach(string[] arrayProject in new[] { new[] { "CodeBase","xCodeBase.csproj" },new[] { "WpfControlsOD","WpfControlsOD.csproj" },
+				new[] { "OpenPmsDental","OpenPmsDental.csproj" },new[] { "tests","LibWebTests","LibWebTests.csproj" } })
+			{
+				ProjectFile projectFile=ProjectFile.Load(Path.Combine(TestPaths.RepoRoot,Path.Combine(arrayProject)));
+				Assert.AreEqual("1.0.2420.47",projectFile.GetPackageVersion("Microsoft.Web.WebView2"),projectFile.Name);
+				Assert.IsFalse(projectFile.GetItems("Reference").Any(x => x.Include.StartsWith("Microsoft.Web.WebView2",StringComparison.OrdinalIgnoreCase)),
+					projectFile.Name+": no HintPath to Required dlls any more.");
+			}
 		}
 
 		///<summary>The built program folder, when this checkout has built it: none of its assemblies references an IE browser type or carries

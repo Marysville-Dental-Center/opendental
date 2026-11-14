@@ -10,9 +10,6 @@
        LIBPDF_TEST_DB=skip. Tests that need a Windows font or printer this computer lacks are inconclusive. Every .cs file under this folder
        is compiled. -->
   <ItemGroup>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
     <!-- The source archive (SourceArchiveTests). -->
     <Reference Include="System.IO.Compression" />
     <Reference Include="System.Windows.Forms" />
@@ -21,6 +18,11 @@
     <!-- The reader of project files (classic and SDK-style) shared by the tests that check them (S1-T of docs/specs/net10-plan.md). -->
     <Compile Include="..\ProjectFileTests\ProjectFile.cs">
       <Link>ProjectFile.cs</Link>
+    </Compile>
+    <!-- The packages of a lock file and the files the build copies from them (S2-4 of the .NET 10 move: the support assemblies are the
+         packages' own files, no longer copies in "Required dlls"). -->
+    <Compile Include="..\ProjectFileTests\NuGetFiles.cs">
+      <Link>NuGetFiles.cs</Link>
     </Compile>
   </ItemGroup>
   <ItemGroup>

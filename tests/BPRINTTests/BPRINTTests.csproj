@@ -4,9 +4,6 @@
        Database tests use a scratch database on the local MariaDB (127.0.0.1:3306, root, blank password), built from the 24.3.63 seed and the
        fork migrations, and are skipped (inconclusive) when it does not answer. Synthetic data only. Every .cs file under this folder is compiled. -->
   <ItemGroup>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
     <Reference Include="System.Windows.Forms" />

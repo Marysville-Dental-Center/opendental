@@ -4,11 +4,6 @@
        with a unique per-run name (127.0.0.1:3306, root, blank password), built from the 24.3.63 seed and the fork migrations, and are skipped
        (inconclusive) when it does not answer, or when M2DUN_TEST_DB=skip. Synthetic data only. Every .cs file under this folder is compiled. -->
   <ItemGroup>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\..\CodeBase\xCodeBase.csproj" />
     <ProjectReference Include="..\..\DataConnectionBase\xDataConnectionBase.csproj" />
     <ProjectReference Include="..\..\OpenPmsDentalBusiness\OpenPmsDentalBusiness.csproj" />

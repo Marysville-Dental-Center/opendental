@@ -4,9 +4,6 @@
        commas or hyphens (with its Database Maintenance check). Synthetic codes and descriptions only: no licensed code text. Database tests use a
        scratch MariaDB database with a unique name per run, dropped afterwards. Every .cs file under this folder is compiled. -->
   <ItemGroup>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <ItemGroup>

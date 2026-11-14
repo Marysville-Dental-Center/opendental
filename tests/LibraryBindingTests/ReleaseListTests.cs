@@ -1,6 +1,7 @@
-// The release ships exactly the files of "Required dlls" the programs need: tools\Build-Release.ps1's allow-list (which is also what
-// installer\OpenPmsDental.iss installs, since it installs the staging folder as a whole) against what the built program references, all the way
-// down, and every assembly a shipped file references is shipped too or is part of the .NET Framework.
+// The release ships exactly the library files the programs need (those of "Required dlls" and, since S2-4 of the .NET 10 move, the NuGet
+// packages' own files at the lock files' versions): tools\Build-Release.ps1's allow-list (which is also what installer\OpenPmsDental.iss
+// installs, since it installs the staging folder as a whole) against what the built program references, all the way down, and every assembly a
+// shipped file references is shipped too or is part of the .NET Framework.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.Collections.Generic;
@@ -34,12 +35,12 @@ namespace LibraryBindingTests {
 		}
 
 		///<summary>The program's own assemblies in its output folder (and the third-party ones built from this repository): the files on the
-		///allow-list that are not in "Required dlls".</summary>
+		///allow-list that are no library files (Libraries).</summary>
 		private static List<AssemblyFacts> GetBuiltAssemblies() {
 			List<AssemblyFacts> listAssemblies=new List<AssemblyFacts>();
 			foreach(KeyValuePair<string,string> pair in BuildRelease.ListFiles().Where(x => x.Key!="doc" && MetadataReader.IsBinary(x.Value))) {
 				string path=Path.Combine(ProgramFolder,pair.Value);
-				if(RequiredDlls.Files.ContainsKey(pair.Value) || !File.Exists(path)) {
+				if(Libraries.Files.ContainsKey(pair.Value) || !File.Exists(path)) {
 					continue;//OpenPmsDental.XmlSerializers.dll and OpenPmsDentalBusiness.XmlSerializers.dll come with Release builds only.
 				}
 				AssemblyFacts assemblyFacts=MetadataReader.Read(path);
@@ -50,9 +51,10 @@ namespace LibraryBindingTests {
 			return listAssemblies;
 		}
 
-		///<summary>The files of "Required dlls" the program folder gets: OpenPmsDental's own references to them (always copied), the files its projects
-		///copy with None or Content items, and every file of "Required dlls" that the program's assemblies reference, all the way down.</summary>
-		private static HashSet<string> GetRequiredDllsTheProgramNeeds() {
+		///<summary>The library files the program folder gets: OpenPmsDental's own references to them and the files of its packages (always copied),
+		///the files its projects copy with None or Content items, and every library file that the program's assemblies reference, all the way
+		///down.</summary>
+		private static HashSet<string> GetLibrariesTheProgramNeeds() {
 			ProjectInfo projectInfoProgram=SolutionProjects.ByName("OpenPmsDental.csproj");
 			HashSet<string> hashSetNeeded=new HashSet<string>(projectInfoProgram.ListPrimaryReferencesCopied,StringComparer.OrdinalIgnoreCase);
 			foreach(ProjectInfo projectInfo in SolutionProjects.Closure(projectInfoProgram)) {
@@ -60,7 +62,7 @@ namespace LibraryBindingTests {
 			}
 			Queue<AssemblyFacts> queueAssemblies=new Queue<AssemblyFacts>(GetBuiltAssemblies());
 			foreach(string fileName in hashSetNeeded) {
-				AssemblyFacts assemblyFacts=RequiredDlls.ByFileName(fileName);
+				AssemblyFacts assemblyFacts=Libraries.ByFileName(fileName);
 				if(assemblyFacts!=null) {
 					queueAssemblies.Enqueue(assemblyFacts);
 				}
@@ -72,9 +74,9 @@ namespace LibraryBindingTests {
 					continue;
 				}
 				foreach(AssemblyReference assemblyReference in assemblyFacts.ListReferences) {
-					if(RequiredDlls.Assemblies.TryGetValue(assemblyReference.Name,out AssemblyFacts assemblyFactsRequired)) {
-						hashSetNeeded.Add(assemblyFactsRequired.FileName);
-						queueAssemblies.Enqueue(assemblyFactsRequired);
+					if(Libraries.Assemblies.TryGetValue(assemblyReference.Name,out AssemblyFacts assemblyFactsLibrary)) {
+						hashSetNeeded.Add(assemblyFactsLibrary.FileName);
+						queueAssemblies.Enqueue(assemblyFactsLibrary);
 					}
 				}
 			}
@@ -82,10 +84,10 @@ namespace LibraryBindingTests {
 		}
 
 		[TestMethod]
-		public void AllowList_NamesExactlyTheRequiredDllsTheProgramsNeed() {
+		public void AllowList_NamesExactlyTheLibraryFilesTheProgramsNeed() {
 			SkipUnlessBuilt();
-			HashSet<string> hashSetNeeded=GetRequiredDllsTheProgramNeeds();
-			List<string> listAllowed=BuildRelease.ListFiles().Where(x => x.Key=="third" && RequiredDlls.Files.ContainsKey(x.Value)).Select(x => x.Value).ToList();
+			HashSet<string> hashSetNeeded=GetLibrariesTheProgramNeeds();
+			List<string> listAllowed=BuildRelease.ListFiles().Where(x => x.Key=="third" && Libraries.Files.ContainsKey(x.Value)).Select(x => x.Value).ToList();
 			List<string> listProblems=new List<string>();
 			foreach(string fileName in hashSetNeeded.Where(x => !listAllowed.Contains(x,StringComparer.OrdinalIgnoreCase)).OrderBy(x => x)) {
 				listProblems.Add(fileName+": the program needs it, but tools\\Build-Release.ps1 does not ship it (add it to the allow-list, with its notice).");
@@ -98,14 +100,16 @@ namespace LibraryBindingTests {
 			}
 			Assert.AreEqual(0,listProblems.Count,string.Join("\r\n",listProblems));
 			//The support assemblies the first library step added for the packages that follow ship once a shipped library uses them: the tier 1
-			//updates (SSH.NET 2026, MailKit 4, MSAL 4.92 with System.Text.Json) use all but System.Security.Cryptography.Pkcs.
+			//updates (SSH.NET 2026, MailKit 4, MSAL 4.92 with System.Text.Json) use them all. System.Security.Cryptography.Pkcs, which nothing
+			//used, left "Required dlls" in S2-4 of the .NET 10 move: it is no library file, in no lock file and not on the allow-list.
 			foreach(string fileName in new[] { "System.Formats.Asn1.dll","System.IO.Pipelines.dll","Microsoft.Bcl.Cryptography.dll" }) {
 				CollectionAssert.Contains(listAllowed,fileName);
 			}
-			Assert.IsTrue(RequiredDlls.Files.ContainsKey("System.Security.Cryptography.Pkcs.dll"));
-			CollectionAssert.DoesNotContain(listAllowed,"System.Security.Cryptography.Pkcs.dll","Nothing shipped uses it yet.");
+			Assert.IsFalse(Libraries.Files.ContainsKey("System.Security.Cryptography.Pkcs.dll"));
+			Assert.IsFalse(Libraries.LockedVersions.ContainsKey("System.Security.Cryptography.Pkcs"),"No project gets the package.");
+			CollectionAssert.DoesNotContain(listAllowed,"System.Security.Cryptography.Pkcs.dll","Nothing shipped uses it.");
 			CollectionAssert.Contains(listAllowed,"Microsoft.Extensions.DependencyInjection.Abstractions.dll",
-				"Microsoft.Extensions.Logging.Abstractions 8.0.3 references it, so it ships.");
+				"Microsoft.Extensions.Logging.Abstractions 10.0.15 and MySqlConnector 2.6.2 reference it, so it ships.");
 		}
 
 		[TestMethod]
@@ -135,7 +139,7 @@ namespace LibraryBindingTests {
 		public void ShippedAssemblies_FindEveryAssemblyTheyReference() {
 			SkipUnlessBuilt();
 			List<AssemblyFacts> listShipped=GetBuiltAssemblies();
-			listShipped.AddRange(GetRequiredDllsTheProgramNeeds().Select(x => RequiredDlls.ByFileName(x)).Where(x => x!=null));
+			listShipped.AddRange(GetLibrariesTheProgramNeeds().Select(x => Libraries.ByFileName(x)).Where(x => x!=null));
 			HashSet<string> hashSetNames=new HashSet<string>(listShipped.Select(x => x.Name),StringComparer.OrdinalIgnoreCase);
 			List<string> listProblems=new List<string>();
 			HashSet<string> hashSetGapsSeen=new HashSet<string>(StringComparer.OrdinalIgnoreCase);

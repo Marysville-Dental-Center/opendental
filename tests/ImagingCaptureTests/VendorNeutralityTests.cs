@@ -46,6 +46,9 @@ namespace ImagingCapture.Tests {
 		private static readonly string[] _arrayFiles={ @"OpenPmsDental\Main Modules\ControlImages.Acquire.cs",@"OpenPmsDental\Forms\FormVideo.cs",
 			@"OpenPmsDental\Forms\FormVideo.designer.cs",@"docs\imaging-capture-design.md",@"docs\port-notes\CAP.md" };
 		private static readonly string[] _arrayFoldersSkipped={ "bin","obj","TestResults",".vs" };
+		///<summary>Files NuGet writes (S2-1): their base64 content hashes can hold a denied short name by chance, and they carry no name of
+		///ours. The lock-file tests check them.</summary>
+		private static readonly string[] _arrayFileNamesSkipped={ "packages.lock.json" };
 		private static readonly string[] _arrayExtensionsBinary={ ".dll",".exe",".pdb",".png",".jpg",".jpeg",".gif",".bmp",".ico",".tif",".tiff",
 			".dcm",".zip",".cache" };
 		private const string AllowlistFileName="VendorNeutralityAllowlist.txt";
@@ -187,7 +190,9 @@ namespace ImagingCapture.Tests {
 
 		private static IEnumerable<string> GetFiles(string folder) {
 			foreach(string path in Directory.GetFiles(folder)) {
-				if(!_arrayExtensionsBinary.Contains(Path.GetExtension(path).ToLowerInvariant())) {
+				if(!_arrayExtensionsBinary.Contains(Path.GetExtension(path).ToLowerInvariant())
+					&& !_arrayFileNamesSkipped.Contains(Path.GetFileName(path),StringComparer.OrdinalIgnoreCase))
+				{
 					yield return path;
 				}
 			}

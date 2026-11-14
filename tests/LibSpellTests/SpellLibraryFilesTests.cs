@@ -116,15 +116,21 @@ namespace LibSpellTests {
 				listCompiled.Where(x => !x.StartsWith(folderLibrary.ToLowerInvariant()+"\\")).Select(x => Path.GetFileName(x)).ToArray(),
 				"Besides the library folder, only the generated attributes.");
 			Assert.IsFalse(File.ReadAllLines(fileInfo.FullName).Any(x => x.StartsWith("EmbeddedResource|")),"No resources, as upstream.");
-			//The project file: no NuGet, no MinVer, not strong-named; the support assemblies from Required dlls; in the solution and the filter.
-			//Its text and its evaluated properties and items, so the checks hold for the classic project file and the SDK-style one of the .NET 10
-			//move alike (an SDK-style wrapper is fine; a NuGet package, MinVer or a signature is not).
+			//The project file: no WeCantSpell package, no MinVer, not strong-named; the support assemblies from their packages (S2-1 of the .NET 10
+			//move: the files Required dlls held); in the solution and the filter. Its text and its evaluated properties and items, so the checks hold
+			//for the classic project file and the SDK-style one of the .NET 10 move alike (an SDK-style wrapper is fine; the library's NuGet
+			//package, MinVer or a signature is not).
 			string project=RepoPaths.ReadText("third-party","build","WeCantSpell.Hunspell","WeCantSpell.Hunspell.csproj");
-			foreach(string forbidden in new[] { "<PackageReference","MinVer\"","<SignAssembly>" }) {
+			foreach(string forbidden in new[] { "MinVer\"","<SignAssembly>","HintPath" }) {
 				Assert.IsFalse(project.Contains(forbidden),"WeCantSpell.Hunspell.csproj: "+forbidden);
 			}
 			ProjectFile projectFile=ProjectFile.Load(RepoPaths.Combine("third-party","build","WeCantSpell.Hunspell","WeCantSpell.Hunspell.csproj"));
-			Assert.AreEqual(0,projectFile.GetItems("PackageReference").Count+projectFile.GetItems("PackageDownload").Count,"WeCantSpell.Hunspell.csproj asks NuGet for a package.");
+			Assert.AreEqual(0,projectFile.GetItems("PackageDownload").Count,"WeCantSpell.Hunspell.csproj downloads a package.");
+			CollectionAssert.AreEquivalent(new[] { "System.Buffers","System.Memory","System.Runtime.CompilerServices.Unsafe" },
+				projectFile.GetItems("PackageReference").Select(x => x.Include).ToArray(),"WeCantSpell.Hunspell.csproj asks NuGet only for the support assemblies.");
+			foreach(string package in new[] { "System.Buffers","System.Memory","System.Runtime.CompilerServices.Unsafe" }) {
+				Assert.IsFalse(string.IsNullOrEmpty(projectFile.GetPackageVersion(package)),package+": the version of Directory.Packages.props.");
+			}
 			Assert.AreNotEqual("true",projectFile.GetProperty("SignAssembly").ToLowerInvariant(),"WeCantSpell.Hunspell.csproj is not signed.");
 			Assert.AreEqual(COMMIT,projectFile.GetProperty("SourceBuildCommit"));
 			Assert.AreEqual(INFORMATIONAL_VERSION,projectFile.GetProperty("SourceBuildInformationalVersion"));

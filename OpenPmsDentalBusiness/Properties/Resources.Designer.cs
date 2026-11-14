@@ -694,7 +694,63 @@ namespace OpenPmsDentalBusiness.Properties {
                 return ResourceManager.GetString("EFormPatientRegistration", resourceCulture);
             }
         }
-        
+
+        /// <summary>
+        ///   Looks up a localized string similar to &lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+        ///&lt;!--
+        ///
+        ///   Copyright 2007 American Academy of Family Physicians
+        ///    [rest of string was truncated]&quot;;.
+        /// </summary>
+        public static string EhrCcrXsl {
+            get {
+                return ResourceManager.GetString("EhrCcrXsl", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+        ///&lt;!--
+        ///    [rest of string was truncated]&quot;;.
+        /// </summary>
+        public static string EhrCdaL10n {
+            get {
+                return ResourceManager.GetString("EhrCdaL10n", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to &lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+        ///&lt;!-- This file governs which attributes are allowed on certain CDA NarrativeBlock elements. [rest of string was truncated]&quot;;.
+        /// </summary>
+        public static string EhrCdaNarrativeBlock {
+            get {
+                return ResourceManager.GetString("EhrCdaNarrativeBlock", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to &lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
+        ///&lt;xsl:stylesheet version=&quot;1.0&quot;
+        ///    [rest of string was truncated]&quot;;.
+        /// </summary>
+        public static string EhrCdaXsl {
+            get {
+                return ResourceManager.GetString("EhrCdaXsl", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The stylesheet files beside this file
+        ///=====================================
+        ///    [rest of string was truncated]&quot;;.
+        /// </summary>
+        public static string EhrStylesheetsLicense {
+            get {
+                return ResourceManager.GetString("EhrStylesheetsLicense", resourceCulture);
+            }
+        }
+
         /// <summary>
         ///   Looks up a localized string similar to &lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
         ///&lt;SheetDef xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot; xmlns:xsd=&quot;http://www.w3.org/2001/XMLSchema&quot;&gt;

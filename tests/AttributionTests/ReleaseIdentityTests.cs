@@ -19,6 +19,7 @@ namespace AttributionTests {
 			"MySqlConnector",".NET libraries","Newtonsoft.Json","MimeKit","MailKit","MSAL.NET","SSH.NET","Bouncy Castle Cryptography","PDFsharp",
 			"MigraDoc","SharpDX","Tao Framework","Direct Project","WeCantSpell.Hunspell","Hunspell en_US dictionary",
 			"RDL Project","Google APIs Client Library for .NET","Microsoft Edge WebView2 SDK","TWAIN","Pearl API notice",
+			"HL7 CDA-core-xsl","AAFP CCR stylesheet",
 		};
 
 		///<summary>Files of every listed component that ships in the output folder.</summary>

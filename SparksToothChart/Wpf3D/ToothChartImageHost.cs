@@ -13,9 +13,10 @@ namespace SparksToothChart.Wpf3D {
 	///skipped when the control is disposed or has no handle; the race where it goes away during the call is caught and ignored. A render whose
 	///result cannot arrive (the handle went) is given up, and the newest scene is rendered again when a handle comes back, so the control never stays
 	///"in flight" for good; a render a shutdown of the render thread aborted comes back as a failed result (ToothChartRenderer.RenderAsync).
-	///It raises SegmentDrawn and ToothSelectionsChanged like the other engines, from the DirectX chart's mouse logic (TC-3 moves that logic into one
-	///class shared by the engines), and draws the pen stroke in progress with GDI+ over the image until mouse up, as DirectX draws it over the teeth
-	///without redrawing them.</summary>
+	///It raises SegmentDrawn and ToothSelectionsChanged like the other engines, from the mouse class it shares with the live view (ToothChartMouse,
+	///the DirectX chart's mouse logic), and draws the pen stroke in progress with GDI+ over the image until mouse up, as DirectX draws it over the
+	///teeth without redrawing them. Since TC-3 (O-19 (b)) it is the on-screen chart of a wrapper drawn in software (ToothChartWrapper.WpfDrawInSoftware)
+	///and of a wrapper whose live view could not start, and the wrapper's engine control until the live view is made.</summary>
 	public class ToothChartImageHost:Control {
 		#region Fields
 		///<summary>The wrapper's data object.</summary>
@@ -37,20 +38,21 @@ namespace SparksToothChart.Wpf3D {
 		///<summary>The newest scene ShowScene was given: rendered again when a render's result was lost with the handle.</summary>
 		private ToothScene _sceneRequested;
 		private bool _isRenderInFlight;
-		///<summary>Counts the renders started. A result of an older render (one given up when the handle went) is dropped.</summary>
+		///<summary>Counts the renders started. A result of an older render (one given up when the handle went, or by ClearImage) is dropped.</summary>
 		private int _generationRender;
 		private int _countImagesReceived;
 		private int _countReceiveCalls;
 		private int _countRendersStarted;
-		//Mouse, as the DirectX chart keeps it:
-		private string _hotTooth;
-		private string _hotToothOld;
-		private bool _isMouseDown;
-		private List<string> _listSelectedTeethOld=new List<string>();
+		///<summary>The pointer, pen, eraser and colour changer, shared with the live view.</summary>
+		private readonly ToothChartMouse _toothChartMouse=new ToothChartMouse();
 		#endregion Fields
 
 		public ToothChartImageHost() {
 			SetStyle(ControlStyles.AllPaintingInWmPaint|ControlStyles.UserPaint|ControlStyles.OptimizedDoubleBuffer|ControlStyles.Opaque,true);
+			_toothChartMouse.ActionChartChanged=() => ActionChartChanged?.Invoke();
+			_toothChartMouse.ActionPenStrokeChanged=Invalidate;//only the stroke is drawn again, over the last image
+			_toothChartMouse.SegmentDrawn+=(sender,e) => OnSegmentDrawn(e.DrawingSegement);
+			_toothChartMouse.ToothSelectionsChanged+=sender => OnToothSelectionsChanged();
 		}
 
 		#region Events
@@ -129,6 +131,24 @@ namespace SparksToothChart.Wpf3D {
 				return null;
 			}
 			return new Bitmap(_bitmapShown);
+		}
+
+		///<summary>Drops the image shown, so the control paints the chart's background until its next image arrives. The wrapper calls it before it shows
+		///this control again in place of the live view (the "Draw in software" switch, or a live view that failed): the image it held is from before the
+		///live view (another patient's chart, perhaps) or none, and is not to be shown while the software render of the current data is made. Every scene
+		///asked for before the clear goes with it: the render in flight is given up (its generation ends, so its result is dropped when it arrives, and
+		///the next ShowScene starts at once), and so are a scene waiting for it and the scene a new handle would render again. Only a ShowScene after the
+		///clear (the wrapper's rebuild with the current data) is shown.</summary>
+		public void ClearImage() {
+			_generationRender++;
+			_isRenderInFlight=false;
+			_sceneWaiting=null;
+			_sceneRequested=null;
+			Bitmap bitmapOld=_bitmapShown;
+			_bitmapShown=null;
+			_sceneShown=null;
+			bitmapOld?.Dispose();
+			Invalidate();
 		}
 		#endregion Properties
 
@@ -305,124 +325,21 @@ namespace SparksToothChart.Wpf3D {
 		#endregion Rendering
 
 		#region Mouse
-		//The DirectX chart's mouse logic (ToothChartDirectX MouseDown, MouseMove and MouseUp) on this control: the same GetToothAtPoint, drag fill-in
-		//through GetAffectedTeeth and SegmentDrawn strings (GetPointMouseScaled). A change of the data asks the wrapper for a new image instead of
-		//drawing at once. TC-3 moves this into the shared mouse class.
+		//The shared mouse class (ToothChartMouse): the DirectX chart's GetToothAtPoint, drag fill-in through GetAffectedTeeth and SegmentDrawn strings. A
+		//change of the data asks the wrapper for a new image instead of drawing at once; the pen's stroke in progress is drawn over the last image.
 		protected override void OnMouseDown(MouseEventArgs e) {
 			base.OnMouseDown(e);
-			if(TcData==null) {
-				return;
-			}
-			_isMouseDown=true;
-			if(TcData.CursorTool==CursorTool.Pointer) {
-				_listSelectedTeethOld=TcData.SelectedTeeth.FindAll(x => x!=null);//Make a copy of the list.
-				string toothClicked=TcData.GetToothAtPoint(e.Location);
-				TcData.SetSelected(toothClicked,!TcData.SelectedTeeth.Contains(toothClicked));
-				ActionChartChanged?.Invoke();
-			}
-			else if(TcData.CursorTool==CursorTool.Pen) {
-				TcData.PointList.Add(new PointF(e.X,e.Y));
-			}
-			else if(TcData.CursorTool==CursorTool.ColorChanger) {
-				//look for any lines near the "wand". Since the line segments are so short, it's sufficient to check end points.
-				PointF pointMouseScaled=TcData.GetPointMouseScaled(e.X,e.Y,Size);
-				int indexSegment=FindSegmentNear(pointMouseScaled,2f);//radius by trial and error to achieve best feel.
-				if(indexSegment>=0) {
-					OnSegmentDrawn(TcData.DrawingSegmentList[indexSegment].DrawingSegment);
-					TcData.DrawingSegmentList[indexSegment].ColorDraw=TcData.ColorDrawing;
-					ActionChartChanged?.Invoke();
-				}
-			}
+			_toothChartMouse.MouseDown(TcData,e.Location,Size);
 		}
 
 		protected override void OnMouseMove(MouseEventArgs e) {
 			base.OnMouseMove(e);
-			if(TcData==null || TcData.ListToothGraphics.Count==0) {
-				return;//can happen during forced close of perio chart.
-			}
-			if(TcData.CursorTool==CursorTool.Pointer) {
-				_hotTooth=TcData.GetToothAtPoint(e.Location);
-				if(_hotTooth==_hotToothOld) {//mouse has not moved to another tooth
-					return;
-				}
-				if(_isMouseDown) {//drag action
-					List<string> listAffectedTeeth=TcData.GetAffectedTeeth(_hotToothOld,_hotTooth,TcData.PointPixToMm(e.Location).Y);
-					for(int i=0;i<listAffectedTeeth.Count;i++) {
-						TcData.SetSelected(listAffectedTeeth[i],!TcData.SelectedTeeth.Contains(listAffectedTeeth[i]));
-					}
-					_hotToothOld=_hotTooth;
-					ActionChartChanged?.Invoke();
-				}
-				else {
-					_hotToothOld=_hotTooth;
-				}
-			}
-			else if(TcData.CursorTool==CursorTool.Pen) {
-				if(!_isMouseDown) {
-					return;
-				}
-				TcData.PointList.Add(new PointF(e.X,e.Y));
-				Invalidate();//only the stroke is drawn again, over the last image
-			}
-			else if(TcData.CursorTool==CursorTool.Eraser) {
-				if(!_isMouseDown) {
-					return;
-				}
-				//look for any lines that intersect the "eraser". Since the line segments are so short, it's sufficient to check end points.
-				PointF pointEraser=TcData.GetPointMouseScaled(e.X+8.49f,e.Y+8.49f,Size);
-				int indexSegment=FindSegmentNear(pointEraser,8f);//radius by trial and error to achieve best feel.
-				if(indexSegment>=0) {
-					OnSegmentDrawn(TcData.DrawingSegmentList[indexSegment].DrawingSegment);//triggers a deletion from db.
-					TcData.DrawingSegmentList.RemoveAt(indexSegment);
-					ActionChartChanged?.Invoke();
-				}
-			}
+			_toothChartMouse.MouseMove(TcData,e.Location,Size);
 		}
 
 		protected override void OnMouseUp(MouseEventArgs e) {
 			base.OnMouseUp(e);
-			if(TcData==null) {
-				return;
-			}
-			_isMouseDown=false;
-			if(TcData.CursorTool==CursorTool.Pointer) {
-				if(TcData.HasSelectedTeethChanged(_listSelectedTeethOld)) {
-					OnToothSelectionsChanged();
-				}
-			}
-			else if(TcData.CursorTool==CursorTool.Pen) {
-				string drawingSegment="";
-				for(int i=0;i<TcData.PointList.Count;i++) {
-					if(i>0) {
-						drawingSegment+=";";
-					}
-					PointF pointMouseScaled=TcData.GetPointMouseScaled(TcData.PointList[i].X,TcData.PointList[i].Y,Size);
-					drawingSegment+=pointMouseScaled.X+","+pointMouseScaled.Y;
-				}
-				OnSegmentDrawn(drawingSegment);
-				TcData.PointList=new List<PointF>();
-				Invalidate();
-				ActionChartChanged?.Invoke();
-			}
-		}
-
-		///<summary>The first drawing with a point within radius of the point (in the 410x307 drawing space), or -1.</summary>
-		private int FindSegmentNear(PointF point,float radius) {
-			for(int i=0;i<TcData.DrawingSegmentList.Count;i++) {
-				string[] arrayPointStr=TcData.DrawingSegmentList[i].DrawingSegment.Split(';');
-				for(int p=0;p<arrayPointStr.Length;p++) {
-					string[] arrayXy=arrayPointStr[p].Split(',');
-					float x;
-					float y;
-					if(arrayXy.Length==2 && float.TryParse(arrayXy[0],out x) && float.TryParse(arrayXy[1],out y)) {
-						float dist=(float)Math.Sqrt(Math.Pow(Math.Abs(x-point.X),2)+Math.Pow(Math.Abs(y-point.Y),2));
-						if(dist<=radius) {//testing circle intersection here
-							return i;
-						}
-					}
-				}
-			}
-			return -1;
+			_toothChartMouse.MouseUp(TcData,e.Location,Size);
 		}
 		#endregion Mouse
 	}

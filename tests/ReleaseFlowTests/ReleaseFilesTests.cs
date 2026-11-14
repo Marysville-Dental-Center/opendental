@@ -46,7 +46,8 @@ namespace ReleaseFlowTests {
 			"ServiceManager.exe","UpdateFileCopier.exe","ODR.dll",
 		};
 
-		///<summary>The native x86 files the program loads at run time that no reference copies (Required dlls).</summary>
+		///<summary>The native x86 files the program loads at run time that no reference copies: the WebView2 package's loader (since S2-3 of the
+		///.NET 10 move; until then a None item of Required dlls, which S2-4 deleted).</summary>
 		private static readonly string[] _arrayRuntimeDlls=new string[] { "WebView2Loader.dll" };
 
 		[TestMethod]
@@ -136,36 +137,67 @@ namespace ReleaseFlowTests {
 				BuildOutput.NotBuilt(@"OpenPmsDental\bin\Debug is not built. Build OpenDental.Local.slnf (Debug|x86) first.");
 			}
 			List<string> listFileNames=Directory.GetFiles(folder).Select(x => Path.GetFileName(x)).ToList();
+			//The files the program's restore copies from its packages, each of the package at the version its lock file names (S2-4 of the .NET 10
+			//move: "Required dlls" no longer holds a copy).
+			Dictionary<string,PackageFile> dictPackageFiles=NuGetFiles.ReadCopiedFiles(TestPaths.RepoRoot,Path.Combine(TestPaths.RepoRoot,"OpenPmsDental"));
+			Assert.IsNotNull(dictPackageFiles,"OpenPmsDental is built, so it is restored.");
 			foreach(string fileName in _arrayRuntimeDlls) {
 				Assert.IsTrue(listFileNames.Contains(fileName,StringComparer.OrdinalIgnoreCase),"The output folder does not list "+fileName+".");
 				string pathOutput=Path.Combine(folder,fileName);
-				string pathRequired=Path.Combine(TestPaths.RepoRoot,"Required dlls",fileName);
-				CollectionAssert.AreEqual(File.ReadAllBytes(pathRequired),File.ReadAllBytes(pathOutput),fileName+" is the copy from Required dlls.");
+				Assert.IsTrue(dictPackageFiles.TryGetValue(fileName,out PackageFile packageFile),fileName+" is a file of a package of the program.");
+				Assert.AreEqual("runtimes/win-x86/native/"+fileName,packageFile.Asset,"The package's x86 native file.");
+				Assert.IsNotNull(packageFile.Path,packageFile+" is neither in the offline folder nor in the restore's global packages folder.");
+				CollectionAssert.AreEqual(File.ReadAllBytes(packageFile.Path),File.ReadAllBytes(pathOutput),fileName+" is the file of "+packageFile+".");
+				Assert.IsFalse(File.Exists(Path.Combine(TestPaths.RepoRoot,"Required dlls",fileName)),"Required dlls holds no copy of "+fileName+" any more.");
 				Assert.AreEqual(0x014C,GetPeMachine(pathOutput),fileName+" is x86, like OpenPmsDental.exe.");
 			}
 		}
 
 		[TestMethod]
 		public void OpenDentalCsproj_CopiesTheNativeRuntimeDllsInEveryConfiguration() {
-			//Read without the MSBuild namespace and evaluated, so the check holds for the classic project file and the SDK-style one alike.
+			//Since S2-3 of the .NET 10 move WebView2Loader.dll comes from the WebView2 package (Microsoft.Web.WebView2, the version of
+			//Directory.Packages.props), not from a None item of "Required dlls": OpenPmsDental names the package with its build files, whose
+			//build\Common.targets adds the x86 loader as a Content item for runtimes\win-x86\native\, and Directory.Build.targets gives that item
+			//the file name as its Link, without a condition on the configuration, so Debug and Release builds copy it to the top of the output.
+			//No item copies a loader anywhere else (a runtimes sub folder, which tools\Build-Release.ps1 refuses in the program's output) or the
+			//x64 or arm64 loader. Evaluated, with the package's build files as the restore's obj\OpenPmsDental.csproj.nuget.g.targets imports them.
 			string pathProject=Path.Combine(TestPaths.RepoRoot,"OpenPmsDental","OpenPmsDental.csproj");
-			List<ProjectItemElement> listElements=ProjectXml.ReadItemElements(pathProject);
-			List<ProjectFile> listConfigurations=new[] { "Debug","Release" }.Select(x => ProjectFile.Load(pathProject,x,"x86")).ToList();
-			foreach(string fileName in _arrayRuntimeDlls) {
-				string include=@"..\Required dlls\"+fileName;
-				ProjectItemElement projectItemElement=listElements.SingleOrDefault(x => x.ItemType=="None" && x.Include.Equals(include,StringComparison.OrdinalIgnoreCase));
-				Assert.IsNotNull(projectItemElement,"No copy item for "+fileName);
-				//No condition on the item or its group, so Release builds copy it too.
-				Assert.IsNull(projectItemElement.XElement.Attribute("Condition"),fileName);
-				Assert.IsNull(projectItemElement.XElement.Parent.Attribute("Condition"),fileName);
-				foreach(ProjectFile projectFile in listConfigurations) {
-					ProjectItem projectItem=projectFile.AssertItem("None",include);
-					//The evaluated Link: the item's own in the classic project file; in the SDK-style one, its own or, without one, the file name the
-					//SDK gives an item outside the project folder (SetLinkMetadataAutomatically), which ProjectFile models, so the check holds when
-					//S1-5 drops the explicit Link, as long as the item comes before the Sdk.targets import.
-					Assert.AreEqual(fileName,projectItem.GetMetadata("Link"),"Copied to the top of the output.");
-					Assert.AreEqual("PreserveNewest",projectItem.GetMetadata("CopyToOutputDirectory"),projectFile.Configuration);
+			foreach(string configuration in new[] { "Debug","Release" }) {
+				ProjectFile projectFile=ProjectFile.Load(pathProject,configuration,"x86");
+				ProjectItem projectItemPackage=projectFile.GetPackageReference("Microsoft.Web.WebView2");
+				Assert.IsNotNull(projectItemPackage,"OpenPmsDental names the WebView2 package itself.");
+				Assert.AreEqual("",projectItemPackage.GetMetadata("ExcludeAssets"),"With its build files, which bring the loader.");
+				Assert.AreEqual("1.0.2420.47",projectFile.GetPackageVersion("Microsoft.Web.WebView2"));
+				if(!File.Exists(projectFile.GetProperty("ProjectAssetsFile"))) {
+					BuildOutput.NotBuilt("OpenPmsDental is not restored yet, so its package's build files are not imported. Build OpenDental.Local.slnf first.");
 				}
+				Dictionary<string,PackageFile> dictPackageFiles=NuGetFiles.ReadCopiedFiles(TestPaths.RepoRoot,Path.GetDirectoryName(pathProject));
+				List<ProjectItem> listCopied=projectFile.GetItems("None").Concat(projectFile.GetItems("Content"))
+					.Where(x => x.GetMetadata("CopyToOutputDirectory")!="").ToList();
+				foreach(string fileName in _arrayRuntimeDlls) {
+					List<ProjectItem> listItems=listCopied.Where(x => Path.GetFileName(x.FullPath??x.Include).Equals(fileName,StringComparison.OrdinalIgnoreCase)).ToList();
+					Assert.AreEqual(1,listItems.Count,configuration+": one item copies "+fileName+": "+string.Join(", ",listItems.Select(x => x.ItemType+" "+x.Include)));
+					ProjectItem projectItem=listItems[0];
+					Assert.AreEqual("Content",projectItem.ItemType,configuration);
+					StringAssert.EndsWith(projectItem.FullPath.ToLowerInvariant(),@"\microsoft.web.webview2\1.0.2420.47\runtimes\win-x86\native\"+fileName.ToLowerInvariant(),
+						configuration+": the package's x86 loader.");
+					Assert.AreEqual(fileName,projectItem.GetMetadata("Link"),configuration+": copied to the top of the output.");
+					Assert.AreEqual("PreserveNewest",projectItem.GetMetadata("CopyToOutputDirectory"),configuration);
+					//The same bytes as the package's native asset of the program's win-x86 target, which tools\Build-Release.ps1 compares the staged
+					//loader with; "Required dlls" holds no copy since S2-4.
+					PackageFile packageFile=dictPackageFiles[fileName];
+					Assert.AreEqual("Microsoft.Web.WebView2 1.0.2420.47 runtimes/win-x86/native/"+fileName,packageFile.Id+" "+packageFile.Version+" "+packageFile.Asset,configuration);
+					CollectionAssert.AreEqual(File.ReadAllBytes(packageFile.Path),File.ReadAllBytes(projectItem.FullPath),
+						configuration+": "+fileName+" of the build files is the package's native asset.");
+					Assert.IsFalse(File.Exists(Path.Combine(TestPaths.RepoRoot,"Required dlls",fileName)),"Required dlls holds no copy of "+fileName+" any more.");
+				}
+				//The package's loaders for x64 and arm64 (only for an AnyCPU project) and its runtimes folders stay out.
+				List<ProjectItem> listElsewhere=listCopied.Where(x => x.GetMetadata("Link").StartsWith("runtimes\\",StringComparison.OrdinalIgnoreCase)
+					|| (x.FullPath??"").IndexOf(@"\runtimes\win-x64\",StringComparison.OrdinalIgnoreCase)>=0
+					|| (x.FullPath??"").IndexOf(@"\runtimes\win-arm64\",StringComparison.OrdinalIgnoreCase)>=0).ToList();
+				Assert.AreEqual(0,listElsewhere.Count,configuration+": "+string.Join(", ",listElsewhere.Select(x => x.Include+" -> "+x.GetMetadata("Link"))));
+				Assert.IsFalse(listCopied.Any(x => x.Include.IndexOf("Required dlls",StringComparison.OrdinalIgnoreCase)>=0),
+					configuration+": no item copies a file of Required dlls any more.");
 			}
 		}
 

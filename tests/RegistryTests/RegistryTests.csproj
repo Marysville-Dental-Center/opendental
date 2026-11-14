@@ -2,11 +2,6 @@
   <!-- Tests for the registries that must match Open Dental 25.3 (package M1-02 in docs/specs/port-backlog.md): enum numbers, preference names,
        permissions and the security tree, and the seed rows for databases that come from 24.3. Every .cs file under this folder is compiled. -->
   <ItemGroup>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-  <ItemGroup>
     <!-- Enum names and numbers from Open Dental's published 25.3 database documentation (names and numbers only). -->
     <Content Include="Data\OdEnums25_3.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

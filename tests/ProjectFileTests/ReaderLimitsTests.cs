@@ -1,6 +1,7 @@
 // ProjectFile's queries and limits on the fixtures (package S1-T2 of the .NET 10 plan): GetItemsMentioning in both formats; GetFilesNotCompiled
-// and GetFilesNotCompiledByWildcard, which never answer for a folder without source files; what it does not model (Choose, an unknown property
-// function, a missing import), which throws instead of evaluating on a guess; and an Update that writes the item type in another case.
+// and GetFilesNotCompiledByWildcard, which never answer for a folder without source files; what it does not model (an unknown property
+// function, a missing import, a Choose MSBuild rejects), which throws instead of evaluating on a guess; and an Update that writes the item type in
+// another case. Since S2-3: Choose as MSBuild evaluates it, $(MSBuildToolsVersion) in a numeric comparison, and the SDK's runtime identifier.
 // Licensed under the GNU General Public License, version 2 or later. See LICENSE in the repository root.
 using System;
 using System.IO;
@@ -74,11 +75,95 @@ namespace ProjectFileTests {
 
 		#region What is not modelled throws
 		[TestMethod]
-		public void Choose_Throws() {
+		public void Choose_TheFirstWhenThatIsTrue_ElseOtherwise_AsMSBuildEvaluatesIt() {
+			//Since S2-3 (the WebView2 package's build\Common.targets has a Choose): the When elements in order until one is true, else the
+			//Otherwise; its properties at once (a later property sees them, a nested Choose too), its items in pass 2; a When after the true one is
+			//not evaluated at all (here a condition the reader could not evaluate).
 			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
-				fixtureFolder.EditProject("SdkStyle","</Project>","<Choose><When Condition=\"'$(Configuration)' == 'Debug'\"><ItemGroup>"
-					+"<Compile Remove=\"Program.cs\" /></ItemGroup></When></Choose></Project>");
-				AssertThrows<NotSupportedException>(() => fixtureFolder.Load("SdkStyle"),"Choose is not modelled");
+				fixtureFolder.EditProject("SdkStyle","</Project>","<Choose>"
+					+"<When Condition=\"'$(Configuration)' == 'Release'\"><PropertyGroup><FixtureChosen>release</FixtureChosen></PropertyGroup>"
+					+"<ItemGroup><Compile Remove=\"Program.cs\" /></ItemGroup></When>"
+					+"<When Condition=\"'$(Configuration)' == 'Debug'\"><PropertyGroup><FixtureChosen>debug</FixtureChosen></PropertyGroup>"
+					+"<Choose><When Condition=\"'$(FixtureChosen)' == 'debug'\"><PropertyGroup><FixtureNested>nested</FixtureNested></PropertyGroup></When></Choose>"
+					+"</When>"
+					+"<When Condition=\"'$([System.Guid]::NewGuid())' != ''\"><PropertyGroup><FixtureChosen>never</FixtureChosen></PropertyGroup></When>"
+					+"<Otherwise><PropertyGroup><FixtureChosen>otherwise</FixtureChosen></PropertyGroup></Otherwise>"
+					+"</Choose><PropertyGroup><FixtureAfter>$(FixtureChosen)</FixtureAfter></PropertyGroup></Project>");
+				ProjectFile projectFileDebug=ProjectFile.Load(fixtureFolder.ProjectPath("SdkStyle"),"Debug","AnyCPU");
+				Assert.AreEqual("debug",projectFileDebug.GetProperty("FixtureChosen"));
+				Assert.AreEqual("debug",projectFileDebug.GetProperty("FixtureAfter"),"Its properties are set in pass 1, where the Choose stands.");
+				Assert.AreEqual("nested",projectFileDebug.GetProperty("FixtureNested"));
+				projectFileDebug.AssertCompiles("Program.cs");
+				ProjectFile projectFileRelease=ProjectFile.Load(fixtureFolder.ProjectPath("SdkStyle"),"Release","AnyCPU");
+				Assert.AreEqual("release",projectFileRelease.GetProperty("FixtureChosen"));
+				Assert.AreEqual("",projectFileRelease.GetProperty("FixtureNested"),"The When not chosen is not read.");
+				projectFileRelease.AssertDoesNotCompile("Program.cs");
+				//No When true: the Otherwise; a Choose without one sets nothing. The Guid When is evaluated now, so it goes.
+				fixtureFolder.EditProject("SdkStyle","<When Condition=\"'$([System.Guid]::NewGuid())' != ''\"><PropertyGroup><FixtureChosen>never</FixtureChosen></PropertyGroup></When>","");
+				Assert.AreEqual("otherwise",ProjectFile.Load(fixtureFolder.ProjectPath("SdkStyle"),"Fixture","AnyCPU").GetProperty("FixtureChosen"));
+				fixtureFolder.EditProject("SdkStyle","<Otherwise><PropertyGroup><FixtureChosen>otherwise</FixtureChosen></PropertyGroup></Otherwise>","");
+				Assert.AreEqual("",ProjectFile.Load(fixtureFolder.ProjectPath("SdkStyle"),"Fixture","AnyCPU").GetProperty("FixtureChosen"));
+			}
+		}
+
+		[TestMethod]
+		public void Choose_WhatMSBuildRejects_Throws() {
+			string[][] arrayCases=new[] {
+				new[] { "<Choose Condition=\"true\"><When Condition=\"true\" /></Choose>","with a Condition" },
+				new[] { "<Choose><Otherwise /></Choose>","<Otherwise> where MSBuild allows only When elements" },
+				new[] { "<Choose></Choose>","without a When" },
+				new[] { "<Choose><When><PropertyGroup /></When></Choose>","a When without a Condition" },
+				new[] { "<Choose><When Condition=\"true\" /><Otherwise /><Otherwise /></Choose>","<Otherwise> where" },
+				new[] { "<Choose><When Condition=\"true\" /><Otherwise /><When Condition=\"true\" /></Choose>","<When> where" },
+				new[] { "<Choose><PropertyGroup /></Choose>","<PropertyGroup> where" },
+				new[] { "<Choose><When Condition=\"true\"><Import Project=\"Other.props\" /></When></Choose>","<Import> in <When>" },
+				new[] { "<Choose><When Condition=\"false\" /><Otherwise><Target Name=\"X\" /></Otherwise></Choose>","<Target> in <Otherwise>" },
+			};
+			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
+				string text=File.ReadAllText(fixtureFolder.ProjectPath("SdkStyle"));
+				foreach(string[] arrayCase in arrayCases) {
+					fixtureFolder.WriteFile(@"tests\SdkStyle\SdkStyle.csproj",text.Replace("</Project>",arrayCase[0]+"</Project>"));
+					AssertThrows<NotSupportedException>(() => fixtureFolder.Load("SdkStyle"),arrayCase[1]);
+				}
+			}
+		}
+
+		[TestMethod]
+		public void MSBuildToolsVersion_ComparesAsTheVisualStudioVersion_OnlyWhereMSBuildDoesSo() {
+			//MSBuild's StringExpressionNode: an operand of < > <= >= written exactly '$(MSBuildToolsVersion)' that expands to "Current" is the
+			//Visual Studio version of the MSBuild that evaluates (18.0), so the WebView2 package's '$(MSBuildToolsVersion)' <= '15' is false (S2-3).
+			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
+				string text=File.ReadAllText(fixtureFolder.ProjectPath("SdkStyle"));
+				fixtureFolder.WriteFile(@"tests\SdkStyle\SdkStyle.csproj",text.Replace("</Project>","<PropertyGroup>"
+					+"<FixtureOld Condition=\"'$(MSBuildToolsVersion)' &lt;= '15'\">old</FixtureOld>"
+					+"<FixtureNew Condition=\"'$(msbuildtoolsversion)' &gt;= '18.0' and $(MSBuildToolsVersion) &lt; 19\">new</FixtureNew>"
+					+"<FixtureHolder>$(MSBuildToolsVersion)</FixtureHolder></PropertyGroup></Project>"));
+				ProjectFile projectFile=fixtureFolder.Load("SdkStyle");
+				Assert.AreEqual("",projectFile.GetProperty("FixtureOld"));
+				Assert.AreEqual("new",projectFile.GetProperty("FixtureNew"),"Any case of the name, quoted or not.");
+				Assert.AreEqual("Current",projectFile.GetProperty("MSBuildToolsVersion"),"The property itself stays Current.");
+				//Only the operand written so: another property that holds "Current", or more text around it, is no number, as in MSBuild (MSB4086).
+				foreach(string condition in new[] { "'$(FixtureHolder)' &lt;= '15'","'$(MSBuildToolsVersion).0' &lt;= '15'" }) {
+					fixtureFolder.WriteFile(@"tests\SdkStyle\SdkStyle.csproj",text.Replace("</Project>","<PropertyGroup>"
+						+"<FixtureHolder>$(MSBuildToolsVersion)</FixtureHolder><FixtureOld Condition=\""+condition+"\">old</FixtureOld></PropertyGroup></Project>"));
+					AssertThrows<NotSupportedException>(() => fixtureFolder.Load("SdkStyle"),"compares no numbers");
+				}
+			}
+		}
+
+		[TestMethod]
+		public void NETCoreSdkRuntimeIdentifier_IsTheSdksOwn_ForAnSdkStyleProject_AndEmptyForAClassicOne() {
+			//Microsoft.NETCoreSdk.BundledVersions.props sets it in Microsoft.NET.Sdk.props over anything the project says; the WebView2 package's
+			//build\Common.targets tests it (S2-3). tools\Test-ProjectFileEvaluator.ps1 compares it with MSBuild's for every project.
+			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
+				string expected=Environment.Is64BitOperatingSystem ? "win-x64" : "win-x86";
+				Assert.AreEqual(expected,fixtureFolder.Load("SdkStyle").GetProperty("NETCoreSdkRuntimeIdentifier"));
+				fixtureFolder.EditProject("SdkStyle","<OutputType>WinExe</OutputType>","<OutputType>WinExe</OutputType>"
+					+"<FixtureRid>$(NETCoreSdkRuntimeIdentifier)</FixtureRid><NETCoreSdkRuntimeIdentifier>fixture-rid</NETCoreSdkRuntimeIdentifier>");
+				ProjectFile projectFile=fixtureFolder.Load("SdkStyle");
+				Assert.AreEqual(expected,projectFile.GetProperty("FixtureRid"),"The SDK's props come before the project's properties,");
+				Assert.AreEqual("fixture-rid",projectFile.GetProperty("NETCoreSdkRuntimeIdentifier"),"which may set it again.");
+				Assert.AreEqual("",fixtureFolder.Load("Classic").GetProperty("NETCoreSdkRuntimeIdentifier"));
 			}
 		}
 
@@ -175,6 +260,22 @@ namespace ProjectFileTests {
 				ProjectFile projectFileClassic=fixtureFolder.Load("Classic");
 				Assert.AreEqual("Code",projectFileClassic.AssertItem("Compile","Program.cs").GetMetadata("SubType"));
 				Assert.IsFalse(projectFileClassic.AssertItem("Compile",@"Old\Keep.cs").HasMetadata("SubType"),"Only what it names.");
+			}
+		}
+
+		[TestMethod]
+		public void AnIncludeWithADoubledBackSlash_KeepsItsText_AndAnUpdateFindsItByItsPath() {
+			//As MSBuild has it (S2-3): the WebView2 package's build\Common.targets includes $(MSBuildThisFileDirectory)\..\runtimes\..., whose
+			//Include keeps "build\\.." (MSBuild -getItem prints it so), and Directory.Build.targets updates that file through another spelling.
+			using(FixtureFolder fixtureFolder=FixtureFolder.Create()) {
+				fixtureFolder.EditProject("SdkStyle","</Project>","<ItemGroup><Content Include=\"$(MSBuildProjectDirectory)\\\\Data\\..\\Data\\Seed.txt\" "
+					+"CopyToOutputDirectory=\"PreserveNewest\" /><Content Update=\"$(MSBuildProjectDirectory)\\Data\\Seed.txt\" Link=\"Seed.txt\" /></ItemGroup></Project>");
+				ProjectFile projectFile=fixtureFolder.Load("SdkStyle");
+				ProjectItem projectItem=projectFile.GetItems("Content").Single(x => x.Include.EndsWith("Seed.txt"));
+				Assert.AreEqual(projectFile.Folder+@"\\Data\..\Data\Seed.txt",projectItem.Include,"The text as written, doubled back slash and all.");
+				Assert.AreEqual(projectFile.Folder+@"\Data\Seed.txt",projectItem.FullPath);
+				Assert.AreEqual("Seed.txt",projectItem.GetMetadata("Link"),"The Update found it by its full path.");
+				Assert.AreEqual("PreserveNewest",projectItem.GetMetadata("CopyToOutputDirectory"));
 			}
 		}
 		#endregion Update

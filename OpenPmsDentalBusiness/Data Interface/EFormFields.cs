@@ -283,6 +283,9 @@ namespace OpenPmsDentalBusiness{
 			xmlWriter.Close();
 			string xamlString = Encoding.UTF8.GetString(memoryStream.ToArray());
 			memoryStream.Dispose();
+			//An empty document (a label with no text yet) is written self-closing, <FlowDocument ... />. The pattern below would turn that into an
+			//unclosed <FlowDocument>, which DeserializeFlowDocument can't load, so give it a closing tag first.
+			xamlString=Regex.Replace(xamlString,@"(<FlowDocument[^>]*?)\s*/>","$1></FlowDocument>");
 			string pattern = @"<FlowDocument"
 				+"[^>]*"//any number of characters that are not >
 				+">";

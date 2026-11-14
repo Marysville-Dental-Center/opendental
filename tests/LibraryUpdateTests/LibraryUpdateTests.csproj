@@ -6,10 +6,8 @@
        and s0t_* on the local MariaDB and are inconclusive without it. No test reaches the internet. Every .cs file under this folder is
        compiled. -->
   <ItemGroup>
-    <!-- BouncyCastle: the SFTP tests generate host keys with it (SSH.NET and MimeKit use it themselves). -->
-    <Reference Include="BouncyCastle.Cryptography">
-      <HintPath>..\..\Required dlls\BouncyCastle.Cryptography.dll</HintPath>
-    </Reference>
+    <!-- BouncyCastle (the SFTP tests generate host keys with it; SSH.NET and MimeKit use it themselves), MailKit, MimeKit, Newtonsoft.Json
+         and SSH.NET come as packages through the projects below. -->
     <!-- The Direct Project parser every downloaded email goes through (EmailMessages.RawEmailToIncomingMessage). -->
     <Reference Include="Health.Direct.Agent">
       <HintPath>..\..\Required dlls\Health.Direct.Agent.dll</HintPath>
@@ -17,24 +15,18 @@
     <Reference Include="Health.Direct.Common">
       <HintPath>..\..\Required dlls\Health.Direct.Common.dll</HintPath>
     </Reference>
-    <Reference Include="MailKit">
-      <HintPath>..\..\Required dlls\MailKit.dll</HintPath>
-    </Reference>
-    <Reference Include="MimeKit">
-      <HintPath>..\..\Required dlls\MimeKit.dll</HintPath>
-    </Reference>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
-    <Reference Include="Newtonsoft.Json">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\Required dlls\Newtonsoft.Json.dll</HintPath>
-    </Reference>
-    <Reference Include="Renci.SshNet">
-      <HintPath>..\..\Required dlls\Renci.SshNet.dll</HintPath>
-    </Reference>
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Security" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- The packages of a lock file and the files the build copies from them (S2-4 of the .NET 10 move: the library files are the packages'
+         own, no longer copies in "Required dlls"), and the rule for tests that check a built file. -->
+    <Compile Include="..\ProjectFileTests\NuGetFiles.cs">
+      <Link>NuGetFiles.cs</Link>
+    </Compile>
+    <Compile Include="..\ProjectFileTests\BuildOutput.cs">
+      <Link>BuildOutput.cs</Link>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\CodeBase\xCodeBase.csproj" />

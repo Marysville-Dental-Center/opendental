@@ -2,17 +2,8 @@
   <!-- Tests for the vendor-direct integrations (docs/specs/vendor-direct/README.md). Each package puts its tests in its own folder
        (Foundation, Qbo, Usps, ...). Every .cs file under this folder is compiled, so no package edits this project file. -->
   <ItemGroup>
-    <!-- MimeKit: the Microsoft 365 and Gmail tests build and read MIME messages. -->
-    <Reference Include="MimeKit">
-      <HintPath>..\..\Required dlls\MimeKit.dll</HintPath>
-    </Reference>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
-    <Reference Include="Newtonsoft.Json">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\Required dlls\Newtonsoft.Json.dll</HintPath>
-    </Reference>
+    <!-- MimeKit (the Microsoft 365 and Gmail tests build and read MIME messages), Newtonsoft.Json and MySqlConnector come as packages through
+         the projects below. -->
     <Reference Include="System.Net.Http" />
   </ItemGroup>
   <ItemGroup>
@@ -23,6 +14,10 @@
     <!-- The rule for tests that check a built file: inconclusive when it is not built, a failure with OPMS_REQUIRE_BUILD_OUTPUT=1. -->
     <Compile Include="..\ProjectFileTests\BuildOutput.cs">
       <Link>BuildOutput.cs</Link>
+    </Compile>
+    <!-- The packages of a lock file (S2-4 of the .NET 10 move: the library files are the packages' own, no longer copies in "Required dlls"). -->
+    <Compile Include="..\ProjectFileTests\NuGetFiles.cs">
+      <Link>NuGetFiles.cs</Link>
     </Compile>
   </ItemGroup>
   <ItemGroup>

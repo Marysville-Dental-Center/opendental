@@ -23,6 +23,8 @@ namespace OpenPmsDental{
 		{
 			//Every report connection goes through the program's connection rule (docs/specs/db-connection-security.md).
 			RdlEngineConfig.CheckConnection=DataConnectionBase.DbConnectionSecurity.CheckReportConnection;
+			//The program makes the report's MySqlConnector connection itself, so a server over the network is verified before the login.
+			RdlEngineConfig.CreateConnection=DataConnectionBase.DbConnectionSecurity.NewReportConnection;
 			//
 			// Required for Windows Form Designer support
 			//

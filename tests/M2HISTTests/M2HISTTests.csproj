@@ -4,9 +4,6 @@
        ten InsHist*Codes preferences. Rule tests need no database. Database tests use scratch MariaDB databases with unique per-run names and
        synthetic rows only (made-up Z codes), and drop them afterwards. Every .cs file under this folder is compiled. -->
   <ItemGroup>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <ItemGroup>

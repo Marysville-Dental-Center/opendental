@@ -12,12 +12,14 @@ such as <ProgramFiles(x86)>\. The script stops with an error, before writing the
 path or any other drive path.
 
   items.txt      The evaluated Compile, EmbeddedResource, Page, Resource, None and Content items of each C# project
-                 (MSBuild -getItem, with the configuration and platform the solution gives the project for Debug|x86):
-                 project|item type|include|metadata. The include is the item's path as the project gives it: relative to
-                 the project folder, or relative to the repository for an item the project names by a full path (the linked
-                 sources of the third-party wrappers, through a folder property); the metadata are the item's own (Link,
-                 LogicalName, DependentUpon, CopyToOutputDirectory, SubType, ...), not the well-known ones MSBuild adds to
-                 every item (FullPath, ModifiedTime, ...).
+                 (MSBuild -getItem, with the configuration and platform the solution gives the project for Debug|x86),
+                 and since S2-1 of the .NET 10 move its PackageReference and PackageVersion items (the packages it asks
+                 NuGet for, and the central versions of Directory.Packages.props, which NuGet.props imports after
+                 Directory.Build.props): project|item type|include|metadata. The include is the item's path as the project
+                 gives it: relative to the project folder, or relative to the repository for an item the project names by a
+                 full path (the linked sources of the third-party wrappers, through a folder property), or a package id; the
+                 metadata are the item's own (Link, LogicalName, DependentUpon, CopyToOutputDirectory, SubType, Version, ...),
+                 not the well-known ones MSBuild adds to every item (FullPath, ModifiedTime, ...).
   resources.txt  The manifest resource names of each project's built assembly: project|resource name.
   files.txt      Every file under OpenPmsDental\bin\Debug and under the output folder of every test project:
                  folder|file|size|SHA-256. The Logger folder in them is left out: the programs and the tests write it at
@@ -179,7 +181,7 @@ $serializer.MaxJsonLength=[int]::MaxValue
 
 function Get-ProjectEvaluation($project){
 	$arguments=@($project.Path,'-nologo','-getItem:Compile','-getItem:EmbeddedResource','-getItem:Page','-getItem:Resource','-getItem:None','-getItem:Content',
-		'-getProperty:TargetPath,AssemblyName,OutputType',"-p:Configuration=$($project.Configuration)","-p:Platform=$($project.Platform)",
+		'-getItem:PackageReference','-getItem:PackageVersion','-getProperty:TargetPath,AssemblyName,OutputType',"-p:Configuration=$($project.Configuration)","-p:Platform=$($project.Platform)",
 		"-p:SolutionDir=$Root\","-p:SolutionPath=$Root\OpenDental.sln",'-p:SolutionName=OpenDental','-p:SolutionExt=.sln','-p:SolutionFileName=OpenDental.sln')
 	$output=& $script:msbuild @arguments 2>&1 | ForEach-Object { "$_" }
 	if($LASTEXITCODE -ne 0){ throw "MSBuild could not evaluate $($project.Relative): $(($output | Select-Object -Last 5) -join ' ')" }
@@ -211,8 +213,9 @@ if(-not $CompareOnly){
 	Write-Host "$($list.Count) C# projects"
 	foreach($project in $list){
 		$evaluation=Get-ProjectEvaluation $project
-		#Resource: the WPF resources a UseWPF project compiles into its .g.resources (S1-4's review), recorded since S1-T3.
-		foreach($itemType in @('Compile','EmbeddedResource','Page','Resource','None','Content')){
+		#Resource: the WPF resources a UseWPF project compiles into its .g.resources (S1-4's review), recorded since S1-T3. PackageReference
+		#and PackageVersion: the packages and their central versions (Directory.Packages.props), recorded since S2-1.
+		foreach($itemType in @('Compile','EmbeddedResource','Page','Resource','None','Content','PackageReference','PackageVersion')){
 			$itemList=$evaluation['Items'][$itemType]
 			if(-not $itemList){ continue }
 			foreach($item in $itemList){

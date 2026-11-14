@@ -8,11 +8,8 @@
        compiled. -->
   <ItemGroup>
     <!-- Reads the business layer's IL for the Middle Tier source rules (ParamCheckTests). The NuGet package, from the offline package
-         folder (nuget.config). -->
-    <PackageReference Include="Mono.Cecil" Version="0.10.3" />
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
+         folder (nuget.config), at the version of Directory.Packages.props. -->
+    <PackageReference Include="Mono.Cecil" />
     <!-- ODThread's members name WinForms types (Control). -->
     <Reference Include="System.Windows.Forms" />
   </ItemGroup>

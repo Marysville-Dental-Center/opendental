@@ -29,6 +29,10 @@ namespace PdfLibraryTests {
 				"MigraDoc.DocumentObjectModel/LoggerMessages.cs" }),
 			("MigraDoc.Rendering-gdi",@"MigraDoc\src\MigraDoc.Rendering-gdi\MigraDoc.Rendering-gdi.csproj",new[] { "PDFsharp/GlobalUsings.cs" }),
 		};
+		///<summary>The packages a source-build project may reference: the support assemblies the sources use (S2-1 of the .NET 10 move, from the
+		///offline folder at the versions of Directory.Packages.props).</summary>
+		private static readonly string[] _arraySupportPackages=new[] { "Microsoft.Extensions.Logging.Abstractions","System.Memory","System.Buffers",
+			"System.Runtime.CompilerServices.Unsafe" };
 		///<summary>The resources of empira's 6.5.0 NuGet files, by assembly. The build must embed the same, under the same names.</summary>
 		private static readonly Dictionary<string,string[]> _dictResources=new Dictionary<string,string[]> {
 			{ "PdfSharp-gdi",new[] { "PdfSharp.Forms.PagePreview.resources","PdfSharp.Forms.PagePreviewCanvas.resources","PdfSharp.Resources.sRGB2014.icc" } },
@@ -140,28 +144,45 @@ namespace PdfLibraryTests {
 		}
 
 		[TestMethod]
-		public void Outputs_HoldTheSupportAssembliesOfRequiredDlls_NotOlderCopies() {
-			//Reference resolution must take the support assemblies (System.Memory, Microsoft.Extensions.Logging.Abstractions, ...) from "Required
-			//dlls", not older copies of the exact versions a dependency was built against (Visual Studio's test platform folder has some).
+		public void Outputs_HoldTheSupportAssembliesOfTheLockedPackages_NotOlderCopies() {
+			//The support assemblies (System.Memory, Microsoft.Extensions.Logging.Abstractions, ...) in each output folder must be the files of their
+			//packages at the versions the project's lock file names (the files the restore copies, NuGetFiles.ReadCopiedFiles; "Required dlls" held
+			//copies of them until S2-4 of the .NET 10 move), not older copies of the exact versions a dependency was built against (Visual Studio's
+			//test platform folder has some). A file that "Required dlls" still holds is compared with that copy, as before.
 			string folderRequired=SourceBuild.Combine("Required dlls");
 			List<string> listProblems=new List<string>();
 			int countFolders=0;
+			int countCompared=0;
 			foreach(string project in _arrayProjects.Select(x => x.Project).Concat(new[] { "WeCantSpell.Hunspell" })) {
+				Dictionary<string,PackageFile> dictPackageFiles=NuGetFiles.ReadCopiedFiles(SourceBuild.RepoRoot,SourceBuild.Combine("third-party/build/"+project));
 				foreach(string configuration in new[] { "Debug","Release" }) {
 					string folder=SourceBuild.Combine("third-party/build/"+project+"/bin/"+configuration);
 					if(!Directory.Exists(folder)) {
 						continue;
 					}
 					countFolders++;
+					Assert.IsNotNull(dictPackageFiles,project+" is built, so it is restored.");
 					foreach(string path in Directory.GetFiles(folder,"*.dll")) {
 						string pathRequired=Path.Combine(folderRequired,Path.GetFileName(path));
 						if(File.Exists(pathRequired) && !File.ReadAllBytes(path).SequenceEqual(File.ReadAllBytes(pathRequired))) {
 							listProblems.Add(SourceBuild.Relative(path)+" is not the file of Required dlls.");
 						}
+						PackageFile packageFile;
+						if(!dictPackageFiles.TryGetValue(Path.GetFileName(path),out packageFile)) {
+							continue;
+						}
+						countCompared++;
+						if(packageFile.Path==null || !File.Exists(packageFile.Path)) {
+							listProblems.Add(SourceBuild.Relative(path)+": "+packageFile+" is neither in the offline folder nor in the restore's global packages folder.");
+						}
+						else if(!File.ReadAllBytes(path).SequenceEqual(File.ReadAllBytes(packageFile.Path))) {
+							listProblems.Add(SourceBuild.Relative(path)+" is not the file of "+packageFile+".");
+						}
 					}
 				}
 			}
 			Assert.IsTrue(countFolders>=7,"third-party\\build is not built.");
+			Assert.IsTrue(countCompared>=countFolders,"Each output folder holds the support assemblies of its packages: "+countCompared+" compared in "+countFolders+" folders.");
 			Assert.AreEqual(0,listProblems.Count,string.Join("\r\n",listProblems));
 		}
 
@@ -174,31 +195,34 @@ namespace PdfLibraryTests {
 				.Where(x => !x.Contains(@"\bin\") && !x.Contains(@"\obj\")).ToList();
 			CollectionAssert.AreEquivalent(_arrayProjects.Select(x => x.Project).Concat(new[] { "WeCantSpell.Hunspell" }).ToArray(),
 				listProjects.Select(Path.GetFileNameWithoutExtension).ToArray());
-			int countHintPaths=0;
+			int countPackageReferences=0;
 			foreach(string path in listProjects) {
 				string name=Path.GetFileNameWithoutExtension(path);
 				string relative=@"third-party\build\"+name+@"\"+name+".csproj";
 				string text=File.ReadAllText(path);
 				//The project file evaluated with what it imports, so the checks hold for the classic project files and the SDK-style ones of the .NET 10
-				//move alike: no NuGet package, GitVersion or SourceLink in either format (an SDK-style wrapper is fine, an upstream project is not).
+				//move alike: no GitVersion or SourceLink in either format (an SDK-style wrapper is fine, an upstream project is not).
 				ProjectFile projectFile=ProjectFile.Load(path);
-				foreach(string forbidden in new[] { "<PackageReference","GitVersion.MsBuild","SourceLink","packages.config" }) {
+				foreach(string forbidden in new[] { "GitVersion.MsBuild","SourceLink","packages.config" }) {
 					Assert.IsFalse(text.IndexOf(forbidden,StringComparison.OrdinalIgnoreCase)>=0,name+" uses "+forbidden);
 				}
-				Assert.AreEqual(0,projectFile.GetItems("PackageReference").Count+projectFile.GetItems("PackageDownload").Count,name+" asks NuGet for a package.");
+				//The only packages are the support assemblies the sources use, at the versions of Directory.Packages.props (S2-1 of the .NET 10
+				//move; until then the same files of Required dlls), never a PDFsharp, MigraDoc or WeCantSpell package.
+				Assert.AreEqual(0,projectFile.GetItems("PackageDownload").Count,name+" downloads a package.");
+				foreach(ProjectItem projectItemPackage in projectFile.GetItems("PackageReference")) {
+					CollectionAssert.Contains(_arraySupportPackages,projectItemPackage.Include,name+" asks NuGet for "+projectItemPackage.Include);
+					Assert.IsFalse(string.IsNullOrEmpty(projectFile.GetPackageVersion(projectItemPackage.Include)),name+": "+projectItemPackage.Include);
+					countPackageReferences++;
+				}
 				Assert.IsFalse(File.Exists(Path.Combine(Path.GetDirectoryName(path),"packages.config")),name+" has packages.config");
 				CollectionAssert.Contains(projectFile.FilesRead,Path.Combine(buildFolder,"SourceBuild.props"),name);
 				CollectionAssert.Contains(projectFile.FilesRead,Path.Combine(buildFolder,"SourceBuild.targets"),name);
 				Assert.AreNotEqual("",projectFile.GetProperty("SourceBuildUpstreamProject"),name);
 				StringAssert.Contains(sln,"\""+name+"\", \""+relative+"\"",name+" is in OpenDental.sln.");
 				StringAssert.Contains(slnf,"\""+relative.Replace(@"\",@"\\")+"\"",name+" is in OpenDental.Local.slnf.");
-				//The Required dlls they use are support assemblies, never a PDFsharp, MigraDoc or WeCantSpell file.
+				//No prebuilt file: no HintPath at all, so never a PDFsharp, MigraDoc or WeCantSpell file.
 				List<string> listHintPaths=projectFile.GetItems("Reference").Select(x => x.GetMetadata("HintPath")).Where(x => x!="").ToList();
-				countHintPaths+=listHintPaths.Count;
-				foreach(string hintPath in listHintPaths) {
-					StringAssert.StartsWith(hintPath,@"..\..\..\Required dlls\",name);
-					Assert.IsFalse(Regex.IsMatch(Path.GetFileName(hintPath),"^(PdfSharp|MigraDoc|WeCantSpell)"),name+": "+hintPath);
-				}
+				Assert.AreEqual(0,listHintPaths.Count,name+": "+string.Join(", ",listHintPaths));
 				//.NET Framework 4.8, x86 like the program (SourceBuild.props for the classic projects, the SDK's net48 and Directory.Build.props for SDK-style).
 				Assert.IsTrue(projectFile.GetProperty("TargetFrameworkVersion")=="v4.8" || projectFile.GetProperty("TargetFramework")=="net48",name);
 				Assert.AreEqual("x86",projectFile.GetProperty("PlatformTarget"),name);
@@ -212,7 +236,7 @@ namespace PdfLibraryTests {
 						Path.GetFullPath(projectFile.GetProperty("PdfSharpSourceRoot")),true,name);
 				}
 			}
-			Assert.IsTrue(countHintPaths>0,"No source-build project references a support assembly of Required dlls: the HintPaths were not read.");
+			Assert.IsTrue(countPackageReferences>0,"No source-build project references a support package: the PackageReference items were not read.");
 			//The build of the upstream projects (SDK style, NuGet, GitVersion) is never invoked: no project of the solution points into a submodule.
 			foreach(Match match in Regex.Matches(sln,@"^Project\(""[^""]+""\) = ""[^""]+"", ""([^""]+)""",RegexOptions.Multiline)) {
 				Assert.IsFalse(match.Groups[1].Value.StartsWith(@"third-party\PDFsharp\") || match.Groups[1].Value.StartsWith(@"third-party\WeCantSpell.Hunspell\"),

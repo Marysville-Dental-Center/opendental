@@ -1,11 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- The library updates (first step: the shared support assemblies): every reference between the assemblies in "Required dlls" resolves in
-       every program's config, no redirect names a version that is not there, the built programs and tests load the files of "Required dlls",
-       and the release ships exactly the ones the programs need. Reads assembly metadata with Mono.Cecil and loads none of the files it checks.
-       No database, device or network is needed. Every .cs file under this folder is compiled. -->
+  <!-- The library updates (first step: the shared support assemblies): every reference between the library files (those of "Required dlls"
+       and, since S2-4 of the .NET 10 move, the NuGet packages' own files at the lock files' versions) resolves in every program's config, no
+       redirect names a version that is not there, the built programs and tests load those very files, and the release ships exactly the ones
+       the programs need. Reads assembly metadata with Mono.Cecil and loads none of the files it checks. No database, device or network is
+       needed. Every .cs file under this folder is compiled. -->
   <ItemGroup>
-    <!-- Reads assembly references without loading the assemblies. The NuGet package, from the offline package folder (nuget.config). -->
-    <PackageReference Include="Mono.Cecil" Version="0.10.3" />
+    <!-- Reads assembly references without loading the assemblies. The NuGet package, from the offline package folder (nuget.config), at
+         the version of Directory.Packages.props. -->
+    <PackageReference Include="Mono.Cecil" />
   </ItemGroup>
   <ItemGroup>
     <!-- The reader of project files (classic and SDK-style) shared by the tests that check them (S1-T of docs/specs/net10-plan.md). -->
@@ -15,6 +17,10 @@
     <!-- The rule for tests that check a built file: inconclusive when it is not built, a failure with OPMS_REQUIRE_BUILD_OUTPUT=1. -->
     <Compile Include="..\ProjectFileTests\BuildOutput.cs">
       <Link>BuildOutput.cs</Link>
+    </Compile>
+    <!-- The packages of a lock file and the files the build copies from them (S2-4 of the .NET 10 move). -->
+    <Compile Include="..\ProjectFileTests\NuGetFiles.cs">
+      <Link>NuGetFiles.cs</Link>
     </Compile>
   </ItemGroup>
 </Project>

@@ -14,17 +14,13 @@
     <DefineConstants>TRACE;$(PdfSharpNetStandard20Symbols);$(PdfSharpUpstreamConstants)</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Microsoft.Extensions.Logging.Abstractions">
-      <HintPath>..\..\..\Required dlls\Microsoft.Extensions.Logging.Abstractions.dll</HintPath>
-    </Reference>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <!-- Not used by the code; without it, reference resolution looks for the exact System.Memory that Microsoft.Extensions.Logging.Abstractions
          was built against and copies an older one from Visual Studio's test platform folder (Directory.Build.targets adds it to the search
-         path) into the output, instead of the file of Required dlls. -->
-    <Reference Include="System.Memory">
-      <HintPath>..\..\..\Required dlls\System.Memory.dll</HintPath>
-    </Reference>
+         path) into the output, instead of the one of Directory.Packages.props. -->
+    <PackageReference Include="System.Memory" />
   </ItemGroup>
   <ItemGroup>
     <!-- Upstream: every .cs file of the project folder. -->

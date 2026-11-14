@@ -110,7 +110,7 @@ namespace OpenPmsDental.Reporting.Allocators.MyAllocator1
 			}
 			finally
 			{
-				if (con.State == ConnectionState.Open)
+				if (con.State != ConnectionState.Closed)//also Broken, after a network error (MySqlConnector 2.4 and later)
 					con.Close();
 			}
 			for (int i = 0; i < Columns.Length; i++) // If exception is thrown here I want to know it because it means my columns array is not right.
@@ -149,7 +149,7 @@ namespace OpenPmsDental.Reporting.Allocators.MyAllocator1
 			}
 			finally
 			{
-				if (con.State == ConnectionState.Open)
+				if (con.State != ConnectionState.Closed)//also Broken, after a network error (MySqlConnector 2.4 and later)
 					con.Close();
 			}
 			return ItemsInRawQuery;

@@ -142,8 +142,8 @@ server computer must then connect with `<db-server>` (the name the workstations 
 
 ## Library updates for security
 
-The libraries below replace unmaintained ones or versions with known problems. They are still DLL files in `Required dlls`, listed with
-their licences in `THIRD-PARTY-NOTICES.txt`.
+The libraries below replace unmaintained ones or versions with known problems. They come from their NuGet packages, each release file checked against
+the package at the version the lock file names, and are listed with their licences in `THIRD-PARTY-NOTICES.txt`.
 
 - **SSH: SSH.NET 2026.0.0** (with Bouncy Castle Cryptography 2.7.0) in place of SharpSSH, which was unmaintained since 2013, and its two
   cryptography libraries (Mentalis.org Security Library and DiffieHellman). It serves every SSH connection of the program: the SFTP image
@@ -392,6 +392,21 @@ question DB-SEC 2). It now copies the rows with ordinary `INSERT` statements, in
 no connection allows local files, and no temporary file of the rows is written. The account typed for the other server needs `CREATE`,
 `INSERT` and `SELECT` on the backup database. The program's own database account keeps its three server-wide rights (owner question
 DB-SEC 1, answered on 2026-11-07).
+
+## Insurance Verification List: no patient left out
+
+When a patient's insurance plan and patient plan happened to have the same number in the database, which is common, the Insurance
+Verification List showed only the plan's benefits verification and left out the patient's eligibility verification, and the batch
+insurance verification skipped the patient. Inherited from Open Dental 24.1.71. Both verifications are now listed for every patient, as
+they always were for the others.
+
+Each row of the list also shows the latest verification of its plan or patient plan, and the patient's earliest appointment in the date
+range, as Open Dental 23.3.54 to 24.2.1 did. Before, a plan with a leftover second verification record could show the older one (and be listed
+as due although it was verified recently), and a patient with several appointments in the range could show any of them. When two
+verification records of a plan or patient plan have the same date, the list shows the one entered last, the one Database Maintenance's
+InsVerifyRedundantEntries fix keeps; this tie rule is this program's own (Open Dental 24.2.1 listed whichever came first). With "Always
+reverify service year insurance benefits" or "... patient eligibility" checked in Insurance Verification Setup, a row shows the earliest
+appointment its verification is due for. The list needs no newer database server than before.
 
 ## Direct certificates: imported from your Direct provider's file
 

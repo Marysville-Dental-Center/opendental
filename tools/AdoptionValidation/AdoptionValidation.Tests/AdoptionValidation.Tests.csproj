@@ -12,15 +12,6 @@
   </PropertyGroup>
   <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
   <ItemGroup>
-    <Reference Include="MySqlConnector">
-      <HintPath>..\..\..\Required dlls\MySqlConnector.dll</HintPath>
-    </Reference>
-    <Reference Include="Newtonsoft.Json">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\Required dlls\Newtonsoft.Json.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\AdoptionValidation.csproj" />
     <ProjectReference Include="..\..\SyntheticData\SyntheticData.csproj" />
     <ProjectReference Include="..\..\..\CodeBase\xCodeBase.csproj" />

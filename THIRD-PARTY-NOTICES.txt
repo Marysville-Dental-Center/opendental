@@ -31,12 +31,12 @@ of each release, OpenPmsDental-<version>-source.zip next to the setup, holds
 the repository and both submodules at the commits the release was built from
 (docs/third-party-source-builds.md).
 
-Files in the repository's "Required dlls" folder that are not listed here are
-not part of the release (see docs/third-party-binaries-audit.md). Among them
-is a support library for the coming library updates, listed here once a
-shipped library uses it: System.Security.Cryptography.Pkcs 8.0.1, by the .NET
-Foundation and Contributors under the MIT License, source at
-https://github.com/dotnet/runtime. The MariaDB server, the .NET Framework,
+The files of a component that comes as a NuGet package are that package's own
+files, at the version named below: the build takes them from the package, and
+the release checks each one against the package that the program's lock file
+(OpenPmsDental/packages.lock.json) names. Files in the repository's "Required
+dlls" folder that are not listed here are not part of the release (see
+docs/third-party-binaries-audit.md). The MariaDB server, the .NET Framework,
 the Visual C++ runtime, the WebView2 runtime and the TWAIN data source manager
 are installed separately and are not shipped. DICOM images are read and
 written by the program's own code, written from the DICOM standard (NEMA
@@ -48,7 +48,7 @@ docs/port-notes/REL-FILES.md.
 
 --- Component: MySqlConnector
 Files:     MySqlConnector.dll
-Version:   2.3.7
+Version:   2.6.2
 Copyright: Bradley Grainger and contributors
 License:   MIT License
 Source:    https://github.com/mysql-net/MySqlConnector
@@ -60,10 +60,10 @@ Files:     Microsoft.Bcl.AsyncInterfaces.dll, Microsoft.Bcl.Cryptography.dll,
            System.Diagnostics.DiagnosticSource.dll, System.Formats.Asn1.dll, System.IO.Pipelines.dll,
            System.Memory.dll, System.Numerics.Vectors.dll, System.Runtime.CompilerServices.Unsafe.dll,
            System.Text.Encodings.Web.dll, System.Text.Json.dll, System.Threading.Tasks.Extensions.dll
-Version:   NuGet packages Microsoft.Bcl.AsyncInterfaces 10.0.14, Microsoft.Bcl.Cryptography 10.0.10,
-           Microsoft.Extensions.DependencyInjection.Abstractions 8.0.2,
-           Microsoft.Extensions.Logging.Abstractions 8.0.3, System.Buffers 4.6.1,
-           System.Diagnostics.DiagnosticSource 8.0.1, System.Formats.Asn1 10.0.13,
+Version:   NuGet packages Microsoft.Bcl.AsyncInterfaces 10.0.15, Microsoft.Bcl.Cryptography 10.0.10,
+           Microsoft.Extensions.DependencyInjection.Abstractions 10.0.15,
+           Microsoft.Extensions.Logging.Abstractions 10.0.15, System.Buffers 4.6.1,
+           System.Diagnostics.DiagnosticSource 10.0.15, System.Formats.Asn1 10.0.13,
            System.IO.Pipelines 10.0.14, System.Memory 4.6.3, System.Numerics.Vectors 4.6.1,
            System.Runtime.CompilerServices.Unsafe 6.1.2, System.Text.Encodings.Web 10.0.14,
            System.Text.Json 10.0.14, System.Threading.Tasks.Extensions 4.6.3
@@ -214,10 +214,11 @@ Note:      Apache License 2.0 is compatible with GNU GPL version 3 but not with 
 --- Component: Microsoft Edge WebView2 SDK
 Files:     Microsoft.Web.WebView2.Core.dll, Microsoft.Web.WebView2.WinForms.dll, Microsoft.Web.WebView2.Wpf.dll,
            WebView2Loader.dll (x86)
-Version:   1.0.2420.47
+Version:   1.0.2420.47 (NuGet package Microsoft.Web.WebView2)
 Copyright: Microsoft Corporation
 License:   BSD 3-Clause License (Microsoft's own text is LICENSE.txt in the NuGet package)
-Source:    https://www.nuget.org/packages/Microsoft.Web.WebView2/1.0.2420.47
+Source:    https://www.nuget.org/packages/Microsoft.Web.WebView2/1.0.2420.47, the NuGet package the files
+           come from as it holds them (lib/net45, and runtimes/win-x86/native for WebView2Loader.dll)
 
 --- Component: TWAIN
 Files:     none; ImagingDeviceManager.dll implements the TWAIN protocol from the TWAIN specification
@@ -232,6 +233,40 @@ Version:   not applicable
 Copyright: Pearl, Inc.
 License:   Pearl's notice on the use of its API, kept from Open Dental's license list (its text follows)
 Source:    not applicable
+
+--- Component: HL7 CDA-core-xsl
+Files:     CDA.xsl, cda_l10n.xml, cda_narrativeblock.xml, embedded in OpenPmsDentalBusiness.dll; the program runs
+           them only in its own child process to show CCDs, and writes them beside exported CCDs (CDA.xsl as
+           ccd.xsl) with the license text as stylesheets-license.txt
+Version:   4.1.0-beta.2 (tag v4.1.0-beta.2, commit bfb832026c19055faa182a7a8a4e5a2d6bd8796b), unmodified. SHA-256:
+           CDA.xsl f1c32f11186cf69d64f874cc4c94eb51ca8f696b54b4b6833fb54c6afdd7acc1,
+           cda_l10n.xml d8677885ef78afc0842484ecc70a65f8f17eea286e990bd39fa948cac7f1a884,
+           cda_narrativeblock.xml 608b518182a1418e8865e5e8437083bad034762cf078750ec27c10d17a2285a9
+Copyright: Health Level Seven International (HL7) and the contributors named in the stylesheet's header
+License:   Apache License 2.0, as the project's README and the stylesheet's header state (the release has no
+           LICENSE or NOTICE file)
+Source:    https://github.com/HL7/CDA-core-xsl
+Note:      Apache License 2.0 is compatible with GNU GPL version 3 but not with version 2; the program as distributed is
+           conveyed under version 3 (see the top of this file). Owner decision E-11 (docs/specs/ehr-rebuild-plan.md).
+
+--- Component: AAFP CCR stylesheet
+Files:     ccr.xsl, embedded in OpenPmsDentalBusiness.dll; the program runs it only in its own child process to
+           show received CCRs
+Version:   2.0 (2007-06-01), the "CCR XSL V2.0" file release, MODIFIED by this project (SHA-256 of the released
+           file 4ab70db9f8684f6b738f1e9cfa17f0165622f40c48a9f46105cd31a862cca4c0, of the copy shipped
+           1d84391fd7761a15d90f0b8a866ebf099a960f2b0c75ebdbb2e5b357b59af739). The changes, also listed in the
+           file: dates without a time zone are read as such (the released copy showed a date as January 1 of
+           its year and a date and time as nothing), and a date shows no part it does not have (a year as the
+           year, a year and month as month and year, a date without a time with no time, instead of January 1,
+           the first of the month or midnight); a date it cannot read is shown as it came; the time zone
+           letter writes nothing without a time zone; the five disable-output-escaping attributes are removed,
+           so a received CCR's text is never markup; the footer says the stylesheet is a derived work
+Copyright: Copyright 2007 American Academy of Family Physicians
+License:   Apache License 2.0, as the file's header states
+Source:    https://sourceforge.net/projects/ccr-resources/files/ccr-xslt-html/CCR%20XSL%20V2.0/; the modified
+           copy is OpenPmsDentalBusiness/Resources/Ehr/ccr.xsl in this repository
+Note:      Apache License 2.0 is compatible with GNU GPL version 3 but not with version 2; the program as distributed is
+           conveyed under version 3 (see the top of this file). Owner decision E-11 (docs/specs/ehr-rebuild-plan.md).
 
 --- License: MIT License
 Copyright (c) <year> <copyright holders named above>
