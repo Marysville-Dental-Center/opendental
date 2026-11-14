@@ -765,6 +765,28 @@ The questions of the EHR plan, [specs/ehr-rebuild-plan.md](specs/ehr-rebuild-pla
 
 ---
 
+## Direct certificates follow-up (DIRECT-CERT, answered on 2026-11-09)
+
+The questions the DIRECT-CERT package (open point O-13, [port-notes/DIRECT-CERT.md](port-notes/DIRECT-CERT.md)) left open. You
+approved all three parts of the follow-up package, DIRECT-CERT-FOLLOWUP
+([port-notes/DIRECT-CERT-FOLLOWUP.md](port-notes/DIRECT-CERT-FOLLOWUP.md)).
+
+- **The connection settings tool's private keys.** The tool now deletes the private key of a client certificate it replaces also when
+  Windows keeps that key the older way (a CAPI key container, as it stores a `.pfx` that names no key provider), and gives the computer's
+  users read access to such a key. Before, the certificate was removed but that kind of key stayed on the computer. The same fix as the
+  Direct certificate import's. Done. Also, as the Direct certificate import does: the tool deletes the keys a `.pfx` brings that it does
+  not use (a CA certificate's in the same file), and a `.pfx` whose certificate the computer already has with a working key (setup run
+  again with the same file) leaves that certificate and its key as they are. Before, each such re-run left one more copy of the private
+  key on the computer, readable by its users, that no tool ever removed, against your decision of 2026-11-02. Done.
+- **Open Dental's "Customer Updates" web service.** Its empty stand-in (`ICustomerUpdates`, `CustomerUpdatesNoHq` and
+  `CustomerUpdatesProxy`) is deleted, as you decided; the tests that checked it was still there now check that it is gone. Done.
+- **The computer's users keep read access to the Direct private key**, as built: the program runs as the signed-in Windows user, who signs
+  and decrypts with it.
+- **A replaced Direct certificate's private key is deleted only if the certificate window imported it**, as built; the key of a
+  certificate put there another way stays on the computer.
+
+---
+
 ## Pending items answered on 2026-11-09 ("The rest as recommended", "Do headless window test")
 
 - **The database TLS script** (`tools/Enable-LocalDbTls.ps1`, DB-TLS) runs with `-WithClientCertificate`. You run it elevated, when
@@ -776,6 +798,30 @@ The questions of the EHR plan, [specs/ehr-rebuild-plan.md](specs/ehr-rebuild-pla
   shell.
 - **The stage 1 window checks** are done by a headless test (WINCHK-HEADLESS) instead of a session driving the desktop, because
   the PC's screen stays locked. Checks only a person at the screen can do are listed in its report for a later on-screen pass.
+
+## The connection settings tool's client certificate (DIRECT-CERT-FOLLOWUP, last round, open since 2026-11-13)
+
+The last round of [port-notes/DIRECT-CERT-FOLLOWUP.md](port-notes/DIRECT-CERT-FOLLOWUP.md) made the tool pick the client certificate of a
+`.pfx` by what it is, read key locations without opening keys, check that a deleted key is gone, record every key it creates, undo an import
+whose save fails, and never give the users read access to a key it did not create. Until you answer, the tool works as described for each
+point below.
+
+- **The Direct certificate window's import** (`DirectCertificateImport`) still opens the private keys of the store's other certificates to
+  compare key containers, and counts a store entry as usable without checking which key set its key is in. Its store can be the computer's
+  (`LocalMachine\My`), where a smart-card or TPM key could ask for a PIN or fail. Should it get the same two changes as the connection
+  settings tool? **Recommended: yes**, as one small package.
+- **Undoing an import removes the whole store entry.** When the computer already had the client certificate (put there by an administrator,
+  say) and the import gave that entry the tool's key, a failed save, or a later save that stops using the certificate, removes the entry with
+  the tool's key; the entry's earlier key stays on the computer and the message says where. The choices: (a) as built, remove the entry and
+  say so; (b) put the entry's earlier key back on it, so the store is as it was (the tool then writes to a certificate it did not import);
+  (c) leave the entry and delete only the tool's key (the entry is then left pointing at no key). **Recommended: (b)**, since it leaves the
+  computer exactly as the administrator had it.
+- **The tool's record holds only the certificate's thumbprint.** If an administrator later gives a recorded certificate another key by hand,
+  the tool treats that key as its own: it gives the users read access to it on a re-import and deletes it on a later save. Should the record
+  also hold the key's container and provider? That changes the format of `imported-client-certificate.txt` (a record in the old format would
+  still be read). **Recommended: yes.**
+
+---
 
 ## Not asked again (already settled)
 

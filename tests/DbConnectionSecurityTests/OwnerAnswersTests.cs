@@ -32,17 +32,22 @@ namespace DbConnectionSecurityTests {
 		[TestCleanup]
 		public void CleanUp() {
 			TestHelpers.DeleteFolder(_folder);
+			ClientCertificateTestStore.AssertCleanedUp();
 		}
 
-		private static void Plan(string recorded,string current,string newThumbprint,bool isImported,bool wasInStore,out string toRecord,out string toRemove) {
-			DbSettingsRunner.PlanImportedCertificate(recorded,current,newThumbprint,isImported,wasInStore,out toRecord,out toRemove);
+		///<summary>isStoreKeyImported: the store's entry of the new certificate uses the key the tool's import stored (ClientCertificateStore.ImportPfx).
+		///</summary>
+		private static void Plan(string recorded,string current,string newThumbprint,bool isImported,bool isStoreKeyImported,out string toRecord,
+			out string toRemove)
+		{
+			DbSettingsRunner.PlanImportedCertificate(recorded,current,newThumbprint,isImported,isStoreKeyImported,out toRecord,out toRemove);
 		}
 
 		#region The certificate the tool replaces (answer b)
 		[TestMethod]
 		public void Plan_RemovesOnlyTheRecordedCertificate_WhenTheSettingsStopUsingIt() {
-			//The tool imported A; a new .pfx (B, not in the store before) replaces it: A goes, B is recorded.
-			Plan(THUMB_A,THUMB_A,THUMB_B,true,false,out string toRecord,out string toRemove);
+			//The tool imported A; a new .pfx (B, not in the store before, so added with the import's key) replaces it: A goes, B is recorded.
+			Plan(THUMB_A,THUMB_A,THUMB_B,true,true,out string toRecord,out string toRemove);
 			Assert.AreEqual(THUMB_B,toRecord);
 			Assert.AreEqual(THUMB_A,toRemove);
 			//The password replaces it: A goes, nothing is recorded.
@@ -59,30 +64,56 @@ namespace DbConnectionSecurityTests {
 		public void Plan_NeverRemovesACertificateTheToolDidNotImport() {
 			//Nothing recorded (a certificate named by thumbprint, or put there by hand): nothing is removed, whatever replaces it.
 			foreach(string newThumbprint in new[] { THUMB_B,"" }) {
-				Plan("",THUMB_A,newThumbprint,true,false,out string toRecord,out string toRemove);
+				Plan("",THUMB_A,newThumbprint,true,true,out string toRecord,out string toRemove);
 				Assert.AreEqual("",toRemove,newThumbprint);
 			}
-			//A .pfx whose certificate the store already had: the tool did not import it, so it is not recorded.
-			Plan("",THUMB_A,THUMB_B,true,true,out string toRecordB,out string toRemoveB);
+			//A .pfx whose certificate the store already had with a usable key: the entry keeps that key, which the tool did not make, so it is
+			//not recorded.
+			Plan("",THUMB_A,THUMB_B,true,false,out string toRecordB,out string toRemoveB);
 			Assert.AreEqual("",toRecordB);
 			Assert.AreEqual("",toRemoveB);
 			//A record of a certificate the settings no longer used (they were changed another way): it is not the one being replaced.
-			Plan(THUMB_C,THUMB_A,THUMB_B,true,false,out string toRecordC,out string toRemoveC);
+			Plan(THUMB_C,THUMB_A,THUMB_B,true,true,out string toRecordC,out string toRemoveC);
 			Assert.AreEqual(THUMB_B,toRecordC);
 			Assert.AreEqual("",toRemoveC);
 		}
 
+		///<summary>DCFU3, decision 6: a .pfx whose certificate the store had without a usable key, put there another way (never recorded): its
+		///entry took the key the tool's import stored, so the tool records it, and a later save that stops using it removes it with that key.
+		///ClientCertificateImportTests.Apply_AnImportOverAnEntryWithoutAUsableKey_IsRecorded_AndALaterSaveRemovesItWithTheKeyTheToolMade does the
+		///same through DbSettingsRunner.Apply and the test store.</summary>
+		[TestMethod]
+		public void Plan_RecordsACertificateWhoseEntryTookTheImportsKey_EvenOneTheToolDidNotPutThere() {
+			Plan("",THUMB_A,THUMB_B,true,true,out string toRecord,out string toRemove);
+			Assert.AreEqual(THUMB_B,toRecord,"The entry has the key the tool made: recorded.");
+			Assert.AreEqual("",toRemove,"A was not the tool's.");
+			//The same certificate, already in the settings (named by thumbprint before), its .pfx imported over its keyless entry.
+			Plan("",THUMB_B,THUMB_B,true,true,out toRecord,out toRemove);
+			Assert.AreEqual(THUMB_B,toRecord);
+			Assert.AreEqual("",toRemove);
+			//A later save with the password: B goes, with the key the tool made.
+			Plan(THUMB_B,THUMB_B,"",false,false,out toRecord,out toRemove);
+			Assert.AreEqual("",toRecord);
+			Assert.AreEqual(THUMB_B,toRemove);
+			//Named by thumbprint (no import): never recorded, whatever its key.
+			Plan("",THUMB_A,THUMB_B,false,true,out toRecord,out toRemove);
+			Assert.AreEqual("",toRecord);
+		}
+
 		[TestMethod]
 		public void Plan_KeepingOrReimportingTheToolsCertificate_KeepsItAndItsRecord() {
-			//The same settings saved again, or its .pfx imported again (the store has it, from the tool): nothing goes, the record stays.
+			//The same settings saved again, or its .pfx imported again (the store has it from the tool, with a usable key that stays, or with
+			//none, and takes the import's): nothing goes, the record stays.
 			Plan(THUMB_A,THUMB_A,THUMB_A,false,false,out string toRecord,out string toRemove);
 			Assert.AreEqual(THUMB_A,toRecord);
 			Assert.AreEqual("",toRemove);
-			Plan(THUMB_A,THUMB_A,THUMB_A,true,true,out toRecord,out toRemove);
-			Assert.AreEqual(THUMB_A,toRecord);
-			Assert.AreEqual("",toRemove);
+			foreach(bool isStoreKeyImported in new[] { false,true }) {
+				Plan(THUMB_A,THUMB_A,THUMB_A,true,isStoreKeyImported,out toRecord,out toRemove);
+				Assert.AreEqual(THUMB_A,toRecord);
+				Assert.AreEqual("",toRemove);
+			}
 			//Thumbprints are compared as the store does: spaces and case do not matter.
-			Plan(THUMB_A.ToLowerInvariant(),"aa aa"+THUMB_A.Substring(4),THUMB_B,true,false,out toRecord,out toRemove);
+			Plan(THUMB_A.ToLowerInvariant(),"aa aa"+THUMB_A.Substring(4),THUMB_B,true,true,out toRecord,out toRemove);
 			Assert.AreEqual(THUMB_A,toRemove);
 		}
 
@@ -129,62 +160,24 @@ namespace DbConnectionSecurityTests {
 		}
 
 		///<summary>RemoveImported takes the certificate out of the store and deletes its private key, so no key Users may read is left. The tool
-		///works on LocalMachine\My, which needs administrator rights; the test uses the current user's store with a synthetic certificate.</summary>
+		///works on LocalMachine\My, which needs administrator rights; the test uses a store of the current user with a name of its own
+		///(ClientCertificateTestStore, never CurrentUser\My) and a synthetic certificate. ClientCertificateKeyTests does the same for each kind of
+		///key (CAPI, CNG RSA, CNG ECDSA).</summary>
 		[TestMethod]
 		public void RemoveImported_TakesTheCertificateAndItsPrivateKeyOutOfTheStore() {
 			string subject="CN=synthetic-dbsec-remove-"+Guid.NewGuid().ToString("N");
-			string thumbprint;
-			string keyName;
-			using(X509Certificate2 x509Certificate2Ephemeral=TestHelpers.NewCertificate(subject,isCa:false,isClientAuth:true)) {
-				byte[] arrayPfx=x509Certificate2Ephemeral.Export(X509ContentType.Pfx,"synthetic");
-				X509Certificate2 x509Certificate2=new X509Certificate2(arrayPfx,"synthetic",X509KeyStorageFlags.UserKeySet|X509KeyStorageFlags.PersistKeySet);
-				thumbprint=x509Certificate2.Thumbprint;
-				keyName=GetKeyName(x509Certificate2);
-				using(X509Store x509Store=new X509Store(StoreName.My,StoreLocation.CurrentUser)) {
-					x509Store.Open(OpenFlags.ReadWrite);
-					x509Store.Add(x509Certificate2);
-				}
-			}
-			try {
-				Assert.IsTrue(KeyExists(keyName),"The persisted key is there before.");
-				Assert.AreEqual("",ClientCertificateStore.RemoveImported(thumbprint,StoreLocation.CurrentUser));
-				using(X509Store x509Store=new X509Store(StoreName.My,StoreLocation.CurrentUser)) {
-					x509Store.Open(OpenFlags.ReadOnly);
-					Assert.AreEqual(0,x509Store.Certificates.Find(X509FindType.FindByThumbprint,thumbprint,false).Count,"The certificate is gone.");
-				}
-				Assert.IsFalse(KeyExists(keyName),"Its private key is deleted too.");
-				Assert.AreEqual("",ClientCertificateStore.RemoveImported(thumbprint,StoreLocation.CurrentUser),"A certificate that is not there: nothing.");
-				Assert.AreEqual("",ClientCertificateStore.RemoveImported("",StoreLocation.CurrentUser));
-			}
-			finally {
-				ClientCertificateStore.RemoveImported(thumbprint,StoreLocation.CurrentUser);
-			}
-		}
-
-		///<summary>"cng|provider|name" or "capi|type|provider|container" of the certificate's persisted private key.</summary>
-		private static string GetKeyName(X509Certificate2 x509Certificate2) {
-			RSA rsa=x509Certificate2.GetRSAPrivateKey();
-			if(rsa is RSACng) {
-				CngKey cngKey=((RSACng)rsa).Key;
-				return "cng|"+cngKey.Provider.Provider+"|"+cngKey.KeyName;
-			}
-			CspKeyContainerInfo cspKeyContainerInfo=((RSACryptoServiceProvider)rsa).CspKeyContainerInfo;
-			return "capi|"+cspKeyContainerInfo.ProviderType+"|"+cspKeyContainerInfo.ProviderName+"|"+cspKeyContainerInfo.KeyContainerName;
-		}
-
-		private static bool KeyExists(string keyName) {
-			string[] arrayParts=keyName.Split('|');
-			if(arrayParts[0]=="cng") {
-				return CngKey.Exists(arrayParts[2],new CngProvider(arrayParts[1]));
-			}
-			CspParameters cspParameters=new CspParameters(int.Parse(arrayParts[1]),arrayParts[2],arrayParts[3]) { Flags=CspProviderFlags.UseExistingKey };
-			try {
-				using(new RSACryptoServiceProvider(cspParameters)) {
-					return true;
-				}
-			}
-			catch(CryptographicException) {
-				return false;
+			using(ClientCertificateTestStore clientCertificateTestStore=new ClientCertificateTestStore())
+			using(X509Certificate2 x509Certificate2Ephemeral=TestHelpers.NewCertificate(subject,isCa:false,isClientAuth:true))
+			{
+				TestKey testKey=clientCertificateTestStore.AddCertificate(x509Certificate2Ephemeral);
+				string thumbprint=testKey.Thumbprint;
+				Assert.IsTrue(testKey.Exists(),"The persisted key is there before.");
+				Assert.AreEqual("",ClientCertificateStore.RemoveImported(thumbprint,StoreLocation.CurrentUser,clientCertificateTestStore.Name));
+				Assert.AreEqual(0,clientCertificateTestStore.GetThumbprints().Count,"The certificate is gone.");
+				Assert.IsFalse(testKey.Exists(),"Its private key is deleted too.");
+				Assert.AreEqual("",ClientCertificateStore.RemoveImported(thumbprint,StoreLocation.CurrentUser,clientCertificateTestStore.Name),
+					"A certificate that is not there: nothing.");
+				Assert.AreEqual("",ClientCertificateStore.RemoveImported("",StoreLocation.CurrentUser,clientCertificateTestStore.Name));
 			}
 		}
 		#endregion The certificate the tool replaces (answer b)

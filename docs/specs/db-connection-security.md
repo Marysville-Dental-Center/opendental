@@ -217,18 +217,63 @@ are unless `/server=`, `/database=`, `/user=` are given).
 
 ### 4.3 The client certificate
 
-`X509Certificate2Collection.Import(pfx, password, MachineKeySet | PersistKeySet)`, never `Exportable`; the certificate with a private key is
-added to LocalMachine\My and BUILTIN\Users get read access to its private key file (CAPI `MachineKeys` or CNG `Keys`), because the
-program runs as the signed-in user. Other certificates in the `.pfx` are not imported.
+`X509Certificate2Collection.Import(pfx, password, MachineKeySet | PersistKeySet)`, never `Exportable`; the client certificate is added to
+LocalMachine\My and BUILTIN\Users get read access to its private key file (CAPI `MachineKeys` or CNG `Keys`), because the program runs as
+the signed-in user. Other certificates in the `.pfx` are not imported. The client certificate (DCFU3) is the one certificate of the file
+with a private key that is not a certificate authority (no Basic Constraints with CA=true), those for client authentication (Extended Key
+Usage with clientAuth, or none) preferred; a file with none, or several, is refused before anything goes into the store, with what it holds
+(subjects and thumbprints) and how to make a `.pfx` with one client certificate. So a CA certificate that a file lists first with its key is
+never taken for the client certificate.
+
+`PersistKeySet` stores the key of every certificate of the file that has one. As the Direct certificate import does (DCFU2,
+`docs/port-notes/DIRECT-CERT-FOLLOWUP.md`), the tool deletes again the keys it stored and does not use: those of the file's other
+certificates (its CA's, for example) once the client certificate is in the store, and every one, the client certificate's too, when the
+store refuses the certificate or anything else stops the import. It deletes only keys of the file's certificates, and never one that the
+client certificate or a certificate of the store uses (compared by key container, in its key set, each container once). The containers are
+read from each certificate's key provider information (`CERT_KEY_PROV_INFO_PROP_ID`), never by opening the key of a certificate of the
+store, which for a key on a TPM or a smart card could ask for a PIN or fail (DCFU3); a certificate whose key provider information cannot be
+read may use any key, so then no key is deleted, and the result says so. A CAPI key's delete is checked: the container must no longer open
+and its file must be gone. A key it cannot delete is named, with its file, in the result.
+
+A `.pfx` whose certificate the store already holds with a usable private key of the tool's own, as when setup runs again with the same
+file, is not added again, as the Direct certificate import leaves such a certificate (DCFU2 fix round): the store's entry stays as it is,
+with its key; every key the import stored is deleted, the client certificate's own too; and the users get read access to the entry's key.
+The store's add would give the entry the new key and leave the old one on the computer, readable by the users and named by no
+certificate. Usable means (DCFU3) that the entry's key provider information names a key in the machine key set, the one the import uses,
+and that the key opens and signs, or decrypts, a test value. The tool's own means (DCFU3 fix round) that the entry names the key container
+this import stored the key in, in the same key set and through the same provider, its type and name both (a CNG key with the name of the
+import's CAPI container is another key: second fix round), or that the tool's record (below) names the certificate, which the tool imported before with the key its
+entry took then. An entry whose key cannot be used (deleted, or it does not open) is added again and takes the import's key; so is one
+whose key is in another key set (an administrator's own user key set, say, which the program's users cannot read) or cannot be
+identified, and so is one with a usable key that the tool did not create (an administrator put the certificate there with certlm.msc or
+`Import-PfxCertificate`, say): the tool never gives the users read access to a key it did not create. The result then says that the
+entry's earlier key was left untouched, where it is, and the `certutil [-user] -csp "<provider>" -delkey "<container>"` command that
+deletes it once no other certificate uses it.
 
 The certificate it replaces (owner decision of 2026-11-02): the tool removes a client certificate from the store, with its private key
 (CNG `Delete`, or the CAPI key container), only when it imported that certificate itself and a save stops using it (another certificate,
-or the password). It records the thumbprint of what it imported in `<program folder>\ConnectionSettings\imported-client-certificate.txt`
-(`ImportedCertificateRecord`), written with the protection of the office CA copy (section 4.4), not in `FreeDentalConfig.xml`, whose
-content must never decide what the tool deletes. Only a certificate the store did not have before its `.pfx` was imported is recorded; one
-named with `/thumbprint=`, or put into the store some other way, is never recorded and never removed (remove it with certlm.msc). A
-missing or untrusted record (a link, or a file an administrator does not own) means none. The certificate goes only after the new
-settings are saved (`DbSettingsRunner.PlanImportedCertificate`); when it cannot be removed, the result says so and the save stands.
+or the password). A CAPI key (a `.pfx` that names no CNG provider, as OpenSSL writes it, or one that names a CAPI provider) is deleted
+and its file named through CAPI (`X509Certificate2.PrivateKey`, in the key set the key lives in), since .NET Framework's
+`GetRSAPrivateKey` opens it through CNG, as an `RSACng` whose `Key.Delete` leaves the container (DIRECT-CERT-FOLLOWUP). The certificate
+goes first, then its key, which stays when another certificate of the store uses it; when only the key cannot be deleted, the result
+says that the certificate was removed and names the key's file, which certlm.msc no longer shows. It records the thumbprint of what it
+imported in `<program folder>\ConnectionSettings\imported-client-certificate.txt` (`ImportedCertificateRecord`), written with the
+protection of the office CA copy (section 4.4), not in `FreeDentalConfig.xml`, whose content must never decide what the tool deletes.
+Only a certificate whose store entry uses the private key the tool's import stored is recorded: one the store did not have before its
+`.pfx` was imported, or (DCFU3) one whose entry had no usable key of the tool's own and took the import's, so that the tool later removes
+it with the key it made. One named with `/thumbprint=`, whose entry keeps its own key, is never recorded and never removed (remove it with
+its private key as an administrator, in PowerShell: `Remove-Item Cert:\LocalMachine\My\<thumbprint> -DeleteKey`; certlm.msc's Delete
+leaves the key). A missing or untrusted record (a link, or a file an administrator does not own) means none. The certificate goes only
+after the new settings are saved (`DbSettingsRunner.PlanImportedCertificate`); when it cannot be removed, the result says so, with the
+command that removes it with its key (certlm.msc's Delete leaves the key), and the save stands. A save that fails after the import gave
+the store's entry the key it stored (`FreeDentalConfig.xml` cannot be written, for example) leaves no key of the tool's that the record
+does not name (DCFU3 fix round): the imported certificate is removed again with that key, unless the settings as they still are, or the
+record, name it, in which case it stays and is recorded at once. The error gives the import's warning first (a store entry's earlier
+key that the import left, with the `certutil -delkey` command that deletes it; a key it could not delete; a grant that failed), then
+what was done: when the store already held the certificate before the save, that this entry was removed with the key the save gave it
+and its earlier key was left; otherwise that the certificate the save imported was removed with its key. When only the rights of
+`FreeDentalConfig.xml` cannot be set back (section 3), the settings are saved, so the record and the removal of the certificate they
+replaced happen as after any save, and the error says what to do about the rights.
 
 ### 4.4 The office CA copy
 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using CodeBase;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenPmsDentalBusiness;
@@ -16,7 +17,6 @@ namespace NoHqTests {
 		[TestInitialize]
 		public void SetUp() {
 			WebServiceMainHQProxy.MockWebServiceMainHQ=null;
-			CustomerUpdatesProxy.MockCustomerUpdates=null;
 			BugSubmissions.MockBugSubmissions=null;
 		}
 
@@ -104,25 +104,37 @@ namespace NoHqTests {
 		#endregion WebServiceMainHQ
 
 		#region CustomerUpdates
+		///<summary>Open Dental's "Customer Updates" web service is gone with its stand-in (owner, DIRECT-CERT-FOLLOWUP): every member had been
+		///deleted with its last caller (the Canadian network certificates come from the office's own files, eRx access is decided locally, the
+		///OID root is generated locally, the Direct certificate is imported from the Direct provider's file, O-13), which left ICustomerUpdates,
+		///CustomerUpdatesNoHq and CustomerUpdatesProxy empty. Their file and every reference to them are deleted too.</summary>
 		[TestMethod]
-		public void CustomerUpdates_FactoryReturnsNoHqAndEveryMethodThrows() {
-			ICustomerUpdates customerUpdates=CustomerUpdatesProxy.GetWebServiceInstance();
-			Assert.IsInstanceOfType(customerUpdates,typeof(CustomerUpdatesNoHq));
-			foreach(MethodInfo method in typeof(ICustomerUpdates).GetMethods()) {
-				AssertThrowsHqNotAvailable(() => method.Invoke(customerUpdates,GetDefaultArgs(method)),method.Name);
+		public void CustomerUpdates_TheEmptyShellIsRemoved() {
+			string[] arrayRemovedTypes=new string[] { "ICustomerUpdates","CustomerUpdatesNoHq","CustomerUpdatesProxy" };
+			TypeLookup.AssertRemoved(typeof(WebServiceMainHQProxy),arrayRemovedTypes,"was the empty shell of the Customer Updates web service and "
+				+"should have been removed.");
+			string root=FindRepoRoot();
+			Assert.IsFalse(File.Exists(Path.Combine(root,"OpenPmsDentalBusiness","WebServices","CustomerUpdatesProxy.cs")),
+				"CustomerUpdatesProxy.cs should have been deleted.");
+			//No code names the types any more. The tests that check a source file does not name them (eRx, OID, Canada, QuickBooks Online, the
+			//Direct certificate window) and this file are left out.
+			List<string> listOffenders=new List<string>();
+			foreach(string folder in new[] { "OpenPmsDentalBusiness","OpenPmsDental","WpfControlsOD","CodeBase","OpenPmsDentalServer","UnitTests" }) {
+				string pathFolder=Path.Combine(root,folder);
+				Assert.IsTrue(Directory.Exists(pathFolder),pathFolder+" is not there, so the scan would check nothing in it.");
+				foreach(string path in Directory.EnumerateFiles(pathFolder,"*.cs",SearchOption.AllDirectories)) {
+					string relativePath=path.Substring(root.Length+1);
+					if(relativePath.Contains(@"\obj\") || relativePath.Contains(@"\bin\")) {
+						continue;
+					}
+					string text=File.ReadAllText(path);
+					if(arrayRemovedTypes.Any(x => Regex.IsMatch(text,@"\b"+x+@"\b"))) {
+						listOffenders.Add(relativePath);
+					}
+				}
 			}
+			Assert.AreEqual(0,listOffenders.Count,"Code still names the removed Customer Updates types: "+string.Join(", ",listOffenders));
 		}
-
-		[TestMethod]
-		public void CustomerUpdates_VendorMembersAreRemoved() {
-			//The Canadian network certificates come from the office's own files now, eRx access is decided locally, and the OID root is generated
-			//locally (OIDInternals.CustomerPatNum, the last RequestCustomerID caller, is gone). The Direct certificate is imported from the Direct
-			//provider's file (O-13): nothing registers an e-mail certificate with Open Dental any more.
-			AssertMembersRemoved(new List<Type> { typeof(ICustomerUpdates),typeof(CustomerUpdatesNoHq) },
-				new string[] { "RequestCertCanadaABC","RequestCertCanadaTelusAandB","RequestCertCanadaTelusAandBtest","GetErxAccess","GetClinicErxAccess",
-					"RequestCustomerID","RequestEmailVerificationCode","PostEmailCertificate" });
-		}
-
 		#endregion CustomerUpdates
 
 		#region Gates and telemetry

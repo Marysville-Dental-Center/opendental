@@ -1096,7 +1096,8 @@ Added for this version, at `8018a815f` and on the build PC on 2026-11-08:
   Direct.
 - `FormEmailCertRegister` no longer calls `CustomerUpdatesProxy` (O-13, done by DIRECT-CERT): it imports the Direct provider's
   certificate file through `OpenPmsDentalBusiness/Email/DirectCertificateImport.cs` and sends nothing anywhere. Before, it called
-  `CustomerUpdatesProxy.GetWebServiceInstance()`, which throws `HqNotAvailableException` in this build.
+  `CustomerUpdatesProxy.GetWebServiceInstance()`, which throws `HqNotAvailableException` in this build. `CustomerUpdatesProxy`, with
+  `ICustomerUpdates` and `CustomerUpdatesNoHq`, was then deleted (DIRECT-CERT-FOLLOWUP).
 - `Forms/FormImages.cs` hosts `ControlImagesOld` for EOBs and amendments (5 call sites in 4 files; they set only `ClaimPaymentNum`,
   `ClaimNumPreAuth` or `EhrAmendmentCur` and call `ShowDialog`); the module choice `ImagesModuleUsesOld2020` is set to 0 by
   `ConvertDatabases7.cs:2760,3113`. Every image read, import, export and delete of those three uses is an `ImageStore` method
@@ -1515,7 +1516,11 @@ self-contained (open point O-15, decision 20).
   signing one and encrypts and decrypts with the encryption one (the lead's decision of 2026-11-09, third fix round). What the .NET 10
   switch needs of this code (`X509CertificateLoader` for SYSLIB0057, `FileSystemAclExtensions`, the CAPI key check and the serialized
   copy of `Undo`, `CngKey` disposal to verify) is in the port note. Left to the owner:
-  `ICustomerUpdates` and `CustomerUpdatesProxy`, and the read access of `BUILTIN\Users` to the imported private keys.
+  `ICustomerUpdates` and `CustomerUpdatesProxy`, and the read access of `BUILTIN\Users` to the imported private keys. **Answered by the
+  owner on 2026-11-09 (DIRECT-CERT-FOLLOWUP, `docs/port-notes/DIRECT-CERT-FOLLOWUP.md`):** the empty `ICustomerUpdates`,
+  `CustomerUpdatesNoHq` and `CustomerUpdatesProxy` are deleted, with the tests that pinned them changed to check they are gone;
+  `BUILTIN\Users` keep read access to the Direct private key, as built; a replaced certificate's private key is deleted only if the
+  window imported it, as built; and the connection settings tool (`ClientCertificateStore`) got the same CAPI key fix.
 - **O-14. 32-bit vendor components: a helper module or a 64-bit replacement, per vendor (decision 19).** QuickBooks Desktop (QBFC),
   Schick CDR, Topaz signature pads and Guru load 32-bit vendor code in the program's process today. Each gets a module in the 32-bit
   helper program (S3a-13, S3a-14), unless the vendor has a 64-bit way: a 64-bit QBFC from Intuit, a Schick CDR server that runs as its

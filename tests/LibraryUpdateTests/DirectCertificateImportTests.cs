@@ -1396,9 +1396,11 @@ namespace LibraryUpdateTests {
 			}
 		}
 
-		///<summary>Where a stored private key is, to see whether it still exists: a CNG key or a CAPI key container of the current user.</summary>
+		///<summary>Where a stored private key is, to see whether it still exists: a CNG key or a CAPI key container, in the key set it lives in (the
+		///tests' keys are the current user's).</summary>
 		private class KeyLocation {
 			private bool _isCng;
+			private bool _isMachine;
 			private string _name;
 			private string _provider;
 			private int _providerType;
@@ -1427,6 +1429,7 @@ namespace LibraryUpdateTests {
 					keyLocation._name=cspKeyContainerInfoCapi.KeyContainerName;
 					keyLocation._provider=cspKeyContainerInfoCapi.ProviderName;
 					keyLocation._providerType=cspKeyContainerInfoCapi.ProviderType;
+					keyLocation._isMachine=cspKeyContainerInfoCapi.MachineKeyStore;
 					return keyLocation;
 				}
 				using(RSA rsa=x509Certificate2.GetRSAPrivateKey()) {
@@ -1434,22 +1437,27 @@ namespace LibraryUpdateTests {
 						keyLocation._isCng=true;
 						keyLocation._name=((RSACng)rsa).Key.KeyName;
 						keyLocation._provider=((RSACng)rsa).Key.Provider.Provider;
+						keyLocation._isMachine=((RSACng)rsa).Key.IsMachineKey;
 						return keyLocation;
 					}
 					CspKeyContainerInfo cspKeyContainerInfo=((RSACryptoServiceProvider)rsa).CspKeyContainerInfo;
 					keyLocation._name=cspKeyContainerInfo.KeyContainerName;
 					keyLocation._provider=cspKeyContainerInfo.ProviderName;
 					keyLocation._providerType=cspKeyContainerInfo.ProviderType;
+					keyLocation._isMachine=cspKeyContainerInfo.MachineKeyStore;
 				}
 				return keyLocation;
 			}
 
 			public bool Exists() {
 				if(_isCng) {
-					return CngKey.Exists(_name,new CngProvider(_provider),CngKeyOpenOptions.None);
+					return CngKey.Exists(_name,new CngProvider(_provider),_isMachine ? CngKeyOpenOptions.MachineKey : CngKeyOpenOptions.None);
 				}
 				CspParameters cspParameters=new CspParameters(_providerType,_provider,_name);
 				cspParameters.Flags=CspProviderFlags.UseExistingKey;
+				if(_isMachine) {
+					cspParameters.Flags|=CspProviderFlags.UseMachineKeyStore;
+				}
 				try {
 					using(new RSACryptoServiceProvider(cspParameters)) {
 					}
