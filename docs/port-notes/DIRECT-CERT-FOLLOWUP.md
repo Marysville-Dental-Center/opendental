@@ -259,7 +259,8 @@ refuse a certificate, a key refuse its deletion, or a certificate's property ref
 
 - **The CAPI key.** `GetCapiRsaPrivateKey` reads `X509Certificate2.PrivateKey`, obsolete on .NET (SYSLIB0028). .NET's `GetRSAPrivateKey`
   is said to give an `RSACryptoServiceProvider` for a CAPI key, which the existing branches of `TryDeletePrivateKey` (`DeletePrivateKey`
-  before DCFU2), `GetKeyContainerName` and `GetPrivateKeyFilePath` handle; verify it with `ClientCertificateKeyTests` and
+  before DCFU2; `DeleteCapiKey` since DCFU3) and `GetPrivateKeyFilePath` handle (`GetKeyContainerName` is gone since DCFU3: containers
+  are compared by `ReadKeyProvInfo`, a `crypt32.dll` call on `X509Certificate2.Handle` that .NET keeps); verify it with `ClientCertificateKeyTests` and
   `ClientCertificateImportTests` (the CAPI cases), then drop `GetCapiRsaPrivateKey`, as DIRECT-CERT's note says for its own copy.
   `CapiKey_IsNamedAndDeletedThroughCapi_NotThroughTheCngViewOfIt` shows the CNG view only when `GetRSAPrivateKey` gives an `RSACng`, so
   on .NET it checks the CAPI deletion alone.
@@ -585,3 +586,147 @@ touch a key it did not create. The lead's decisions, the plan:
 
 Tests never touch this PC's real stores or keys: only the test store and throwaway keys of the current user, deleted afterwards and checked
 after every run. What only an administrator can check on LocalMachine\My goes into the launch checks.
+
+The code is 60c400734 and the tests 958c30192. The spec, release notes and launch checks 6 to 9 are ee16aa868: they were written on
+2026-11-09, then committed on 2026-11-13 when the round was resumed after the run that wrote them stopped. `main` was merged in
+bcb3ba515, and this note is the commit after those. No schema change, no new enumeration value stored anywhere, no new third-party file,
+no download.
+
+### The six decisions, against the code and the tests
+
+All six are done. Where each one is (in `OpenPmsDentalDbSettings`, tests in `tests/DbConnectionSecurityTests`):
+
+1. **The client certificate** (`ClientCertificateStore.GetClientCertificate`, `IsCertificateAuthority`, `DescribeForRefusal`,
+   `PFX_HOW_TO`). Of the file's certificates with a private key, those without Basic Constraints CA=true are the candidates. Of them, the
+   ones for client authentication (`IsForClientAuthentication`: no Extended Key Usage, or one with clientAuth) are taken if there are any.
+   Exactly one left is checked (`CheckClientCertificate`, so a single candidate that is not for client authentication is refused as
+   such). None or several are refused with exit code 2: "The client certificate file <path> holds no client certificate: ..." or "...
+   holds more than one certificate that can be the client certificate (...): <subject> (<thumbprint>); ...". The message goes on with
+   "It holds: <subject> (<thumbprint>, with a private key, a certificate authority); ..." and ends with the `openssl pkcs12 -export` line of
+   `docs/db-connection-security.md` section 3. The check (`LoadPfxForCheck`, `EphemeralKeySet`) refuses the file before anything is
+   stored. The import refuses it the same way after its read, and deletes every key the read stored. Tests:
+   `ImportPfx_TakesTheClientCertificate_NotTheCaCertificateTheFileListsFirst` and
+   `ImportPfx_RefusesAFileWithoutExactlyOneClientCertificate`. The CA-first test fails on the code before this round: the test CA has no
+   Extended Key Usage, so the first certificate with a key (the CA's) passed `CheckClientCertificate`.
+2. **A usable entry** (`IsEntryKeyUsable`, `GetEntryKeyLeftText`). The entry's key provider information is read first:
+   - No key named: not usable (as before).
+   - A key in the other key set, or one that cannot be identified: not usable, with this warning: "The client certificate was already in
+     the computer's certificate store (LocalMachine\My), with its private key in the user key set of the Windows account that put it
+     there, which the program's users cannot use, not in the computer's key set, which the import uses. The import gave the entry the
+     private key it stored, and left the entry's earlier key untouched: provider <name>, key container <name>, in <key set>. That account
+     can delete it, once no other certificate uses it: certutil -user -csp "<provider>" -delkey "<container>"."
+   - A key in the import's key set: only then is the key opened, to sign or decrypt (`IsKeyUsable`).
+
+   The entry's earlier key is never opened or deleted. Test:
+   `ImportPfx_OfACertificateWhoseEntryHasItsKeyInAnotherKeySet_GivesItTheImportsKey_AndLeavesTheEarlierOne`.
+3. **No key of the store opened to compare** (`ReadKeyProvInfo`, `KeyProvInfo`, `DeleteKeysNotInUse`; `GetKeyContainerName` is gone).
+   `ReadKeyProvInfo` reads `CERT_KEY_PROV_INFO_PROP_ID` with `CertGetCertificateContextProperty` on the certificate's context
+   (`X509Certificate2.Handle`). It takes the container, the provider, the provider type and the machine-key-set bit of `dwFlags`
+   (`CRYPT_MACHINE_KEYSET` and `NCRYPT_MACHINE_KEY_FLAG` are both 0x20). `CRYPT_E_NOT_FOUND` means a certificate without a key. Any other
+   failure, an empty container name or an exception means an unknown key. `DeleteKeysNotInUse` reads all of them before the first delete
+   and compares key set and container. It leaves the provider out: Microsoft's software CAPI providers share containers, so two names of
+   one container count as one key, and a key is kept rather than deleted. When a certificate that stays has an unknown key, no key is
+   deleted. Each warning then says "It was kept, because the private key of the certificate <subject> (<thumbprint>), which stays, could
+   not be identified (<why>), and it may be this one." and "delete that file as an administrator only once no certificate of the store
+   uses it". The tool opens only these keys:
+   - the ones it stored;
+   - the one it removes (its own, recorded);
+   - the client certificate's own entry in the import's key set (decision 2).
+
+   Every opening goes through `GetCapiRsaPrivateKey`, `OpenRsaPrivateKey` or `OpenECDsaPrivateKey`, which call the seam
+   `ActionBeforePrivateKeyOpenForTests`. Test: `DeleteKeys_OpenNoKeyOfAnotherCertificateOfTheStore_AndKeepEveryKeyWhenOnesKeyIsUnknown`.
+4. **A CAPI delete checked** (`DeleteCapiKey`, `DoesCapiKeyContainerOpen`). `DeleteCapiKey` first reads the container's provider, type,
+   name, key set, key number and file (`GetCapiKeyFilePath` of its unique name). Then it deletes the key (`PersistKeyInCsp=false`,
+   `Clear`), opens the container again (`UseExistingKey | NoPrompt`, plus `UseMachineKeyStore` for the machine key set) and looks for the
+   file. A key that is still there is reported as "Windows reported no error, but the key is still there: its key container still opens,
+   and its file is still there." (or one of the two), followed by where the key is left. The seam `ActionInsteadOfCapiKeyDeleteForTests`
+   stands in for a delete that does nothing. Test: `RemoveImported_ACapiKeyThatIsStillThereAfterItsDelete_IsReported`.
+5. **The review's points.**
+   - `ClientCertificateTestStore`: `TestKey.Track` takes the thumbprint and subject before it copies the certificate. When the copy could
+     not be made, `DeleteThroughCertificate` says "The test key of <subject> (<thumbprint>) was never located, and the copy of its
+     certificate could not be made, so the clean-up cannot find it to delete it. ..." instead of "" (nothing to delete).
+   - The spec (section 4.3) gives `Remove-Item Cert:\LocalMachine\My\<thumbprint> -DeleteKey` for a certificate the tool never removes.
+   - **Why `AddClientCertificate`'s catch is `when(!IsCriticalException(ex))`.** The tool's "never throws" helpers
+     (`TryDeletePrivateKey`, `ReadKeyProvInfo`, `IsKeyUsable`) all let `OutOfMemoryException`, `StackOverflowException` and
+     `ThreadAbortException` through. After one of those nothing the tool does is reliable, and the clean-up in that catch deletes keys,
+     the riskiest thing the tool does. So the process ends and setup sees a failed tool, not a result that may be wrong. The owner's rule
+     still holds: nothing in that catch's `try` gives the users read access to a key (`GrantUsersReadToPrivateKey` runs only after the
+     certificate is in the store), so a key left by a critical exception is one the users cannot read.
+     `DirectCertificateImport.AddPrivate` catches everything because it runs inside the program, which must turn every failure into the
+     certificate window's result and undo (`PrivateImportRun.Undo`). Its own helpers filter the same way the tool's do.
+6. **The record** (`ImportPfx`'s `isStoreKeyImported`, `DbSettingsRunner.PlanImportedCertificate`). `isStoreKeyImported` is true when the
+   certificate was added, because the entry then has the import's key. When the entry is kept, it is true only when the entry's key
+   provider information names the very container the import stored the client certificate's key in. (A CAPI `.pfx` imported again lands
+   in the container the entry names: the fix round's measurement.) `DbSettingsRunner` records the new thumbprint when
+   `isPfxImport && isStoreKeyImported`, and the check before the import (`FindInStore`) is gone. So a later save that stops using the
+   certificate removes it with the key the tool made. An entry with a usable key of its own is still never recorded or removed. Tests:
+   `Apply_AnImportOverAnEntryWithoutAUsableKey_IsRecorded_AndALaterSaveRemovesItWithTheKeyTheToolMade` and
+   `OwnerAnswersTests.Plan_RecordsACertificateWhoseEntryTookTheImportsKey_EvenOneTheToolDidNotPutThere`.
+
+The follow-up round's first "Noticed" item (the first certificate with a key taken for the client certificate) is decision 1.
+
+### The merge with `main`
+
+`main` at fa6f501dc, 136 commits, was merged with `--no-ff`. It is stage 2 of the .NET 10 plan: central package management (the
+`Directory.Packages.props` and `packages.lock.json` files), MySqlConnector 2.6.2, DB-SEC 3's `OfficeCaServerVerifier`, and Required dlls
+trimmed. The one conflict, `docs/owner-questions.md`, keeps both sides: this branch's DIRECT-CERT follow-up answers, then `main`'s
+"Pending items answered on 2026-11-09". The branch now builds with its own `Directory.Packages.props`, and the lane restored from the
+offline package folder the repository configures. No package was added and no version changed. The fix round's last "Noticed" item (a
+lane build of this branch needs `ImportDirectoryPackagesProps=false`) no longer applies: the branch has its own file, and a stop file at
+`.claude/worktrees/Directory.Packages.props` ends NuGet.props' search for worktrees in any case. None of `main`'s DB-SEC 3 tests failed
+on the merged branch, so nothing of this branch was changed for them.
+
+### Tests
+
+After the merge: one full lane build (`OpenDental.Local.slnf`, with its restore) with 0 errors, then Targeted runs
+(`run-tests.ps1 -Mode Targeted`, results `dcfu3-1-a.txt` and `dcfu3-1-b.txt`):
+
+| Assembly | Total | Passed | Failed | Skipped |
+|---|---|---|---|---|
+| NoHqTests | 57 | 57 | 0 | 0 |
+| DbConnectionSecurityTests | 212 | 201 | 0 | 11 |
+| LibraryUpdateTests | 126 | 126 | 0 | 0 |
+| VendorDirectTests | 922 | 922 | 0 | 0 |
+| LibraryBindingTests | 17 | 17 | 0 | 0 |
+| ProjectFileTests | 132 | 131 | 0 | 1 |
+
+DbConnectionSecurityTests skips 11:
+- the ten DevDbTls server tests, which are inconclusive until the local MariaDB runs with TLS, as before;
+- `main`'s `NonLoopbackServer_VerifyFull_X509User_WithACapiKeyAndWithACngKey`, which `main`'s stage 2 full run skips too.
+
+It has 212 tests: `main`'s 195 (its stage 2 full run) plus the 17 tests of the DIRECT-CERT-FOLLOWUP rounds that `main` does not have
+yet. Seven of those 17 are this round's: the six named above and the Plan test. ProjectFileTests skips `EveryProjectOfTheSolutionFilter_EvaluatesTheItemsMSBuildRecorded`,
+which runs only when its variable asks for the project baseline record (the stage 2 gate's run).
+
+Clean-up: before the first run and after the last, these were listed and compared, with no new name and none missing:
+- the key files under `%APPDATA%\Microsoft\Crypto\Keys` and `RSA\<SID>`;
+- the stores under `HKCU\Software\Microsoft\SystemCertificates`, so no `OpenPmsDbSecTest_` store is left.
+
+LocalMachine\My and CurrentUser\My hold no `synthetic` certificate (listed, read only). The tests set `StoreNameForTests` to the test
+store whenever they go through the tool's public methods, and never use LocalMachine\My.
+
+### Launch checks (administrator only, LocalMachine\My)
+
+Checks 6 to 9 of "Launch checks for the lead" above are this round's. They need an administrator and LocalMachine\My, which the tests
+never touch:
+- Check 6: the client certificate is chosen by what it is (a CA-first `.pfx`, and a `.pfx` with two client certificates).
+- Check 7: an entry whose key is in the administrator's own key set (the warning, the new machine key with Users Read, the record).
+- Check 8: the tool removes that certificate with the key it made.
+- Check 9: no PIN prompt for a TPM key of another certificate of LocalMachine\My (needs a computer with a TPM).
+
+These are checked by the tests only, through seams: a CAPI delete that fails without a word, and a key provider information that cannot
+be read.
+
+### Noticed, not changed (for the lead)
+
+- **`DirectCertificateImport` still opens the keys of its store's certificates to compare containers.** `DeleteKeysNotInUse` does it
+  through `GetKeyContainerName` (`OpenPmsDentalBusiness/Email/DirectCertificateImport.cs`), and its usable-entry check has no key-set
+  test. Its store is CurrentUser's by default and LocalMachine's when `EmailMessages.CertStoreLocation` says so, so a smart-card or TPM
+  certificate in that store could prompt or fail there. Decisions 2 and 3 would port to it as they are (`ReadKeyProvInfo` is
+  self-contained), together with VendorDirectTests' import tests. Not part of this round, which covers the tool only.
+- **The client certificate's own entry is still opened** when its key is in the import's key set (`IsKeyUsable`, then
+  `GrantUsersReadToPrivateKey` for a kept entry). That is the certificate being imported, whose key the `.pfx` carries, so in practice it
+  is a software key. A copy of it on a TPM or smart card in the machine key set would be opened and could prompt.
+- **Two keys with one name in one key set under different providers** (a software key and a TPM key, say) count as one key.
+  `KeyProvInfo.Identity` leaves the provider out on purpose, for the CAPI providers that share containers. The result is a key kept, never
+  one deleted, and container names are GUIDs in practice.
