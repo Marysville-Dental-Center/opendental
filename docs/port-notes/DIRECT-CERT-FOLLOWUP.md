@@ -748,3 +748,127 @@ be read.
 - **Two keys with one name in one key set under different providers** (a software key and a TPM key, say) count as one key.
   `KeyProvInfo.Identity` leaves the provider out on purpose, for the CAPI providers that share containers. The result is a key kept, never
   one deleted, and container names are GUIDs in practice.
+
+## Fix round (branch `fix/dcfu3-2`, 2026-11-13)
+
+Cut from `fix/dcfu3-1` (6c26f1191) to fix two review findings against the owner's rule of 2026-11-02 (`docs/specs/db-connection-security.md`
+section 4.3): the tool never leaves a key the users can read behind, and its record covers every key it creates; it never touches a key it
+did not create. Code f7d54c0e9, tests 2ed4d964b, spec, release notes and launch checks 4cd687c9f, this note the commit after. No schema
+change, no enumeration value, no new third-party file, no package or version change.
+
+### 1. A save that fails after the import (`DbSettingsRunner.ApplyOrThrow`)
+
+**What was wrong.** `ImportPfx` gives the store's entry a new key that the users can read. The record was written only after
+`SaveFile` and `ResetConfigFileRights`, and either can throw: `SaveFile` when `FreeDentalConfig.xml` is held open by another program or
+an antivirus scan, `ResetConfigFileRights` when its rights cannot be set. Then no record named the certificate, and the tool never
+removed it or its key. For an OpenSSL `.pfx` a retry did not repair it: the entry now had a usable key that was not the import's, so it
+was kept and not recorded. When `ResetConfigFileRights` failed, the settings already used the new thumbprint while the record still named
+the old one. The next save then neither removed the old certificate nor recorded the new one. The gap was there before DCFU3.
+
+**The fix.**
+- `isStoreKeyImported` and `thumbprintImported` are set only once `ImportPfx` has returned.
+- A save that throws before the settings are saved, after such an import, goes to `UndoImportOfFailedSave`:
+  - When neither the settings as they still are nor the record name the imported certificate, it is removed with its key
+    (`RemoveImported`). The error ends with "The client certificate this save imported was removed from the computer's certificate store
+    again, with its private key.", or with `RemoveImported`'s warning when something is left.
+  - When the current settings name it, it stays and is recorded at once (as `PlanImportedCertificate` would record it). When the record
+    names it already, nothing changes. A record that cannot be written is named in the error, with the `Remove-Item ... -DeleteKey`
+    command.
+  - An exception that is not a `DbSettingsException` is turned into one (exit code 3, "The connection settings could not be saved: ..."),
+    so the undo's text reaches the user. Critical exceptions (`IsCriticalException`) go through untouched, as in the import.
+- When only `ResetConfigFileRights` fails, the settings are saved. So `PlanImportedCertificate`, the record and `RemoveImported` of the
+  replaced certificate run as after any save, and then the error (exit code 3, the same text as before, plus any warning of those steps)
+  is returned. The next save finds the record and the settings in step.
+
+### 2. A usable key the tool did not create (`ClientCertificateStore.KeepCertificateInStore`)
+
+**What was wrong.** A client certificate already in LocalMachine\My with a usable machine key that another route put there (certlm.msc,
+`Import-PfxCertificate`, or case 1 above) was kept, and `KeepCertificateInStore` gave BUILTIN\Users read access to that key. Its
+`isStoreKeyImported` was false, since the key was in another container than the import's, so it was not recorded either. A later save
+removed nothing, and the administrator's key stayed readable by the users for good. The grant came from the DCFU2 fix round, and spec
+4.3 still described it.
+
+**The fix.** `ImportPfx` takes the tool's recorded thumbprint (`DbSettingsRunner` passes `ImportedCertificateRecord.Read`). A usable
+entry is kept only when its key is the tool's own (`IsEntryKeyTools`):
+- the entry names the container this import stored the key in (`isEntryKeyImported`, the former check in `KeepCertificateInStore`); or
+- the record names the certificate: the tool imported it before, with the key its entry took then (setup run again with the same file).
+
+Only then does the entry stay as it is, its key get the grant, and every key the import stored get deleted. Any other usable entry is
+treated like decision 2's other key set. The certificate is added with the import's key, which gets the grant. `isStoreKeyImported` is
+true, so the import is recorded. The entry's earlier key is never opened for the grant, never deleted, and the tool never gives the users
+read access to it. The warning (`GetEntryKeyNotToolsText`) says: "The client certificate was already in the computer's certificate store
+(LocalMachine\My) with a usable private key that this tool did not import, so the tool gives the program's users no read access to that
+key. The import gave the entry the private key it stored, and left the entry's earlier key untouched: provider <name>, key container
+<name>, in the computer's key set. An administrator can delete it, once no other certificate uses it: certutil -csp "<provider>" -delkey
+"<container>"." The other-key-set warning shares its last part (`GetEntryKeyWhereText`, `GetKeySetText`) and reads as before.
+
+Every grant goes through `GrantUsersRead`, which calls the new seam `ActionInsteadOfUsersReadGrantForTests` in place of
+`GrantUsersReadToPrivateKey` when a test sets it, also for the test store (`IsUsersReadGranted`), so a test sees which keys the tool
+would make readable in LocalMachine\My. Spec 4.3 now says what "the tool's own" means and that a usable key the tool did not create is
+left and never granted.
+
+### Tests
+
+New, in `ClientCertificateImportTests`, for each kind of key (CAPI RSA, CNG RSA, CNG ECDSA), through `DbSettingsRunner.Apply` with the test
+store (`StoreNameForTests`):
+- `Apply_ASaveThatFailsAfterTheImport_UndoesTheImportOrRecordsIt`:
+  1. `FreeDentalConfig.xml` held open with `FileShare.Read`, so `SaveFile`'s `File.Replace` fails with a sharing violation: exit code 3,
+     the test store is empty, the import's key no longer opens and its file is gone, nothing is recorded, the settings are unchanged.
+  2. The same, when the settings already name the certificate (its entry had no usable key): it stays with the import's key and is
+     recorded; a save with the password then removes it with that key.
+  3. The rights reset failing after the save (new seam `DbSettingsRunner.ActionBeforeConfigFileRightsResetForTests`): the error, the
+     settings and the record name the new certificate, and a save with the password removes it with its key.
+- `Apply_AnImportOverAUsableKeyTheToolDidNotCreate_NeverGrantsTheUsersThatKey_AndRecordsTheImport`: an entry with a usable key the test put
+  there. The grant seam sees only the import's key, never the entry's earlier one. The certificate is added, the import recorded, the
+  warning is the one above, and the earlier key and its file stay. Importing the same `.pfx` again (now recorded) keeps the entry, grants
+  the tool's own key only, adds nothing and deletes the second import's key. A save with the password removes the certificate with the
+  tool's key and leaves the earlier key.
+
+Both fail on the code before this round: case 1 leaves the certificate and key in the store with no record, and the kept entry was never
+added again. The old public `ImportPfx` had no record parameter, so the tests cannot be compiled against it unchanged; that is why this
+was checked by reading, not by a run.
+
+Changed:
+- `ImportPfx_OfACertificateTheStoreHasWithAUsableKey_KeepsItsEntryAndKey_AndDeletesTheKeyItStored` now passes the record (setup run again
+  with a file the tool imported). It also checks that `isStoreKeyImported` is false: the entry keeps its own key.
+- `Apply_AnImportOverAnEntryWithoutAUsableKey_IsRecorded_AndALaterSaveRemovesItWithTheKeyTheToolMade` keeps its unusable-key case only. Its
+  usable-key case ("left as it is and not recorded") was the behaviour this round removes; the new test above covers it.
+
+One full lane build (`OpenDental.Local.slnf`) with 0 errors, then Targeted runs (results `dcfu3-2-b.txt` and `dcfu3-2-c.txt`):
+
+| Assembly | Total | Passed | Failed | Skipped |
+|---|---|---|---|---|
+| NoHqTests | 57 | 57 | 0 | 0 |
+| DbConnectionSecurityTests | 214 | 203 | 0 | 11 |
+| LibraryUpdateTests | 126 | 126 | 0 | 0 |
+| VendorDirectTests | 922 | 922 | 0 | 0 |
+| LibraryBindingTests | 17 | 17 | 0 | 0 |
+| ProjectFileTests | 132 | 131 | 0 | 1 |
+
+The skips are the last round's: the ten DevDbTls server tests, `NonLoopbackServer_VerifyFull_X509User_WithACapiKeyAndWithACngKey`, and
+ProjectFileTests' baseline test. DbConnectionSecurityTests has the two new tests more. Clean-up was checked as in the last round. The key
+files under `%APPDATA%\Microsoft\Crypto\Keys` and `RSA\<SID>`, and the stores under `HKCU\Software\Microsoft\SystemCertificates`, were
+listed before the first run and after the last: no name new, none missing. LocalMachine\My and CurrentUser\My hold no `synthetic`
+certificate (read only).
+
+### Launch checks (administrator only, LocalMachine\My)
+
+Checks 10 and 11 of "Launch checks for the lead" are this round's: a certificate an administrator put into LocalMachine\My with a machine
+key (`Import-PfxCertificate`), and an import while `FreeDentalConfig.xml` is held open. The put-back step is now 12. A rights reset that
+fails is checked by the tests only.
+
+### Noticed, not changed (for the lead)
+
+- **Undoing or later removing an import removes the whole store entry.** That includes a certificate that was in the store before and took
+  the import's key: one without a usable key, with its key in another key set, or (now) with a usable key the tool did not create.
+  `RemoveImported` deletes the certificate and the import's key. The entry's earlier key is left, as the import's warning said. Decision
+  6 does the same on a later save. Putting back the entry's earlier key provider information instead would mean the tool writes to a
+  certificate it did not import.
+- **The record names a thumbprint, not a key container.** If an administrator gives a recorded certificate's entry another key by hand
+  (certlm.msc's import of the same certificate with another key), the tool takes that key for its own: on a re-import it keeps it and
+  grants the users read access to it, and a later save deletes it. Recording the container name next to the thumbprint, and checking
+  it in `IsEntryKeyTools`, would close this. It changes the record file's format, so it is left to the lead.
+- **The office CA copy is not undone** when the save fails after `OfficeCaFile.WriteCopy`, as before. It is a public certificate in an
+  administrator-only folder, and the next save writes it again.
+- **A failed rights reset still ends with exit code 3**, although the settings were saved and the record is now in step. Setup treats that
+  as the tool failing (exit code 10), which is right: the file may still give Users rights.
