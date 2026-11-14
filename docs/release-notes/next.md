@@ -129,7 +129,14 @@ server computer must then connect with `<db-server>` (the name the workstations 
   leaves no other key of the `.pfx` on the computer (a CA certificate's in the same file, for example), nor the client certificate's own
   when the store refuses it; a key that cannot be deleted, and a replaced certificate's key that is left, are named with their file. A
   `.pfx` whose certificate the computer already has with a working key (setup run again with the same file) leaves that certificate and
-  its key as they are and adds no second copy of the key.
+  its key as they are and adds no second copy of the key. A copy of the certificate whose key is in an administrator's own key set, which
+  the program's users cannot use, gets the imported computer-wide key, and the result names the earlier key, which the tool leaves alone;
+  an imported key that a certificate already there took is removed with it later. To compare keys the tool never opens another
+  certificate's private key, so a smart-card or TPM key asks for no PIN.
+- **The client certificate of a `.pfx` is chosen by what it is.** The tool takes the file's one certificate with a private key that is
+  not a certificate authority (and is for client authentication), wherever the file lists it; a CA certificate with its key listed first is
+  no longer taken. A file with no client certificate, or more than one, is refused before anything is imported, with the certificates it
+  holds and how to make a `.pfx` with one client certificate.
 - **Setup exit code 10.** A silent setup that installed the files but could not finish the connection settings (the tool failed, or an
   existing install's settings fail the connection rule) ends with exit code 10, so deployment scripts see it; the setup log says why.
 

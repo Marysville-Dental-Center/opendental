@@ -217,11 +217,41 @@ afterwards.
    `%ProgramData%\Microsoft\Crypto\Keys` and `RSA\MachineKeys`; import the same file again with the tool (or run setup again with the same
    `/DBPFX=`), and list them again: no new file, the same "Unique container name", no warning, and Manage Private Keys still shows Users
    with Read.
-6. Put the connection settings back, remove what is left with `Remove-Item Cert:\LocalMachine\My\<thumbprint> -DeleteKey`, delete the
+6. **The client certificate is chosen by what it is** (DCFU3, decision 1). Make `ca-first.pfx` as in check 4, but with the CA's
+   certificate added to `$both` first (`[void]$both.Add($ca); [void]$both.Add($client)`), and `two-clients.pfx` with two client
+   certificates made as `$client` is but without `-Signer` (two `New-SelfSignedCertificate` calls, both added to a new `$both`, no CA).
+   List the files of `%ProgramData%\Microsoft\Crypto\Keys`; import `ca-first.pfx`: LocalMachine\My holds the client certificate
+   (`CN=synthetic-workstations`), not the CA's, and one new key file only. Import `two-clients.pfx`: refused before anything is imported
+   (the check reads the file without storing a key), naming both certificates with their thumbprints; no new key file, nothing new in
+   LocalMachine\My.
+7. **An entry whose key is in the administrator's own key set** (DCFU3, decisions 2 and 6). With the settings on the password and no copy
+   of `client-cng.pfx`'s certificate in LocalMachine\My (remove one the checks above left with `Remove-Item ... -DeleteKey`), put that
+   certificate into LocalMachine\My with its key in your own user key set, as a script that reads it without `MachineKeySet` would:
+
+   ```powershell
+   $plain = Read-Host -Prompt "The throwaway password"
+   $c = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2("$PWD\client-cng.pfx", $plain, "UserKeySet,PersistKeySet")
+   $s = New-Object System.Security.Cryptography.X509Certificates.X509Store("My", "LocalMachine"); $s.Open("ReadWrite"); $s.Add($c); $s.Close()
+   ```
+
+   `certutil -store My <thumbprint>` names its key container ("Key Container"). Import `client-cng.pfx` with the tool: the result says
+   that the entry's private key was in the user key set of the account that put it there, that the import gave it the private key it
+   stored, and that the earlier key was left untouched, with its provider, container and the `certutil -user -csp ... -delkey ...`
+   command. `certutil -store My <thumbprint>` now names a new container, whose file in `%ProgramData%\Microsoft\Crypto\Keys` gives Users
+   Read; `ConnectionSettings\imported-client-certificate.txt` of the program folder holds the thumbprint. Delete the earlier key with the
+   command the result gives (as yourself).
+8. **The tool removes it with the key it made** (DCFU3, decision 6). Save the settings with the password: the certificate is gone from
+   LocalMachine\My, the key file of check 7 is gone, and so is `imported-client-certificate.txt`.
+9. **No PIN for another certificate's key** (DCFU3, decision 3), on a test computer with a TPM: put a certificate with a TPM key into
+   LocalMachine\My (`New-SelfSignedCertificate -Subject "CN=synthetic-tpm" -Provider "Microsoft Platform Crypto Provider"
+   -CertStoreLocation Cert:\LocalMachine\My`), then do checks 4 and 3 again: no prompt, no error, and the TPM certificate stays; remove it
+   afterwards with `Remove-Item Cert:\LocalMachine\My\<thumbprint> -DeleteKey`.
+10. Put the connection settings back, remove what is left with `Remove-Item Cert:\LocalMachine\My\<thumbprint> -DeleteKey`, delete the
    `.pfx` files and forget the passwords.
 
-The refused import and a key that cannot be deleted (DCFU2) are checked by the tests only: Windows gives no simple way to make
-LocalMachine\My refuse a certificate or a key refuse its deletion.
+The refused import and a key that cannot be deleted (DCFU2), a CAPI delete that Windows does not do (DCFU3, decision 4) and a key provider
+information that cannot be read (DCFU3, decision 3) are checked by the tests only: Windows gives no simple way to make LocalMachine\My
+refuse a certificate, a key refuse its deletion, or a certificate's property refuse to be read.
 
 ## For the .NET 10 switch package
 
