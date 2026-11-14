@@ -895,3 +895,101 @@ fails is checked by the tests only.
   administrator-only folder, and the next save writes it again.
 - **A failed rights reset still ends with exit code 3**, although the settings were saved and the record is now in step. Setup treats that
   as the tool failing (exit code 10), which is right: the file may still give Users rights.
+
+## Second fix round (branch `fix/dcfu3-3`, 2026-11-13)
+
+Cut from `fix/dcfu3-2` (af09803f9) for two more review findings against the owner's rule of 2026-11-02. Code 29f61a2ce, tests c59e5dc18,
+spec, release notes and launch checks b0331c85c, this note the commit after. No schema change, no enumeration value stored anywhere, no new
+third-party file, no package or version change.
+
+### 1. Two providers with one container name (`ClientCertificateStore.IsEntryKeyTools`)
+
+**What was wrong.** `IsEntryKeyTools` decided that the store entry's key was the one this import stored (`isEntryKeyImported`) by
+`KeyProvInfo.Identity`, which is the key set and the container name only. It leaves the provider out on purpose, for
+`DeleteKeysNotInUse`, where a false match only keeps a key. Here a false match makes the tool claim a key it did not create. An
+administrator can put the client certificate into LocalMachine\My with a key of another provider under the container name the `.pfx`
+records (`certutil -csp "Microsoft Software Key Storage Provider" -importpfx` of a CAPI `.pfx`, say). The tool's CAPI import then finds no
+CAPI container of that name and stores its key there (the measurement of the DCFU2 fix round). The entry was kept and the CNG key granted
+to the users. The import's CAPI key stayed with no certificate naming it, because `DeleteKeysNotInStore` saw a certificate "using" that
+Identity. The thumbprint was recorded, and a later save deleted the administrator's CNG key through `RemoveImported`. The new test
+confirmed every step of this on the code before the fix: the import stored its key in the CAPI container of the CNG key's name.
+
+**The fix.** The ownership claim goes through `IsSameKeyStrict`: both key provider informations named and readable, the same Identity,
+the same provider type and the same provider name (ignoring case). A CNG key (type 0) never matches a CAPI one. A false negative is safe:
+the entry goes down the add path and takes the import's key, which only the import made, and the warning names the earlier key. Identity
+itself is unchanged, so `DeleteKeysNotInUse` still keeps a key on a match that ignores the provider. An entry that would name the
+import's CAPI container through another Microsoft software CSP (Enhanced against Enhanced RSA and AES) would now count as not the tool's:
+the entry takes the import's key, and the warning names the other one. That is the safe side.
+
+### 2. The import's warning on a failed save (`DbSettingsRunner.ApplyOrThrow`, `UndoImportOfFailedSave`)
+
+**What was wrong.** The catch for a save that fails after the import built its error from the exception and `UndoImportOfFailedSave`
+only. The `warning` that `ImportPfx` returned was lost. That warning holds the store entry's earlier key with its `certutil -delkey`
+command, a key of the file that could not be deleted, and a failed grant. Over a certificate an administrator had put into LocalMachine\My
+with a working key (launch check 10), the entry took the import's key. The failed save then removed the whole entry, and the error said
+only that "the client certificate this save imported" was removed. The administrator's key was left with no certificate naming it, and
+nothing said that the entry was there before or where its key is.
+
+**The fix.**
+- The error gives the import's warning between the save's failure and the undo's text.
+- `ImportPfx` returns `ClientCertificateEntryBefore` (an out value, never stored): `None` (the store did not hold the certificate),
+  `InStore` (it did, and no earlier key was left aside), or `InStoreKeyLeft` (the entry took the import's key and its earlier key was
+  left; the warning says where).
+- When the undo removes the certificate, its text depends on that value:
+  - `InStoreKeyLeft`: "The client certificate was already in the computer's certificate store before this save; it was removed from the
+    store, with the private key this save gave it, and its earlier key was left untouched, where said above."
+  - `InStore`: "... before this save, without a private key it could use; it was removed from the store, with the private key this save
+    gave it."
+  - `None`: the earlier sentence ("The client certificate this save imported was removed ...").
+- Whether the undo should instead put back the entry's earlier key provider information is owner question 2 of this review, separate from
+  this fix (see "Noticed" of the fix round above: the tool would then write to a certificate it did not import).
+
+### Tests
+
+New, in `ClientCertificateImportTests`:
+- `Apply_AnEntryWithACngKeyNamedAsTheImportsCapiContainer_IsNotTakenForTheToolsKey`, through `DbSettingsRunner.Apply` with the test store.
+  `ClientCertificateTestStore.AddCngEntryAndWriteCapiPfxOfItsName` adds a certificate whose entry has a CNG Software KSP key named N in the
+  user key set. It then writes a CAPI `.pfx` of the same certificate and key that records container N. That CAPI container is made only to
+  write the file, after checking that none had the name, and deleted again before the import. The premise is checked: the import stores
+  its key in CAPI N. The grant seam sees one key, the import's CAPI key, never the CNG one. The certificate is added with the import's key
+  and recorded, and the warning names the CNG key with `certutil -user -csp "Microsoft Software Key Storage Provider" -delkey`. A later
+  save with the password removes the certificate with the import's key, and the CNG key and its file stay.
+- `Apply_ASaveThatFailsAfterTheImport_UndoesTheImportOrRecordsIt` case 4, for each kind of key: an entry with a usable key the tool did
+  not create (`AddCertificate(pathPfx)`), and `FreeDentalConfig.xml` held open. The error ends with the `GetEntryKeyNotToolsText`
+  sentence (with the `certutil -user -csp ... -delkey ...` command) followed by the `InStoreKeyLeft` sentence, and does not say "this save
+  imported". The store is empty, the earlier key and its file stay, the import's key and its file are gone, nothing is recorded, and the
+  settings are unchanged.
+
+Both were run against the code before the fix (its two files checked out from af09803f9, built and run, then restored; results
+`dcfu3-3-before-fix.txt`). Both fail there: the first because the import kept the entry with no warning, the second because the error
+lacked the warning.
+
+One full lane build (`OpenDental.Local.slnf`) with 0 errors, then one Targeted run (results `dcfu3-3-b.txt`):
+
+| Assembly | Total | Passed | Failed | Skipped |
+|---|---|---|---|---|
+| NoHqTests | 57 | 57 | 0 | 0 |
+| DbConnectionSecurityTests | 215 | 204 | 0 | 11 |
+| LibraryUpdateTests | 126 | 126 | 0 | 0 |
+| VendorDirectTests | 922 | 922 | 0 | 0 |
+| LibraryBindingTests | 17 | 17 | 0 | 0 |
+| ProjectFileTests | 132 | 131 | 0 | 1 |
+
+The skips are the earlier rounds'. After each run nothing was left behind: no `OpenPmsDbSecTest_` store under
+`HKCU\Software\Microsoft\SystemCertificates`, no `synthetic` certificate in CurrentUser\My or LocalMachine\My (read only), and no key file
+under `%APPDATA%\Microsoft\Crypto\Keys` or `RSA\<SID>` written since the run started.
+
+### Launch checks (administrator only, LocalMachine\My)
+
+Check 11 of "Launch checks for the lead" has a second part: the failed save over a certificate an administrator put there with
+`Import-PfxCertificate`. Check 12 is new: two providers with one container name (`certutil -csp "Microsoft Software Key Storage Provider"
+-importpfx` of `client-capi.pfx`). The put-back step is now 13.
+
+### Noticed, not changed (for the lead)
+
+- **Whether `certutil -importpfx -csp <KSP>` names its key after the container a CAPI `.pfx` records** has not been measured here. That
+  needs LocalMachine\My or a KSP import of the current user, which the tests do not do. The tests reach the same pair of keys from the
+  other side: Windows' CAPI import takes the recorded name when no CAPI container has it. Check 12 says what to do if certutil picks
+  another name.
+- **The failed save's error can be long.** It now holds the save's failure, the import's warning (which can name several keys) and the
+  undo's text. It is accurate, but the lead may want it laid out in lines where the settings window shows it.
