@@ -799,27 +799,27 @@ approved all three parts of the follow-up package, DIRECT-CERT-FOLLOWUP
 - **The stage 1 window checks** are done by a headless test (WINCHK-HEADLESS) instead of a session driving the desktop, because
   the PC's screen stays locked. Checks only a person at the screen can do are listed in its report for a later on-screen pass.
 
-## The connection settings tool's client certificate (DIRECT-CERT-FOLLOWUP, last round, open since 2026-11-13)
+## The connection settings tool's client certificate (DIRECT-CERT-FOLLOWUP, last round, answered on 2026-11-13)
 
 The last round of [port-notes/DIRECT-CERT-FOLLOWUP.md](port-notes/DIRECT-CERT-FOLLOWUP.md) made the tool pick the client certificate of a
 `.pfx` by what it is, read key locations without opening keys, check that a deleted key is gone, record every key it creates, undo an import
-whose save fails, and never give the users read access to a key it did not create. Until you answer, the tool works as described for each
-point below.
+whose save fails, and never give the users read access to a key it did not create. You answered all three as recommended ("all three as
+recommended", 2026-11-13); one small package (DIRECT-CERT-FOLLOWUP round 4) builds them.
 
 - **The Direct certificate window's import** (`DirectCertificateImport`) still opens the private keys of the store's other certificates to
   compare key containers, and counts a store entry as usable without checking which key set its key is in. Its store can be the computer's
   (`LocalMachine\My`), where a smart-card or TPM key could ask for a PIN or fail. Should it get the same two changes as the connection
-  settings tool? **Recommended: yes**, as one small package.
+  settings tool? **Recommended: yes**, as one small package. **Answered: yes.**
 - **Undoing an import removes the whole store entry.** When the computer already had the client certificate (put there by an administrator,
   say) and the import gave that entry the tool's key, a failed save, or a later save that stops using the certificate, removes the entry with
   the tool's key; the entry's earlier key stays on the computer and the message says where. The choices: (a) as built, remove the entry and
   say so; (b) put the entry's earlier key back on it, so the store is as it was (the tool then writes to a certificate it did not import);
   (c) leave the entry and delete only the tool's key (the entry is then left pointing at no key). **Recommended: (b)**, since it leaves the
-  computer exactly as the administrator had it.
+  computer exactly as the administrator had it. **Answered: (b).**
 - **The tool's record holds only the certificate's thumbprint.** If an administrator later gives a recorded certificate another key by hand,
   the tool treats that key as its own: it gives the users read access to it on a re-import and deletes it on a later save. Should the record
   also hold the key's container and provider? That changes the format of `imported-client-certificate.txt` (a record in the old format would
-  still be read). **Recommended: yes.**
+  still be read). **Recommended: yes.** **Answered: yes.**
 
 ---
 
